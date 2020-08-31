@@ -1,0 +1,566 @@
+스프링 4 버전에는 MyBatis/iBATIS와의 연동 기능이 포함되어 있지 않다. 대신 MyBatis가 직접 스프링과 MyBatis를 연동하기 위한 모듈을 제공하고 있으므로
+이 모듈을 사용하면 스프링이 제공하는 DataSource 및 트랜잭션 관리 기능을 MyBatis에 적용할 수 있다.
+
+MyBatis를 스프링과 연동하는 방법은 다음과 같다.
+
+	- MyBatis-Spring 모듈 추가
+	- SqlSessionFactoryBean을 이용해서 SqlSessionFactory 설정
+	- 트랜잭션 설정
+	- MyBatis를 이용한 DAO 구현
+		~ SqlSession 이용 구현
+		~ 매퍼 동적 생성 이용 구현
+		
+[책에서 제공하는 소스 코드를 다운로드 받으면, mvnprj/spring4-chap13-mybatis 디렉토리에 연동 설정 예제 코드가 포함되어 있다.]
+
+
+	4.1 MyBatis Spring 모듈 추가
+	
+가장 먼저 할 작업은 아래 코드처럼 MyBatis 및 MyBatis-Spring 모듈을 추가하는 것이다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis-spring</artifactId>
+			<version>1.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis</artifactId>
+			<version>3.2.3</version>
+		</dependency>
+		...
+	</dependencies>
+	
+	
+mybatis-spring 모듈은 스프링의 DataSource 및 트랜잭션 관리 기능을 MyBatis와 연동하는데 필요한 기능을 제공하고 있다.
+이 중 핵심 클래스는 SqlSessionFactoryBean과 SqlSessionTemplate인데, 이에 대한 내용은 이어서 살펴보도록 하자.
+
+
+	4.2	SqlSessionFactoryBean과 트랜잭션 관리자 설정
+	
+스프링의 DB 관련 기능과 MyBatis를 연동하려면, mybatis-spring 모듈이 제공하는 SqlSessionFactoryBean을 이용해서 mybatis의 SqlSessionFactory를 생성해야 한다.
+
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="mapperLocations">
+			<list>
+				<value>classpath:/mybatis/itemdao.xml</value>
+				<value>classpath:/mybatis/purchaseorderdao.xml</value>
+			</list>
+		</property>
+		<property name="typeAliases" />
+ 			<list>
+ 				<value>net.madvirus.spring4.chap13.store.model.PurchaseOrder</value>
+	 		</list>
+	 	</property>
+	</bean>
+	
+	
+dataSource 프로퍼티는 DB 연결을 구할 때 사용할 DataSource를 설정한다.
+
+mapperLocations 프로퍼티는 매핑 쿼리를 담고 있는 파일의 목록을 지정한다. 예를 들어, 책의 예제에서 사용하는 purchaseorderdao.xml 파일은 다음과 같이 작성했다.
+
+
+	<?xml version="1.0" encoding="UTF-8" ?>
+	
+	<!DOCTYPE mapper
+	  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+	<mapper namespace="net.madvirus.spring4.chap13.store.dao.PurchaseOrderDao">
+		
+		<insert id="save" parameterType="PurchaseOrder" useGeneratedKeys="true" keyProperty="id">
+			insert PURCHASE_ORDER (ITEM_ID, PAYMENT_INFO_ID, ADDRESS)
+			values (#{itemId}, #{paymentInfoId}, #{address})
+		</insert>
+		
+	</mapper>
+
+
+typeAlias 프로퍼티는 매퍼 XML 파일에서 완전한 클래스 이름 대신 별칭을 사용할 클래스 목록을 지정할 때 사용한다.
+앞서 SqlSessionFactory 클래스 설정에서는 typeAlias 프로퍼티 값으로 PurchaseOrder 클래스를 설정했는데, 
+이 클래스는 다음과 같이 MyBatis의 @Alias 어노테이션을 이용해서 매퍼 XML 파일에서 사용할 타입 별칭을 지정한다. 
+(위 코드에서 <insert> 태그의 parameterType 속성 값으로 PurchaseOrder를 사용했는데, 이는 아래 코드의 @Alias 어노테이션으로 지정한 값이다.)
+
+	
+	package net.madvirus.spring4.chap13.store.model;
+	
+	import org.apache.ibatis.type.Alias;
+	
+	@Alias("PurchaseOrder")
+	public class PurchaseOrder {
+		...
+	}
+	
+	
+MyBatis를 위한 트랜잭션 관리자는 DataSourceTransactionManager를 사용하면 된다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	
+다음 코드는 @Configuration 자바 설정을 이용할 때 SqlSessionFactory의 설정 예이다.
+
+
+	@Configuration
+	@EnableTransactionManagement
+	public class JavaConfig {
+	
+		@Bean
+		public PersistenceExceptionTranslationPostProcessor postProcessor() {
+			return new PersistenceExceptionTranslationPostProcessor();
+		}
+	
+		@Bean(destroyMethod = "close")
+		public DataSource dataSource() {
+			...
+		}
+	
+		@Bean
+		public PlatformTransactionManager transactionManager() {
+			DataSourceTransactionManager tm = new DataSourceTransactionManager();
+			tm.setDataSource(dataSource());
+			return tm;
+		}
+	
+		@Bean
+		public SqlSessionFactoryBean sqlSessionFactory() throws Exception {
+			SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+			factoryBean.setDataSource(dataSource());
+			Resource[] mapperLocations = new Resource[2];
+			mapperLocations[0] = new ClassPathResource("/mybatis/itemdao.xml");
+			mapperLocations[1] = new ClassPathResource("/mybatis/purchaseorderdao.xml");
+			factoryBean.setMapperLocations(mapperLocations);
+			factoryBean.setTypeAliases(new Class<?>[] { PurchaseOrder.class });
+			return factoryBean;
+		}
+		
+		
+	4.3 MyBatis를 이용한 DAO 구현
+	
+SqlSessionFactoryBean을 이용해서 SqlSessionFactory를 설정하면, MyBatis를 이용해서 DAO를 구현할 수 있다.
+MyBatis를 이용한 DAO 구현 방법에는 크게 다음의 두 종류로 분류할 수 있다.
+
+	- SqlSessionTemplate를 이용한 DAO 구현
+	- 자동 매퍼 생성 기능을 이용한 DAO 구현
+	
+	(1) SqlSessionTemplate를 이용한 DAO 구현
+	
+mybatis-spring 모듈은 MyBatis의 SqlSession 기능과 스프링의 DB 지원 기능을 연동해주는 SqlSessionTemplate 클래스를 제공하고 있다.
+SqlSessionTemplate 클래스는 SqlSession을 위한 스프링 연동 부분을 구현하고 있으며(실제로는 SqlSessionTemplate이 내부적으로 사용하는 SqlSession 프록시 객체가 스프링 연동 처리),
+DAO는 SqlSessionTemplate을 이용해서 알맞게 DAO를 구현하면 된다.
+
+다음 코드는 SqlSessionTemplate의 설정 예를 보여주고 있다. SqlSessionTemplate 클래스의 생성자에 SqlSessionFactory를 전달해주면 된다.
+
+
+	<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg ref="sqlSessionFactory" />
+	</bean>
+
+	<bean id="itemDao"
+		class="net.madvirus.spring4.chap13.store.dao.MyBatisItemDao">
+		<property name="SqlSessionTemplate" ref="sqlSessionTemplate" />
+	</bean>
+	
+	
+DAO 클래스는 생성자나 프로퍼티를 통해서 SqlSessionTemplate을 전달받아 DB 기능을 구현하면 된다.
+SqlSessionTemplate은 MyBatis의 SqlSession 인터페이스를 상속받고 있기 때문에, 실제로는 SqlSession에 정의된 메소드를 그대로 사용해서 DAO를 구현하게 된다.
+다음 코드는 SqlSessionTemplate을 이용한 DAO의 구현 예를 보여주고 있다.
+
+
+	import org.apache.ibatis.session.SqlSessionTemplate;
+	import org.springframework.stereotype.Repository;
+	
+	import net.madvirus.spring4.chap13.store.model.Item;
+	
+	@Repository
+	public class MyBatisItemDao implements ItemDao {
+	
+		private SqlSessionTemplate sqlSessionTemplate;
+	
+		public void setSqlSession(SqlSessionTemplate sqlSession) {
+			this.sqlSessionTemplate = sqlSession;
+		}
+	
+		@Override
+		public Item findById(Integer itemId) {
+			Item item = (Item) sqlSessionTemplate.selectOne(
+					"net.madvirus.spring4.chap13.store.dao.ItemDao.findById",
+					itemId);
+			return item;
+		}
+	
+	}
+
+	
+SqlSessionTemplate은 SqlSession 인터페이스를 상속받고 있기 때문에, 다음과 같이 SqlSessionTemplate 대신 SqlSession 타입을 이용해도 된다.
+
+
+	import org.apache.ibatis.session.SqlSession;
+	
+	@Repository
+	public class MyBatisItemDao implements ItemDao {
+	
+		private SqlSession sqlSession;
+	
+		public void setSqlSession(SqlSession sqlSession) {
+			this.sqlSession = sqlSession;
+		}
+	
+		@Override
+		public Item findById(Integer itemId) {
+			Item item = (Item) sqlSession.selectOne(
+					"net.madvirus.spring4.chap13.store.dao.ItemDao.findById",
+					itemId);
+			return item;
+		}
+	
+	}
+
+	
+	(2) SqlSessionDaoSupport 클래스를 이용한 DAO 구현
+	
+SqlSessionDaoSupport 클래스를 상속받아 DAO를 구현할 수도 있다.
+SqlSessionDaoSupport 클래스는 스프링과 연동된 SqlSession을 제공하는 getSqlSession() 메소드를 포함하고 있으며, 하위 클래스는 이 메소드를 이용해서 SqlSession에 접근할 수 있다.
+다음은 SqlSessionDaoSupport 클래스를 상속받은 클래스의 구현 예를 보여주고 있다.
+
+
+	import org.mybatis.spring.support.SqlSessionDaoSupport;
+	
+	public class MyBatisItemDao2 extends SqlSessionDaoSupport implements ItemDao {
+	
+		@Override
+		public Item findById(Integer itemId) {
+			Item item = (Item) getSqlSession().selectOne(
+					"net.madvirus.spring4.chap13.store.dao.ItemDao.findById",
+					itemId);
+			return item;
+		}
+	
+	}
+
+	
+SqlSessionDaoSupport 클래스가 정상 동작하려면 아래 코드처럼 SqlSessionFactory나 SqlSessionTemplate 설정해주어야 한다.
+
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		...
+	</bean>
+
+	<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg ref="sqlSessionFactory" />
+	</bean>
+
+	<!-- SqlSessionFactory를 설정 -->
+	<bean id="itemDao"
+		class="net.madvirus.spring4.chap13.store.dao.MyBatisItemDao">
+		<property name="sqlSession" ref="sqlSessionTemplate" />
+	</bean>
+
+	<!-- SqlSessionTemplate을 설정 -->
+	<bean id="itemDao2"
+		class="net.madvirus.spring4.chap13.store.dao.MyBatisItemDao2">
+		<property name="sqlSessionTemplate" ref="sqlSessionTemplate" />
+	</bean>
+	
+	
+	(3) 자동 매퍼 생성 기능을 이용한 DAO 구현
+	
+MyBatis를 이용해서 DAO를 구현할 때, 대부분의 코드는 단순히 SqlSession의 메소드를 호출하는 것으로 끝이 난다.
+예를 들어, 앞서 봤던 MyBatisItemDao 클래스의 findById() 메소드의 경우 selectOne() 메소드를 호출하는 코드만 실행하고 끝이난다.
+
+
+	public Item findById(Integer itemId) {
+		// 많은 DAO 구현이 아래와 같이 SqlSession의 메소드 호출하고 끝!
+		Item item = (Item) sqlSessionTemplate.selectOne(
+			"net.madvirus.spring4.chap13.store.dao.ItemDao.findById",
+			itemId);
+		return item;
+	
+	}
+	
+	
+이런 단순 코드 작업을 줄여주기 위해 MyBatis는 인터페이스를 이용해서 런타임에 매퍼 객체를 생성하는 기능을 제공하고 있다.
+스프링에서 개발 매퍼 인터페이스로부터 DAO 빈 객체를 생성하려면 MapperFactoryBean 클래스를 사용하면 된다.
+
+
+	<bean id="purchaseOrderDao" class="org.mybatis.spring.mapper.MapperFactoryBean">
+		<property name="mapperInterface"
+			value="net.madvirus.spring4.chap13.store.dao.PurchaseOrderDao" />
+		<property name="sqlSessionFactory" ref="sqlSessionFactory" />
+	</bean>
+
+	<bean id="placeOrderService"
+		class="net.madvirus.spring4.chap13.store.service.PlaceOrderServiceImpl">
+		<!-- MapperFactoryBean이 생성한 빈 객체 사용 -->
+		<property name="purchaseOrderDao" ref="purchaseOrderDao" />
+		...
+	</bean>
+	
+	
+MapperFactoryBean의 sqlSessionFactory 프로퍼티는 SqlSessionFactory 빈을 설정하고, MapperFactoryBean의 mapperInterface 프로퍼티는
+매퍼로 사용할 인터페이스 타입을 지정한다. mapperInterface 프로퍼티로 지정한 타입이 MapperFactoryBean가 생성하는 빈 객체의 타입이 된다.
+즉, 위 설정의 경우 MapperFactoryBean이 생성하는 빈 객체의 타입은 PurchaseOrderDao 가 된다.
+
+자동으로 생성된 빈 객체는 인터페이스의 패키지 이름을 포함한 완전한 이름과 메소드 이름을 이용해서 매퍼 XML 파일에서 사용할 쿼리를 찾는다.
+예를 들어, 이 예제에서 사용한 PurchaseOrderDao 인터페이스과 다음과 같다고 하자.
+
+
+	package net.madvirus.spring4.chap13.store.dao;
+	
+	public interface PurchaseOrderDao {
+		void save(PurchaseOrder order);
+	}
+	
+	
+MapperFactoryBean이 생성한 PurchaseOrderDao 빈 객체의 save() 메소드를 호출하면, 다음을 기준으로 실행할 쿼리를 찾는다.
+
+	- 네임스페이스 : PurchaseOrderDao의 완전한 타입 이름
+		~ net.madvirus.spring4.chap13.store.dao.PurchaseOrderDao
+	- 실행할 쿼리 식별 값 : 실행할 메소드 이름
+		~ save
+		
+예제에서 사용한 매퍼 설정 XML 파일은 다음과 같은데, PurchaseOrderDao.save()를 실행하면 <insert> 태그로 설정한 쿼리가 실행된다.
+
+	
+	<mapper namespace="net.madvirus.spring4.chap13.store.dao.PurchaseOrderDao">
+		
+		<insert id="save" parameterType="PurchaseOrder"
+			useGeneratedKeys="true" keyProperty="id">
+			insert PURCHASE_ORDER (ITEM_ID, PAYMENT_INFO_ID.ADDRESS)
+			values (#{itemId}, #{paymentInfoId}, #{address})
+		</insert>
+		
+	</mapper>
+	
+	
+MyBatis는 XML 매퍼 설정 파일을 작성하는 대신, 어노테이션을 이용해서 매퍼 인터페이스의 메소드에 직접 쿼리를 설정할 수도 있다.
+다음은 @Insert 어노테이션의 사용 예이다.
+
+
+	import org.apache.ibatis.annotations.Insert;
+	import org.apache.ibatis.annotations.Options;
+	
+	@Repository
+	public interface PaymentInfoDao {
+		@Insert("insert into PAYMENT_INFO (PRICE) values (#{price})")
+		@Options(keyProperty = "id", useGeneratedKeys = true)
+		void save(PaymentInfo paymentInfo);
+	
+	}
+	
+	
+어노테이션을 이용해서 실행할 쿼리를 설정한 매퍼 인터페이스도 MapperFactoryBean을 통해서 빈 객체를 생성할 수도 있다.
+
+
+	<bean id="paymentInfoDao" class="org.mybatis.spring.mapper.MapperFactoryBean">
+		<!-- 인터페이스가 MyBatis의 쿼리 관련 어노테이션을 사용한 경우에도 동작 -->
+		<property name="mapperInterface"
+			value="net.madvirus.spring4.chap13.store.dao.PaymentInfoDao" />
+		<property name="sqlSessionFactory" ref="sqlSessionFactory" />
+	</bean>
+	
+	
+@Configuration 자바 설정에서 자동 매퍼 생성 기능을 사용하려면 다음과 같이 두 가지 방식 중 한 가지를 사용하면 된다.
+
+	- SqlSessionTemplate.getMapper() 사용
+	- MapperFactoryBean 사용
+	
+먼저 SqlSessionTemplate의 getMapper()를 사용하는 방법을 알아보자. SqlSessionFactory를 생성할 때 매퍼 인터페이스와 매칭되는 매퍼 설정을 추가했다면
+(아래 코드에서 setMapperLocation() 설정 부분), SqlSessionTemplate이 제공하는 getMapper() 메소드를 이용해서 간단하게 매퍼 객체를 생성할 수 있다.
+다음은 설정 예제 코드이다.
+
+
+	@Bean
+	public SqlSessionFactoryBean sqlSessionFactory() throws Exception {
+		SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+		Resource[] mapperLocations = new Resource[2];
+		mapperLocations[0] = new ClassPathResource("/mybatis/itemdao.xml");
+		// purchaseorderdao.xml 매퍼 파일이 PurchaseOrderDao 인터페이스와 매칭
+		mapperLocations[1] = new ClassPathResource("/mybatis/purchaseorderdao.xml");
+		factoryBean.setMapperLocations(mapperLocations);
+		...
+		return factoryBean.getObject();
+	}
+
+	@Bean
+	public SqlSessionTemplate sqlSessionTemplate() throws Exception {
+		return new SqlSessionTemplate(sqlSessionFactory());
+	}
+
+	// 첫 번째 방법 : SqlSessionTemplate의 getMapper() 사용
+	@Bean
+	public PurchaseOrderDao purchaseOrderDao() throws Exception {
+		// 인터페이스 작성 만으로 패머 객체 생성
+		return sqlSessionTemplate().getMapper(PurchaseOrderDao.class);
+	}
+	
+	
+SqlSessionFactory를 생성할 때, 인터페이스와 매칭되는 매퍼 설정을 등록하지 않는다면, XML 설정과 동일하게 MapperFactoryBean 클래스를 이용하면 된다.
+
+
+	// 두번째 방법 : MapperFactoryBean 사용
+	@Bean
+	public PaymentInfoDao paymentInfoDao() throws Exception {
+		MapperFactoryBean<PaymentInfoDao> factoryBean = new MapperFactoryBean<>();
+		factoryBean.setMapperInterface(PaymentInfoDao.class);
+		factoryBean.setSqlSessionFactory(sqlSessionFactory());
+		factoryBean.afterPropertiesSet();
+		return factoryBean.getObject();
+	}
+	
+	
+	(4) 스캔을 이용한 매퍼 검색
+	
+MapperFactoryBean이 단일 매퍼 인터페이스를 빈으로 생성할 때 사용된다면, 스캔은 다수의 매퍼 인터페이스를 검색해서 자동으로 빈으로 등록할 때 사용된다.
+스프링의 컴포넌트 스캔 기능과 동일한데 차이점이라면 검색된 인터페이스가 매퍼 인터페이스로 사용된다는 점이다.
+
+XML 설정에서 매퍼 스캔 기능을 사용하려면 다음과 같이 <mybatis:scan> 태그를 사용하면 된다.
+
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:tx="http://www.springframework.org/schema/tx" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+		xsi:schemaLocation="..."
+	       http://mybatis.org/schema/mybatis-spring
+	       http://mybatis.org/schema/mybatis-spring.xsd">
+	
+		<tx:annotation-driven />
+		
+		<mybatis:scan base-package="net.madvirus.spring4.chap13.store.dao" />
+	
+		... dataSource/transactionManager 설정
+		
+		<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+			<property name="dataSource" ref="dataSource" />
+			...
+		</bean>
+	
+		<bean id="placeOrderService"
+			class="net.madvirus.spring4.chap13.store.service.PlaceOrderServiceImpl">
+		</bean>
+	</beans>
+
+
+<mybatis:scan> 태그는 base-package 속성으로 설정한 패키지 및 그 하위 패키지의 모든 인터페이스를 검색해서 매퍼로 등록한다.
+생성된 매퍼 빈이 필요한 클래스는 스프링의 자동 연결 기능(@Autowired나 @Resource와 같은 어노테이션 등)을 이용해서 빈을 사용하면 된다.
+
+	
+	public class PlaceOrderServiceImpl implements PlaceOrderService {
+		@Autowired
+		private ItemDao itemDao;
+		@Autowired
+		private PaymentInfoDao paymentInfoDao;
+		@Autowired
+		private PurchaseOrderDao purchaseOrderDao;
+		
+		
+<mybatis:scan>이 검색할 대상 인터페이스를 제한하고 싶다면 다음의 속성 중 annotation 속성이나 marker-interface 속성을 사용하면 된다.
+
+
+	속성					설명
+	
+	annotation			특정 어노테이션을 지정한 인터페이스만 검색한다.
+	
+	marker-interface	지정한 인터페이스를 상속한 인터페이스만 검색한다.
+	
+	factory-ref			SqlSessionFactory 빈의 이름을 지정한다.
+	
+	template-ref		SqlSessionTemplate 빈의 이름을 지정한다.
+	
+	base-package		인터페이스를 검색할 패키지를 지정한다.
+	
+	
+factory-ref와 template-ref 를 둘 다 설정할 경우, factory-ref의 설정이 무시된다. 둘 다 설정하지 않으면 타입 기반 자동 설정을 이용해서
+존재하는 SqlSessionFactory 빈과 SqlSessionTemplate 빈 중 하나를 사용한다. 두 속성을 모두 설정하지 않은 상태에서 SqlSessionFactory 타입 빈이나
+SqlSessionTemplate 타입 빈이 두 개 이상 존재하면 익셉션이 발생하므로, 가능하면 둘 중 하나를 명시적으로 설정해서 익셉션이 발생할 가능성을 없애는 것이 좋다.
+
+자바 코드 설정을 사용한다면 @MapperScan 어노테이션을 사용하면 된다.
+
+
+	import org.mybatis.spring.annotation.MapperScan;
+	
+	@Configuration
+	@EnableTransactionManagement
+	@MapperScan("net.madvirus.spring4.chap13.store.dao")
+	public class JavaScanConfig {
+		...
+	}
+	
+	
+@MapperScan 어노테이션의 속성은 다음과 같다.
+
+
+	속성						타입			설명
+	
+	basePackages			String[]	스캔 대상 패키지를 지정한다.
+	
+	annotationClass			Class		특정 어노테이션을 지정하 인터페이스만 검색한다.
+	
+	markerInterface			Class		지정한 인터페이스를 상속한 인터페이스만 검색한다.
+	
+	SqlSessionFactoryRef	String		SqlSessionFactory 빈의 이름을 지정한다.
+	 
+	SqlSessionTemplateRef	String		SqlSessionTemplate 빈의 이름을 지정한다.
+	
+	
+	4.4 SqlSessionFactoryBean 기타 설정
+	
+SqlSessionFactoryBean의 주요 프로퍼티는 다음과 같다.
+
+
+	프로퍼티					타입					설명
+	
+	mapperLocations			Resource[]			매퍼 XML 파일 위치를 지정한다.
+	
+	typeAliases				Class[]				@Alias 어노테이션을 가진 클래스 목록을 지정한다.
+	
+	typeAliasesPackage		String				타입 별칭 정보를 담고 있는 타입을 검색할 패키지를 지정한다.
+	
+	typeHandlers			TypeHandler[]		타입 핸들러 목록을 지정한다.
+	
+	typeHandlersPackage		String				타입 핸들러를 검색할 패키지를 지정한다.
+	
+	configurationProperties	Properties			SqlSession을 위한 프로퍼티를 설정한다.
+	
+	databaseIdProvider		DatabaseIdProvider	DatabaseIdProvider를 지정한다.
+	
+	plugins					Interceptor[]		Interceptor를 지정한다.
+	
+	
+	(1) MyBatis JTA 트랜잭션 연동
+	
+MyBatis를 JTA 트랜잭션과 연동하려면 SqlSessionFactoryBean의 transactionFactory 프로퍼티에 ManagedTransactionFactory 빈 객체를 설정하면 된다.
+
+
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="transactionFactory">
+			<bean class="org.apache.ibatis.transaction.managed.ManagedTransactionFactory" />
+		</property>
+		<property name="mapperLocations">
+			<list>
+				<value>classpath:/mybatis/itemdao.xml</value>
+				<value>classpath:/mybatis/purchaseorderdao.xml</value>
+			</list>
+		</property>
+		<property name="typeAliasesPackage"
+			value="net.madvirus.spring4.chap13.store.model" />
+	</bean>

@@ -1,0 +1,85 @@
+자바를 이용해서 어플리케이션을 개발할 때 메이븐(Maven)이나 그래들(Gradle)과 같은 빌드 도구를 사용하게 되는데, 이런 빌드 도구들의 주요 특징 중 하나는 의존 모듈(jar 파일) 관리에 있다.
+예를 들어, 메이븐의 경우 중앙 리파지터리(central repository)라고 불리는 서버로부터 필요한 jar 파일을 다운로드 받아 의존 모듈을 관리한다.
+
+스프링 팀은 이런 흐름에 맞춰 스프링 프레임워크에 포함된 jar 파일 및 스프링 프레임워크에서 필요로 하는 jar 파일을 하나의 파일로 묶어서 배포하기 보다는, 메이븐 중앙 리파지터리를 통해서
+스프링 프레임워크 모듈(jar 파일)을 배포하고 있다. 예를 들어, 스프링 프레임워크의 기본적인 DI 기능을 사용할 때는 다음과 같은 의존 설정을 메이븐의 pom.xml 파일에 추가해주면 된다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+	</dependencies>
+	
+	
+위 메이븐 의존 설정은 spring-context 모듈의 4.0.4 RELEASE 버전을 사용한다는 의미인데, 이 메이븐 설정을 통해 spring-context-4.0.4 RELEASE.jar 파일 및
+spring-context 모듈이 의존하고 있는 다른 모듈을 다운로드 받아 사용할 수 있게 된다.
+
+[메이븐 의존 설정에 대한 기본적인 이해가 없으면 스프링 프레임워크를 사용하기 어려워 
+http://javacan.tistory.com/entry/MavenBasic		을 읽어보자.]
+
+
+	2.1 스프링 프레임워크의 주요 모듈
+	
+스프링 프레임워크는 제공하는 기능에 따라 별도의 모듈로 분리되어 있다. 예를 들어, 트랜잭션과 관련된 기능을 제공하는 모듈은 spring-tx이며, 웹 개발과 관련된 기능을 제공하는 모듈은 spring-webmvc이다.
+각 모듈은 별도의 jar 파일로 제공되는데, 한 모듈을 사용하기 위해 다른 모듈을 필요하기도 한다.
+spring-jdbc 모듈과 spring-tx 모듈을 위해 spring-orm이 필요하고, spring-webmvc 모듈을 사용하기 위해 spring-web 모듈이 필요한 등 서로 의존 관계가 형성되어 있다.
+
+
+[완전한 모듈 목록이 궁금할 경우 	http://github.com/spring-projects/spring-framewoark		참고]
+
+
+스프링 프레임워크의 주요 모듈이 제공하는 기능들이다.
+
+
+모듈					설명
+
+spring-beans		스프링 컨테이너를 이용해서 객체를 생성하는 기본 기능을 제공한다.
+
+spring-context		객체 생성, 라이프 사이클 처리, 스키마 확장 등의 기능을 제공한다. 2, 3, 4, 5장에서 설명
+
+spring-aop			AOP(Aspect Oriented Programming) 기능을 제공한다. 6장에서 설명
+
+spring-web			REST 클라이언트, 데이터 변환 처리, 서블릿 필터, 파일 업로드 지원 등 웹 개발에 필요한 기능을 제공한다. 7, 8, 10장에서 설명
+
+spring-webmvc		스프링 기반의 MVC 프레임워크이다. 웹 어플리케이션을 개발하는데 필요한 컨트롤러, 뷰 구현을 제공한다. 7, 8장에서 설명
+
+spring-websocket	스프링 MVC에서 웹 소켓 연동을 처리할 수 있도록 한다. 9장에서 설명
+
+spring-oxm			XML과 자바 객체 간의 매핑을 처리하기 위한 API를 제공한다.
+
+spring-tx			트랜잭션 처리를 위한 추상 레이어를 제공한다. 12장에서 설명
+
+spring-jdbc			JDBC 프로그래밍을 보다 쉽게 할 수 있는 템플릿을 제공한다. 11장에서 설명
+
+spring-orm			하이버네이트, JPA, MyBatis 등과의 연동을 지원한다. 13장에서 설명
+
+spring-jms			JMS 서버와 메시지를 쉽게 주고 받을 수 있도록 하기 위한 템플릿, 애노테이션 등을 제공
+
+spring-context-support		스케줄링, 메일 발송, 캐시 연동, 벨로시티 등 부가 기능을 제공
+
+
+메이븐 프로젝트에서 모듈을 사용하려면 다음과 같이 사용할 모듈 이름과 버전을 의존 설정에 추가해주면 된다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+	</dependencies>
+	
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+	</dependencies>
+	
+	
+위와 같은 메이븐 설정을 사용하면 spring-webmvc, spring-orm 모듈 뿐만 아니라 이 모듈이 필요로 하는 
+spring-mvc, spring-context, spring-beans, spring-jdbc 등의 모듈도 함께 다운로드해야 한다.

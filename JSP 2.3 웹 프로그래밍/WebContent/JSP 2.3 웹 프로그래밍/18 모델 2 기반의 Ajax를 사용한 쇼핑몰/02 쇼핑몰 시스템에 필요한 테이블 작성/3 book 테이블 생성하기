@@ -1,0 +1,45 @@
+상품에 대한 정보를 저장 및 관리하는 book 테이블을 작성한다. 여기서 book 테이블은 책에 대한 정보를 가지고 있다.
+
+CREATE TABLE book (
+	book_id NUMBER CONSTRAINT book_id_pk PRIMARY KEY,
+	book_kind VARCHAR2(3) CONSTRAINT book_kind_nn NOT NULL,
+	book_title VARCHAR2(100) CONSTRAINT book_title_nn NOT NULL,
+	book_price NUMBER CONSTRAINT book_price_nn NOT NULL,
+	book_count NUMBER CONSTRAINT book_count_nn NOT NULL,
+	author VARCHAR2(40) CONSTRAINT book_author_nn NOT NULL,
+	publishing_com VARCHAR2(30) CONSTRAINT book_com_nn NOT NULL,
+	publishing_date VARCHAR2(15) CONSTRAINT book_pub_date_nn NOT NULL,
+	book_image VARCHAR2(16) DEFAULT 'nothing.jpg',
+	book_content CLOB CONSTRAINT book_content_nn NOT NULL,
+	discount_rate NUMBER DEFAULT 10,
+	reg_date TIMESTAMP CONSTRAINT book_reg_date_nn NOT NULL
+);
+
+다음은 book 테이블의 각 필드에 대한 설명이다.
+
+필드명			설명
+
+book_id			책의 아이디를 저장하는 필드, 기본 키이고 자동 증가
+
+book_kind		책의 종류를 저장하는 필드
+
+book_title		책의 제목을 저장하는 필드
+
+book_price		책의 가격을 저장하는 필드
+
+book_count		책의 재고량을 저장하는 필드
+
+author			책의 저자를 저장하는 필드
+	
+publishing_com	책의 출판사를 저장하는 필드
+
+publishing_date	책의 출간일을 저장하는 필드
+
+book_image		책의 이미지를 저장하는 필드
+
+book_content	책 상품 설명 내용을 저장하는 필드
+
+discount_rate	책의 할인율을 저장하는 필드
+
+reg_date		책의 등록일을 저장하는 필드
+

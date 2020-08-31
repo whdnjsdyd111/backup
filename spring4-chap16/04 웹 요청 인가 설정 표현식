@@ -1,0 +1,40 @@
+접근 제어를 위한 설정 코드 부분을 다시 보자.
+
+
+	<sec:http use-expressions="true">
+		<sec:intercept-url pattern="/admin/**" 
+		                   access="hasAuthority('ROLE_ADMIN')" />
+		<sec:intercept-url pattern="/manager/**" 
+		                   access="hasRole('ROLE_MANAGER')" />
+		<sec:intercept-url pattern="/member/**" access="isAuthenticated()" />
+		<sec:intercept-url pattern="/**" access="permitAll"/>
+		<sec:form-login />
+		<sec:logout />
+	</sec:http>
+
+	
+<intercept-url> 태그의 access 속성은 스프링 시큐리티가 제공하는 스프링 표현식을 사용해서 접근 권한을 설정하고 있다.
+스프링 시큐리티는 위 코드에서 보여준 것 말고도 접근 제어를 위해 사용할 수 있는 다양한 표현식을 제공하고 있는데, 주요 표현식은 다음과 같다.
+
+	
+	식								설명
+	
+	hasRole('권한')					해당 권한을 가졌는지 검사한다.
+	hasAuthority('권한')
+	
+	hasAnyRole('권한1, 권한2')			지정한 권한 중 하나라도 가졌는지 검사한다. 각 권한은 콤마로 구분한다.
+	hasAnyAuthority('권한1, 권한2')
+	
+	permitAll						모두 허용한다.
+	
+	denyAll							모두 거부한다.
+	
+	isAnonymous()					임의 사용자인지 검사한다.
+	
+	isAuthenticated()				인증된 사용자인지 검사한다. 기억된 사용자도 인증 사용자로 처리한다.
+	
+	isRememberMe()					기억된 사용자인지 검사한다.
+	
+	isFullyAuthenticated()			완전한 인증을 거친 사용자인지 검사한다. 기억된 사용자인 경우 완전한 인증을 거치지 않은 것으로 판단하며, 실제 로그인 과정을 거쳐야 완전한 인증 사용자로 처리한다.
+	
+	hasIpAddress('IP표현')			클라이언트가 지정한 IP인지 검사한다. 특정 IP 뿐만 아니라 192.168.1.0/24 와 같은 CIDR로 범위를 지정할 수 있다.

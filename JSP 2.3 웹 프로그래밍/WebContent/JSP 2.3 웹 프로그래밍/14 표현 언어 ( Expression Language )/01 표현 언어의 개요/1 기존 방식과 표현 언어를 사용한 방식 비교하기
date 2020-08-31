@@ -1,0 +1,39 @@
+(1) 기존의 유동적인 속성값 지정 및 객체의 getter 메소드에 접근
+
+지금까지는 태그에 유동적인 속성값 지정 또는 객체의 getter 메소드에 접근하기 위해 다음과 같은 방법을 사용했다.
+
+	- 태그에 유동적인 속성값 지정
+	
+<someTags:aTag attribute="<%= aName %>">
+
+-	<someTags:aTag> : 액션 태그
+-	attribute : 속성명
+-	<%= aName %> : 유동적인 속성값. aName 변수가 가진 값이 attribute 속성값이 됨
+
+	- 객체의 getter 메소드에 접근
+	
+<%= aCustomer.getAddress() %> <%-- 메소드의 실행결과를 화면에 표시 --%>
+
+-	aCustomer : 객체. 주로 데이터 저장빈 객체
+-	getAddress() : 메소드. 위의 예제에서는 aCustomer 객체의 메소드로 값을 얻어내는 getter 메소드
+
+
+(2) 표현 언어에서 유동적인 속성값 지정 및 객체의 getter 메소드에 접근
+
+표현 언어는 표현식 (<%= %>)을 대신할 수 있는데, 이것을 사용해서 위의 예시를 다음과 같이 작성할 수 있다. 아래의 예시에서 ${}은 <%= %>와 같다.
+
+	- 태그에 유동적인 속성값 지정
+	
+<someTags:aTag attribute="${aName}">
+
+-	<someTags:aTag> : 액션 태그
+-	attribute : 속성명
+-	${aName} : 속성값. ${aName}은 <%= aName %>과 같음
+
+	- 객체의 getter 메소드에 접근
+	
+${aCustomer.address}
+
+-	aCustomer : 객체. 주로 데이터 저장빈 객체
+-	address : 메소드. 위의 예제에서는 aCustomer 객체의 메소드로 얻어내는 getter 메소드
+

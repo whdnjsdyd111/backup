@@ -1,0 +1,33 @@
+여기에서는 회원 관리 시스템에서 필요한 member 테이블의 각 필드가 어떤 정보를 저장하는가에 대해서 살표보자.
+모든 애플리케이션의 데이터는 최종적으로 데이터베이스에서 관리된다. 애플리케이션에 필요한 데이터, 애플리케이션의 수행 결과로 발생한 데이터들은 데이터베이스 테이블에서 가져오거나
+테이블로 저장한다. 따라서 이런 테이블을 프로그래밍하기 전에 설계하고 생성해야 프로그램이 원할하게 수행된다.
+
+	- member 테이블의 구조
+	
+앞에서 작성했던 member 테이블의 구조는 다음과 같으며 Oracle 문법을 따른다.
+
+
+CREATE TABLE member
+(
+	id VARCHAR2(50) CONSTRAINT mem_id_nn PRIMARY KEY,
+	passwd VARCHAR2(60) CONSTRAINT mem_pass_nn NOT NULL,
+	name VARCHAR2(10) CONSTRAINT mem_name_nn NOT NULL,
+	reg_date DATETIME CONSTRAINT mem_reg_date_nn NOT NULL,
+	address VARCHAR2(100) CONSTRAINT mem_address_nn NOT NULL,
+	tel VARCHAR2(20) CONSTRAINT mem_tel_nn NOT NULL
+);
+
+
+필드명		설명
+
+id			회원의 아이디를 저장하는 필드로 기본 키
+
+passwd		회원의 비밀번호를 저장하는 필드
+
+name		회원의 이름을 저장하는 필드
+
+reg_date	회원 가입 날짜를 저장하는 필드
+
+address		회원의 주소를 저장하는 필드
+
+tel			회원의 전화번호를 저장하는 필드

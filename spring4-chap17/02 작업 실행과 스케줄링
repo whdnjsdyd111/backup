@@ -1,0 +1,640 @@
+스프링은 작업 실행 및 작업 스케줄링을 위한 인터페이스와 구현 클래스를 제공하고 있으며, 이를 통해 간단한 설정만으로 스케줄링, 비동기 처리 등을 할 수 있게 해주고 있다.
+이 장에서는 task 네임스페이스와 어노테이션을 중심으로 TaskExecutor 및 TaskScheduler를 이용해서 작업을 실행하고 스케줄링하는 방법에 대해 살펴보도록 하자.
+
+작업 실행 가능을 사용하려면 다음과 같이 spring-context-support 모듈을 의존에 추가해주면 된다.
+
+
+	<dependencies>
+		<!-- 작업 실행 기능 포함 -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-support</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+	</dependencies>
+	
+	
+	2.1 <task:executor>를 이용한 작업 실행
+	
+작업 실행과 관련된 핵심 인터페이스는 TaskExecutor이다. TaskExecutor 인터페이스 및 하위 인터페이스는 작업 실행과 관련된 인터페이스를 제공하고 있다.
+
+TaskExecutor를 이용해서 작업을 실행하려면 다음과 같은 두 가지 코드를 작성하면 된다.
+
+	- <task:executor> 태그를 이용한 TaskExecutor 빈 설정
+	- TaskExecutor 빈 객체에 Runnable 구현 객체를 전달해서 작업 실행
+	
+	(1) <task:executor>를 이용한 TaskExecutor 빈 설정
+	
+<task:executor> 태그는 TaskExecutor 빈을 생성할 때 사용되는 태그로서, 다음과 같이 사용된다.
+
+	
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:task="http://www.springframework.org/schema/task" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/task
+	       http://www.springframework.org/schema/task/spring-task.xsd">
+	
+		<task:executor id="executor" keep-alive="10" pool-size="10-20"
+			queue-capacity="10" rejection-policy="ABORT" />
+			
+	</beans>
+
+
+<task:executor> 태그를 사용하기 위해서는 task 네임스페이스를 설정해주어야 하며, id 속성을 이용해서 빈 식별 값을 설정한다.
+<task:executor> 태그의 주요 속성은 다음과 같다.
+
+	
+	속성					설명
+	
+	id					생성할 빈의 식별 값을 지정한다.
+	
+	pool-size			스레드 풀의 개수를 지정한다. '최소크기-최대크기'으로 지정하거나 '개수'를 지정한다. 예를 들어, 5-20으로 지정하거나 15와 같이 지정할 수 있다.
+						'개수' 형식으로 지정할 경우, 최소 크기와 최대 개수가 동일한 값을 갖는다.
+						기본값은 최소 크기는 1이고, 최대 크기는 Integer.MAX_VALUE 이다.
+	
+	queue-capacity		풀의 스레드가 모두 작업을 실행중인 경우 큐에서 대기할 수 있는 작업의 개수를 지정한다. 기본값은 Integer.MAX_VALUE이다.
+	
+	keep-alive			풀에 있는 스레드의 최대 유효 시간을 지정한다. 이 시간 동안 새로운 작업을 실행하지 않은 스레드는 풀에서 제거된다. 단위는 초이다.
+	
+	rejection-policy	큐가 다 차서 더 이상 작업을 받을 수 없을 때 작업을 어떻게 처리할지를 결정한다. 설정할 수 있는 값은 다음과 같다.
+	
+							- ABORT : 작업을 거부하고 익셉션을 발생시킨다.
+							- CALLER_RUN : 호출한 스레드를 이용해서 실행한다.
+							- DISCARD : 작업을 실행하지 않고 무시한다.
+							- DISCARD_OLDEST : 큐의 헤드에서 하나를 제거하고 작업을 추가한다.
+						
+						기본값은 ABORT다.
+						
+						
+<task:executor> 태그를 사용하면 내부적으로 java.util.concurrent.ThreadPoolExecutor를 사용해서 작업을 실행하게 되는데,
+ThreadPoolExecutor는 다음과 같은 규칙을 이용해서 풀의 크기를 관리한다.
+
+	- 풀에 최소 크기보다 작은 개수의 쓰레드가 존재할 경우, 쓰레드를 새롭게 생성한다.
+	- 풀에 최소 크기와 같거나 많은 쓰레드가 존재하고 큐에 여분이 남아 있는 경우, 작업을 큐에 저장한다.
+	- 작업을 큐에 보관할 수 없을 경우, 풀에 최대 크기보다 작은 개수의 스레드가 존재할 경우 스레드를 새롭게 생성한다. 그렇지 않을 경우 작업을 거부한다.
+	
+위 규칙에 따르면 큐의 개수가 Integer.MAX_VALUE인 경우, 큐에 객체를 저장하는 과정에서 메모리 부족 현상이 발생할 수도 있다.
+또한, 스레드의 최대 개수가 Integer.MAX_VALUE인 경우 불필요하게 많은 스레드가 생성되어 오히려 전반적인 처리 속도가 저하될 수도 있다.
+따라서, 풀의 최소/최대 크기와 큐의 개수는 처리할 작업의 상태에 따라 알맞은 개수를 지정해주어야 한다.
+
+	(2) TaskExecutor와 AsyncTaskExecutor 인터페이스를 이용한 작업 실행
+	
+<task:executor> 태그를 이용해서 TaskExecutor 빈을 설정했다면, 해당 빈을 이용해서 작업을 실행할 수 있다.
+<task:executor> 태그는 o.s.scheduling.concurrent.ThreadPoolTaskExecutor 객체를 생성하는데, 이 클래스가 상속받는 인터페이스 계층 구조는 다음과 같다.
+
+
+						<< interface >>
+						TaskExecutor
+						
+						+  execute(task: Runnable)
+						
+								↑
+						<< interface >>
+						AsyncTaskExecutor
+						
+						+ execute(task: Runnable, startTimeout: long)
+						+ submit(task: Runnable): Future<T>
+						+ submit(task: Callable<T>): Future<T>
+											↑
+						┌───────────────────┴───────────────────────┐
+				<< interface >>								<< interface >>			
+			SchedulingTaskExecutor						AsyncListenableTaskExecutor
+			
+			+ prefersShortLivedTasks(): boolean			+ submitListenable(task: Runnable): ListenableFuture<?>
+														+ submitListenable(task: Callable<T>): ListenableFuture<T>
+						↑											↑
+						└───────────────────┬───────────────────────┘
+								ThreadPoolTaskExecutor
+								
+								
+ThreadPoolTaskExecutor 클래스가 구현하고 있는 TaskExecutor 인터페이스와 AsyncTaskExecutor 인터페이스는 각각 작업을 실행하는데 필요한 메소드를 정의하고 있으며,
+각 메소드는 다음과 같다.
+
+	- void execute(Runnable task) : task를 실행한다.
+	- Future<?> submit(Runnable task) : task를 실행한다. Future를 통해서 작압이 완료될 때 처리 결과를 확인할 수 있다.
+	- Future<T> submit(Callable<T> task) : task를 실행한다. Future를 통해 작업이 완료된 이후 처리 결과 및 리턴 값을 확인할 수 있다.
+	- ListenableFuture<T> submitListenable(Runnable task) : task를 실행한다. ListenableFuture에 ListenerableFutureCallback을
+		등록해서 작업이 완료될 때 콜백으로 결과를 받을 수 있다.
+	- ListenableFuture<T> submitListenable(Callable<T> task) : task를 실행한다. ListenableFuture에 ListenableFutureCallback을 등록해서
+		작업이 완료될 때 콜백으로 결과를 받을 수 있다.
+		
+TreadPoolTaskExecutor 클래스의 execute() 메소드와 submit() 메소드는 비동기로 작업을 실행한다. 따라서, execute() 메소드나 submit() 메소드를 실행하면
+작업 실행 여부에 상관없이 메소드가 즉시 리턴된다.
+
+아래 코드는 <task:executor> 태그를 이용해서 생성한 ThreadPoolTaskExecutor 클래스를 사용해서 작업을 실행하는 코드의 작성 예이다.
+
+
+	import java.util.concurrent.ExecutionException;
+	import java.util.concurrent.Future;
+	
+	import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+	
+	public class Processor {
+	
+		private ThreadPoolTaskExecutor taskExecutor;
+	
+		public void setTaskExecutor(ThreadPoolTaskExecutor taskExecutor) {
+			this.taskExecutor = taskExecutor;
+		}
+	
+		public void process(final Work work) {
+	        Future<?> future = taskExecutor.submit(new Runnable() {
+				@Override
+				public void run() {
+					work.doWork();
+				}
+	        });
+	        try {
+	            future.get();	// 작업이 끝날 때 까지 대기
+	        } catch (InterruptedException e) {
+	        	// 익셉션 처리
+	        } catch (ExecutionException e) {
+	        	// 익셉션 처리
+	        }
+	        return;
+	    }
+	}
+
+	
+위 코드의 Processor 클래스를 초기화 해주는 스프링 설정은 다음과 같을 것이다.
+
+
+	<task:executor id="executor" keep-alive="10" pool-size="10-20"
+		queue-capacity="10" rejection-policy="ABORT" />
+
+	<bean id="processor" class="net.madvirus.spring4.chap17.task.Processor">
+		<property name="taskExecutor" ref="executor" />
+	</bean>
+	
+	
+submitListenable() 메소드를 사용하면 o.s.util.concurrent.ListenableFuture 타입 객체를 리턴하는데, 이 타입 및 ListenableFutureCallback 인터페이스는
+다음과 같이 정의되어 있다.
+
+
+	public interface ListenableFuture<T> extends Future<T> {
+		void addCallback(ListenableFutureCallback<? super T> callback);
+	}
+	
+	public interface ListenableFutureCallback<T> {
+		void onSuccess(T result);
+		void onFailure(Throwable t);
+	}
+	
+	
+ListenableFuture의 addCallback() 메소드는 콜백으로 사용할 콜백 객체를 전달받으며, 작업 실행이 성공하면 콜백 객체의 onSuccess() 메소드를,
+익셉션이 발생하면 onFailure() 메소드를 실행해서 결과를 콜백 객체에 전달한다.
+
+
+	2.2 <task:scheduler>를 이용한 스케줄러 사용
+	
+o.s.scheduling.TashScheduler 인터페이스는 지정된 시간 또는 반복적으로 작업을 실행하기 위한 메소드를 제공하고 있다. 이 인터페이스를 구현한 빈 객체를 생성할 때
+<task:scheduler> 태그를 이용하는데, 이 절에서는 이 태그를 이용해서 스케줄러 빈을 생성하고 작업을 스케줄링 하는 방법을 살펴보도록 하겠다.
+
+	(1) <task:scheduler>를 이용한 스케줄러 생성
+	
+<task:scheduler> 태그를 이용해서 스케줄러 빈을 생성하는 방법은 매우 간단하다. 다음과 같이 생성할 빈의 식별값과 스레드 풀의 개수만 입력해주면 된다.
+
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:task="http://www.springframework.org/schema/task" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/task
+	       http://www.springframework.org/schema/task/spring-task.xsd">
+	
+		<task:scheduler id="scheduler" pool-size="4" />
+		
+		...
+		
+		
+pool-size를 지정하지 않을 경우 스레드 풀의 기본값은 1이다. 풀에 생성된 스레드를 이용해서 작업을 스케줄링 하기 때문에, 스케줄링 될 작업 개수에 따라 알맞게 풀의 크기를 지정해주면 된다.
+
+<task:scheduler> 태그가 생성하는 빈 객체는 ThreadPoolTaskScheduler 타입이다.
+
+	(2) TaskScheduler 인터페이스를 이용한 작업 스케줄링 
+	
+<task:scheduler> 태그를 이용해서 TaskScheduler 빈을 생성했다면, TaskScheduler 인터페이스가 제공하는 메소드를 이용해서 작업 실행을 스케줄링 할 수 있다.
+TaskScheduler 인터페이스가 제공하는 메소드는 다음과 같다. 참고로, 모든 메소드의 리턴 타입은 ScheduledFuture이며, period 파라미터와 delay 파라미터의 단위는 1/1000초이다.
+
+	- schedule(Runnable task, Trigger trigger) : Trigger가 지정한 시간에 작업을 실행한다.
+	
+	- schedule(Runnable task, Date startTime) : startTime에 작업을 한 번 실행한다.
+	
+	- scheduleAtFixedRate(Runnable task, Date startTime, long period) : startTime부터 period 시간마다 작업을 실행한다.
+	
+	
+	- scheduleAtFixedRate(Runnable task, long period) : 가능한 빨리 작업을 실행하고, 이후 period 시간마다 작업을 실행한다.
+	
+	- scheduleWithFixedDelay(Runnable task, Date startTime, long delay) : startTime부터 작업을 delay 시간 간격으로 작업을 실행한다.
+	
+	- scheduleWithFixedDelay(Runnable task, long delay) : 가능한 빨리 작업을 실행하고, 이후 delay 시간 간격으로 작업을 실행한다.
+	
+다음 코드는 <task:scheduler> 태그로 생성한 TaskScheduler의 사용예를 보여주고 있다.
+
+
+	-- 스프링 설정 파일
+	<beans...>
+		<task:scheduler id="scheduler" pool-size="5" />
+		...
+	</beans>
+	
+	-- 자바 코드
+	ThreadPoolTaskScheduler scheduler = 
+			ctx.getBean("scheduler", ThreadPoolTaskScheduler.class);
+			
+	Calendar calendar = Calendar.getInstance();
+	calendar.add(Calendar.SECOND, 5);
+	scheduler.schedule(cacheInitializerRunner, calendar.getTime());
+	scheduler.scheduleAtFixedRate(statusMonitorRunner, 1000);
+	
+[<task:scheduler> 태그를 이용하면 ThreadPoolTaskScheduler 타입의 빈 객체가 생성되는데, 이 클래스는 TaskScheduler 인터페이스 뿐만 아니라
+SchedulingTaskExecutor 인터페이스와 AsyncListenableTaskExecutor 인터페이스도 함께 구현하고 있다.
+따라서, 스케줄링을 위한 메소드와 작업을 실행을 위한 메소드도 실행할 수 있다.]
+
+	(3) CronTrigger를 이용한 스케줄링 설정
+	
+schedule(Runnable task, Trigger trigger) 메소드의 두 번째 파라미터의 타입은 o.s.scheduling.Trigger 인터페이스인데,
+Trigger 인터페이스는 작업의 다음 실행 시간을 결정해주는 역할을 제공한다.
+
+스프링은 Trigger 인터페이스 구현 클래스로서 다음의 두 가지를 기본으로 제공하고 있다.
+
+	- o.s.scheduling.support.CronTrigger
+	- o.s.scheduling.support.PeriodicTrigger
+	
+이름에서 유추할 수 있듯이 각 구현은 cron 방식의 스케줄링과 주기적인 실행을 위한 스케줄링을 이용할 때 사용된다.
+이 절에서는 이 두 가지 중에서 CronTrigger의 사용 방법을 살펴보도록 하겠다.
+
+CronTrigger는 cron 표현식을 이용해서 작업 실행 시간을 제공한다. 아래 코드는 CronTrigger를 이용해서 작업 실행을 스케줄링 하는 코드의 예를 보여주고 있다.
+
+
+	CronTrigger trigger = new CronTrigger("0 30 0 * * *");
+	scheduler.scheduler(logCollector, trigger);
+	
+	
+위 코드는 매일 0시 30분에 logController를 실행하도록 설정한다.
+
+cron 표현식은 다음과 같이 구성된다.
+	
+	- 초 분 시 일 월 요일
+	
+각 시간 단위 값은 공백으로 구분되며, 다음의 표현식을 통해서 시간 간격, 주기 등을 표현할 수 있다.
+
+	- * : 전체 값을 의미.
+	- 특정값: 해당 시간을 정확하게 지정. 예) "0", "10", "20"
+	- 값1-값2 : 값1 부터 값2 사이를 표현. 예) "0-10"
+	- 값1, 값2, 값3 : 콤마로 구분하여 특정 값 목록을 지정. 예) "0, 15, 30"
+	- 범위/숫자 : 범위에 속한 값 중 숫자 만큼 간격으로 값 목록을 지정. 예를 들어, "0-23/2"는 0부터 23까지 2간격으로 값을 설정한다.
+		즉, 0, 2, 4, 6, ~, 20, 22 의 값을 표현한다. *을 사용해서 */2와 같이 표현할 수도 있다.
+		
+허용되는 값의 범위는 다음과 같다.
+
+	- 초 : 0~59
+	- 분 : 0~59
+	- 시 : 0~23
+	- 일 : 1~31
+	- 월 : 1~12
+	- 요일 : 0-7(0 또는 7은 일요일)
+	
+다음은 cron 표현식의 몇 가지 예를 보여주고 있다.
+
+	- 0 0 * * * * : 매일 매시 정각
+	- */10 * * * * * : 0, 10, 20, 30, 40, 50 초
+	- 0 0 8-10 * * * : 매일 8시, 9시, 10시 정각
+	- 0 0/30 8-10 * * * : 매일 8시, 8시 30분, 9시, 9시 30분, 10시
+	- 0 0 9-18 * * 1-5 : 매주 월요일부터 금요일의 9시부터 오후 6시까지 매시
+	
+	
+	2.3 <task:scheduled-tasks>를 이용한 작업 스케줄링
+	
+<task:scheduled-tasks> 태그를 이용하면 스케줄러를 사용해서 지정한 시간에 작업을 실행할 수 있다.
+<task:scheduled-tasks> 태그의 설정 방법은 다음과 같다.
+
+
+	<task:scheduler id="scheduler" pool-size="5" />
+
+	<task:scheduled-tasks scheduler="scheduler">
+		<task:scheduled ref="logCollector" method="collect" cron="0 30 0 0 0 0" />
+	</task:scheduled-tasks>
+
+	<bean id="logCollector" class="net.madvirus.spring4.chap17.task.LogCollector" />
+	
+	
+<task-scheduled-tasks> 태그의 scheduler 속성은 작업을 실행할 스케줄러 빈을 설정한다.
+<task-scheduled-tasks> 태그는 한 개 이상의 <task-scheduled> 태그를 가질 수 있다. <task-scheduled> 태그는 스케줄러를 통해서 실행될 작업을 설정하며,
+ref 속성과 method 속성을 이용해서 실행할 빈 객체와 메소드를 지정한다.
+
+<task-scheduled> 태그는 작업을 실행할 지의 여부를 지정하기 위해 다음의 세 속성 중 한 가지를 사용한다.
+
+	- cron : cron 표현식을 이용해서 실행 시간을 표현한다.
+	- fixed-delay : 지정된 시간 간격으로 작업을 실행한다. 단위는 1/1000초이다.
+	- fixed-rate : 지정한 시간 주기로 작업을 실행한다. 단위는 1/1000초이다.
+	- initial-delay : 지정한 시간 이후에 실행을 시작한다. fixed-delay나 fixed-rate를 사용할 때 적용되며, 단위는 1/1000초이다.
+	
+위 속성을 여러 개 지정할 경우 적용 우선순위는 cron, fixed-delay, fixed-rate 순이다.
+
+
+	2.4 어노테이션을 이용한 작업 실행 설정
+	
+<task-scheduled-tasks> 태그를 사용하지 않고 어노테이션을 사용해서 특정 빈 객체의 메소드를 주기적으로 실행하거나 비동기로 실행할 수 있다.
+이 절에서는 스프링이 제공하는 @Scheduled 어노테이션과 @Async 어노테이션을 이용해서 작업을 실행하는 방법을 살펴보도록 하겠다.
+
+@Scheduled 어노테이션과 @Async 어노테이션을 사용하려면 먼저 <task:annotation-driven> 태그를 이용해서 작업을 실행할 때 사용할 TaskExecutor와 TaskScheduler를 지정해야 한다.
+
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:task="http://www.springframework.org/schema/task" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/task
+	       http://www.springframework.org/schema/task/spring-task.xsd">
+	
+		<task:annotation-driven executor="executor" scheduler="scheduler" />
+	
+		<task:scheduler id="scheduler" pool-size="10" />
+		<task:executor id="executor" keep-alive="5" pool-size="5-10"
+			queue-capacity="10" rejection-policy="ABORT" />
+		...
+	</beans>
+
+	
+	(1) @Scheduled 어노테이션을 이용한 작업 실행 설정
+	
+@Scheduled 어노테이션은 빈 객체의 특정 메소드를 스케줄러를 이용해서 실행할 때 사용된다.
+다음 코드는 @Scheduled 어노테이션의 적용 예이다.
+
+
+	import org.springframework.scheduling.annotation.Scheduled;
+	
+	public class LogProcessor {
+	
+		@Scheduled(fixedRate = 10000)
+		public void handle() {
+			...
+		}
+	}
+
+	
+위 코드에서 @Scheduled 는 fixedRate의 값으로 10000을 주었는데, 이는 LogProcessor의 process() 메소드를 10초 주기로 실행한다는 것을 의미한다.
+<task:annotation-driven> 태그와 함께 빈 객체로 등록해주면, 지정한 시간 주기로 proecss() 메소드가 실행된다.
+
+	
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:task="http://www.springframework.org/schema/task"
+	...>
+
+	<task:annotation-driven executor="executor" scheduler="scheduler" />
+	<bean id="logProcessor" class="net.madvirus.spring4.chap17.task.LogProcessor" />
+	...
+</beans>
+
+
+@Scheduled 어노테이션은 리턴 타입이 void이고 파라미터를 갖지 않는 메소드에 적용되며, 스케줄링 설정을 위해 사용할 수 있는 속성은 다음과 같다.
+
+
+	속성				타입			설명
+	
+	cron			String		cron 표현식을 설정한다.
+		
+	zone			String		cron 표현식의 시간을 구할 때 사용할 시간대를 지정한다. 지정하지 않으면 기본 시간대를 사용한다.
+	
+	fixedRate		String		지정한 시간 주기로 실행한다. 단위는 1/1000초이다.
+	
+	fixedDelay		String		지정한 시간 간격으로 실행한다. 단위는 1/1000초이다.
+	
+	initialDelay	String		지정한 시간 이후에 실행을 시작한다. fixedRate 속성이나 fixedDelay 속성을 사용할 때 적용되며, 단위는 1/1000초이다.
+	
+	
+	(2) @Async 어노테이션을 이용한 비동기 실행
+	
+@Async 어노테이션은 지정한 메소드를 비동기 실행으로 변환해준다. 다음은 @Async 어노테이션의 적용 예를 보여주고 있다.
+
+
+	import org.springframework.scheduling.annotation.Async;
+	
+	public class MessageSender {
+	
+		@Async
+		public void send(String message) {
+			... // 비동기로 실행
+		}
+	}
+	
+	
+@Scheduled 어노테이션과 마찬가지로 @Async 어노테이션도 <task:annotation-driven> 태그와 함께 사용되어야 한다.
+
+
+	<task:annotation-driven executor="executor" scheduler="scheduler" />
+	<bean id="messageSender" 
+		class="net.madvirus.spring4.chap17.task.MessageSender" />
+		
+		
+빈으로 등록한 객체의 @Async 어노테이션 적용 메소드를 호출하면 바로 리턴되며, 실제 메소드는 비동기로 실행된다.
+
+
+	MessageSender sender = ctx.getBean("messageSender", MessageSender.class);
+	sender.send("로그");
+	// send 메소드 실행 시 바로 리턴 됨
+	// 실제 MessageSender.send() 메소드는 비동기로 실행
+	
+
+@Async 어노테이션이 적용된 메소드는 파라미터를 가질 수 있으며, 리턴 타입으로 void나 Future 타입을 가질 수 있다. 따라서, 비동기로 실행된 메소드의 결과가 필요하다면 Future를 리턴 타입으로 사용하면 된다.
+
+
+	import java.util.concurrent.Future;
+	
+	import org.springframework.scheduling.annotation.Async;
+	import org.springframework.scheduling.annotation.AsyncResult;
+	
+	public class MessageSender {
+	
+		@Async
+		public Future<String> send(String message) {
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			System.out.printf("메시지 발송: " + message);
+			return new AsyncRsult<String>(message);
+		}
+	}
+	
+	
+AsyncResult 클래스는 스프링이 제공하는 Future 인터페이스 구현 클래스로서, Future 타입을 리턴해야 하는  경우 AsyncResult 클래스를 이용한다.
+
+다음 코드는 Future 타입을 리턴하는 @Async 메소드의 사용 예를 보여주고 있다.
+
+
+	Future<String> future = messageSender.send("로그");
+	...
+	String result = future.get();
+	
+	
+	(3) <task:annotation-driven>의 프록시 생성 방식 설정
+	
+<task:annotation-driven> 태그는 @Async 어노테이션이 적용된 빈 객체를 비동기로 처리하기 위해 프록시 객체를 생성하는데, 이 프록시 객체를 클래스를 기준으로
+생성하고 싶다면 다음과 같이 proxy-target-class 속성 값을 true로 지정하면 된다.
+
+	
+	<task:annotation-driven executo="executor" scheduler="scheduler"
+			proxy-target-class="true" />
+			
+			
+	2.5 @EnableScheduling 어노테이션을 이용한 스케줄러 실행
+	
+자바 기반 설정을 사용할 경우, @EnableScheduling 어노테이션을 이용하면 @Scheduled 어노테이션이 적용된 빈 객체를 스케줄링해서 실행한다.
+
+
+	import org.springframework.scheduling.annotation.EnableScheduling;
+	
+	@Configuration
+	@EnableScheduling
+	public class TaskConfig {
+		@Bean
+		public LogProcessor logProcessor() {
+			return new LogProcessor();	// @Scheduled 어노테이션 적용 클래스
+		}
+	}
+	
+	
+위 코드는 스케줄러를 설정하지 않았는데, 이 경우 단일 스레드를 사용하는 Executor를 통해 작업을 실행한다. 단일 스레드를 사용하는 스케줄러 대신 TaskScheduler나
+ScheduledExecutorService를 스케줄러로 사용하고 싶다면, 이 두 타입을 지원하는 클래스를 빈으로 직접 등록해주면 된다.
+
+
+	import org.springframework.scheduling.annotation.EnableScheduling;
+	import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+	
+	@Configuration
+	@EnableScheduling
+	public class TaskConfig {
+	
+		@Bean
+		public LogCollector logCollector() {
+			return new LogCollector();
+		}
+		
+		@Bean
+		public ThreadPoolTaskScheduler taskScheduler() {
+			ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+			scheduler.setPoolSize(4);
+			scheduler.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+			return scheduler;
+		}
+	}
+	
+	
+작업 스케줄링을 등록하고 싶다면, 다음과 같이 SchedulingConfigurer 인터페이스를 상속 받은 @Configuration 설정 클래스를 작성하면 된다.
+
+
+	import org.springframework.scheduling.annotation.EnableScheduling;
+	import org.springframework.scheduling.annotation.SchedulingConfigurer;
+	import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+	import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+	
+	@Configuration
+	@EnableScheduling
+	@EnableAsync(proxyTargetClass = true)
+	public class TaskConfig implements SchedulingConfigurer {
+	
+		@Override
+		public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+			taskRegistrar.addCronTask(new Runnable() {
+				@Override
+				public void run() {
+					logCollector().collect();
+				}
+			}, "*/5 * * * * *");
+		}
+	
+		@Bean
+		public LogCollector logCollector() {
+			return new LogCollector();
+		}
+	
+		@Bean
+		public ThreadPoolTaskScheduler taskScheduler() {
+			ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+			...
+			return scheduler;
+		}
+		
+		
+SchedulingConfigurer 인터페이스를 상속받은 클래스는 configureTasks() 메소드에서 스케줄러로 실행할 작업을 등록할 수 있다.
+configureTasks() 메소드의 ScheduledTaskRegistrar 타입 파라미터는 스케줄링할 작업을 등록할 때 사용되며,
+작업 등록을 위해 다음의 메소드를 제공하고 있다. 참고로 period, delay 파라미터의 시간 단위는 1/1000초이다.
+
+	- addTriggerTask(Runnable task, Trigger trigger)
+	- addTriggerTask(TriggerTask task)
+	- addCronTask(Runnable task, String expression)
+	- addCronTask(CronTask task)
+	- addFixedRateTask(Runnable task, long period)
+	- addFixedRateTask(IntervalTask task)
+	- addFixedDelayTask(Runnable task, long delay)
+	- addFixedDelayTask(IntervalTask task)
+	
+메소드 이름만 보면 어떤 주기로 실행될 작업을 등록하는지 이해가 될 것이다. TriggerTask, CronTask, IntervalTask 클래스는 작업 등록할 때 필요한 정보를 한 객체에 담아 제공할 때 사용되는 클래스로서,
+각각 다음의 생성자를 제공하고 있다. 참고로, 이들 클래스는 모두 org.springframework.scheduling.config 패키지에 포함되어 있다.
+
+	- TriggerTask(Runnable runnable, Trigger trigger)
+	- CronTask(Runnable runnable, String expression)
+	- CronTask(Runnable runnable, CronTrigger cronTrigger)
+	- IntervalTask(Runnable runnable, long interval, long initialDelay)
+	- IntervalTask(Runnable runnable, long interval)
+	
+	
+	2.6 @EnableAsync 어노테이션을 이용한 @Async 비동기 실행
+	
+@Configuration 설정 클래스에 @EnableAsync 어노테이션을 사용하면 @Async가 붙은 메소드를 비동기로 처리해준다.
+
+
+	import org.springframework.scheduling.annotation.EnableAsync;
+	
+	@Configuration
+	@EnableAsync
+	public class TaskConfig {
+	
+		@Bean
+		public MessageSender messageSender() {
+			return new MessageSender();	// @Async 적용 메소드
+		}
+	}
+	
+	
+만약 비동기로 실행할 때 사용할 실행기를 지정하고 싶다면, 다음과 같이 @Configuration 클래스에서 AsyncConfigurer 인터페이스를 상속받아
+getAsync Executor() 메소드를 재정의해주면 된다.
+
+
+	import java.util.concurrent.Executor;
+	import java.util.concurrent.ThreadPoolExecutor;
+	
+	import org.springframework.scheduling.annotation.AsyncConfigurer;
+	import org.springframework.scheduling.annotation.EnableAsync;
+	import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+	
+	@Configuration
+	@EnableAsync
+	public class TaskConfig implements AsyncConfigurer {
+	
+		@Bean
+		public ThreadPoolTaskScheduler taskScheduler() {
+			ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+			scheduler.setPoolSize(4);
+			scheduler.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+			return scheduler;
+		}
+	
+		@Bean
+		public MessageSender messageSender() {
+			return new MessageSender();
+		}
+	
+		@Override
+		public Executor getAsyncExecutor() {
+			return taskScheduler();		// 비동기로 실행할 때 사용할 Executor 리턴
+		}
+	
+	}

@@ -1,0 +1,128 @@
+DispatcherServlet은 그 자체가 서블릿이기 때문에 한 개이상의 DispatcherServlet을 설정하는 것이 가능하다.
+예를 들어, 웹 페이지를 위한 DispatcherServlet과 REST 기반의 웹 서비스 연동을 위한 DispatcherServlet을 나누어 설정했다고 하자.
+
+
+	<servlet>
+		<serlvet-name>front</serlvet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>/WEB-INF/front.xml</param-value>
+		</init-param>
+	</servlet>
+	
+	<servlet>
+		<serlvet-name>rest</serlvet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>/WEB-INF/rest.xml</param-value>
+		</init-param>
+	</servlet>
+	
+	
+두 DispatcherServlet은 각각 별도의 WebApplicationContext를 생성하게 된다. 예를 들어, 위 코드는 "front" DispatcherServlet은 front.xml 설정 파일을 사용하고,
+"rest" DispatcherServlet은 rest.xml 설정 파일을 사용하도록 설정하고 있는데, 이때 front.xml에서는 rest.xml에 설정된 빈 객체를 사용할 수 없게 된다.
+
+일반적인 웹 어플리케이션에서 컨트롤러는 클라이언트의 요청을 비즈니스 로직을 구현한 서비스 레이어를 이용하여 처리하는 것이 보통이다.
+또한, 서비스 레이어는 영속성 레이어를 사용해서 데이터 접근을 처리하곤 한다. 따라서, front 관련 컨트롤러와 rest 관련 컨트롤러는 다음과 같이
+동일한 서비스 레이어에 대한 의존 관계를 가질 것이다.
+
+
+	front 컨트롤러			rest 컨트롤러
+		↘					↙
+			서비스 레이어
+				↓
+			영속성 레이어
+			
+			
+위와 같이 서로 다른 DispatcherServlet이 공통 빈을 필요로 하는 경우, ContextLoaderListener를 사용하여 공통으로 사용될 빈을 설정할 수 있게 된다.
+다음과 같이 ContextLoaderListener를 ServletListener로 등록하고 contextConfigLocation 컨텍스트 파라미터를 이용하여
+공통으로 사용될 빈 정보를 담고 있는 설정 파일 목록을 지정하면 된다.
+
+
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/service.xml, /WEB-INF/persistence.xml</param-value>
+	</context-param>
+	
+	<listener>
+		<listener-class>
+			org.springframework.web.context.ContextLoaderListener
+		</listener-class>
+	</listener>
+	
+	<servlet>
+		<serlvet-name>front</servlet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+	</servlet>
+	
+	<servlet>
+		<servlet-name>rest</servlet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+	</servlet>
+	
+	
+실제로 ContextLoaderListener와 DispatcherServlet은 각각 WebApplicationContext 객체를 생성하는데, 이때 생성되는 WebApplicationContext 객체 간의 관계는 다음과 같다.
+
+
+					root : WebApplicationContext
+		↗ parent									↖ parent
+	front : WebApplicationContext		rest : WebApplicationContext
+	
+	
+ContextLoaderListener가 생성하는 WebApplicationContext는 웹 어플리케이션에서 루트 컨텍스트가 되며, DispatcherServlet이 생성하는
+WebApplicationContext는 루트 컨텍스트를 부모로 사용하는 자식 컨텍스트가 된다. 이때 자식은 root가 제공하는 빈을 사용할 수 있기 때문에 각각의 DispatcherServlet이 공통으로 필요로 하는 빈을
+ContextLoaderListener를 이용하여 설정하는 것이다.
+
+ContextLoaderListener는 contextConfigLocation 컨텍스트 파라미터를 명시하지 않으면 /WEB-INF/applicationContext.xml을 설정 파일로 사용한다.
+또한, 클래스패스에 위치한 파일로부터 설정 정보를 읽어 오고 싶다면 다음과 같이 'classpath:' 접두어를 사용하여 설정 파일을 명시하면 된다.
+
+
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>
+			classpath: config/service.xml
+			classpath: common.xml
+			/WEB-INF/config/message_conf.xml
+		</param-value>
+	</context-param>
+	
+	<listener>
+		<listener-class>
+			org.springframework.web.context.ContextLoaderListener
+		</listener-class>
+	</listener>
+	
+	
+@Configuration 설정 클래스를 사용한다면, 다음과 같이 contextClass 컨텍스트 파라미터를 이용해서 WebApplicationContext 구현체로 
+AnnotationConfigWebApplicationContext를 지정해주고, contextConfigLocation 컨텍스트 파라미터의 값으로 사용할 자바 설정 클래스를 지정해주면 된다.
+	
+	
+	<context-param>
+		<param-name>contextClass</param-name>
+		<param-value>
+			org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+		</param-value>
+	</context-param>
+	
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>
+			net.madvirus.spring4.chap07.config.ApplicationConfig
+		</param-value>
+	</context-param>
+	
+	<listener>
+		<listener-class>
+			org.springframework.web.context.ContextLoaderListener
+		</listener-class>
+	</listener>

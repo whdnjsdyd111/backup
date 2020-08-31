@@ -1,0 +1,367 @@
+(1) jQuery 라이브러리의 개요
+
+jQuery(제이쿼리)는 빠르고 가벼우면서도 다양한 기능을 가진 자바스크립트 라이브러리로, 2005년 처음 소개되었으며 2006년 존 레식이 공식적으로 소개했다.
+MIT 라이선스와 GNU GPL(General Public License)의 이중 라이선스를 가진 오픈 소프트웨어이다.
+jQuery는 현재 가장 많이 사용되는 자바스크립트 프레임워크로, 이것을 사용하면 웹 애플리케이션 작성이 쉬워지며 자바스크립트나 Ajax 및 DOM 관련 작업을 간단히 처리해준다.
+jQuery 라이브러리가 제공하는 기능은 다음과 같다.
+
+-	HTML/DOM 작업			-	CSS 작업
+-	HTML 이벤트 처리		-	각종 효과 및 애니메이션
+-	Ajax				-	각종 유틸리티 등
+
+jQuery 라이브러리는 "http://jquery.com' 사이트에서 다운로드하여 사용하거나 CDN(Content Delivery Network : 콘텐츠 전송 네트워크)을 사용해 HTML 파일에 포함한다.
+
+<!-- 다운로드 받은 파일 포함 -->
+<script src="jquery-3.5.1.min.js"></script>
+
+<!-- CDN 사용 -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+네트워크가 원할하지 않는 곳에서 작업할 때에는 파일을 다운로드하여 포함하는 형태를 사용하고, 신 버전을 따로 받을 필요 없이 항상 최적의 라이브러리를 제공받으려면
+CDN을 사용한다. 여기서는 파일을 다운로드 받아 포함하는 형태를 사용한다.
+
+(2) jQuery 다운로드 및 사용법
+
+jQuery는 제이쿼리 다운로드 사이트인 "http://jquery.com/download/"에서 최신 버전을 다운로드하여 사용한다.
+필자가 책을 쓴 시점에는 jQuery 1.110과 jQuery 2.1.0이 최신 버전이다. 다만 jQuery 2.x 버전은 IE 6, 7, 8 에서는 지원되지 않으므로 아직은 사용하지 않는 것이 좋다.
+jQuery 1.x 버전을 다운로드 받을 때 압축된 버전(compressed)을 다운로드 받아 사용한다.
+
+
+최신의 jQuery을 다운받아 웹 애플리케이션 내에 배치한다.
+
+jQTest.jsp		227쪽
+
+
+(3) jQuery 기본 사용법
+
+1) 기본 문법
+
+jQuery는 HTML 엘리먼트를 선택해, 선택한 엘리먼트에 어떤 동작을 수행한다. 기본적인 엘리먼트 선택 문법은 다음과 같다.
+
+$(selector).action()
+
+-	$ : jQuery에서 정의 및 접근에 사용
+-	(selector) : HTML 엘리먼트
+-	action() : 해당 엘리먼트에서 수행할 동작
+
+// 예시
+$(this).hide()		// 현재 엘리먼트를 숨긴다. 이때 this는 이벤트가 발생하는 엘리먼트이다.
+$("p").hide()		// <p> 엘리먼트들을 숨긴다.
+$(".test").hide()	// class 속성의 값이 test인 엘리먼트를 숨긴다.
+$("#test").hide()	// id 속성의 값이 test인 엘리먼트를 숨긴다.
+
+2) 실렉터 - HTML 엘리먼트에 접근
+
+jQuery 실렉터는 엘리먼트를 선택하여 작업을 처리하기 위해 사용한다. 모든 jQuery의 실렉터는 $로 시작해 $()와 같은 형태로 사용한다.
+() 안에는 엘리먼트명, 엘리먼트의 id 속성값, class 속성값 등이 올 수 있다.
+
+
+실렉터					표시 형태				사용 예
+
+엘리먼트명					$("엘리먼트명")			- HTML 태그
+											<p> 연습 </p>
+											- JSP에서 접근
+											$("p")
+											
+엘리먼트의 id 속성값			$("#id속성값")		- HTML 태그
+											<p id="test">연습</p>
+											- JSP에 접근
+											$("#test")
+
+엘리먼트의 class 속성값		$(".class속성값)		- HTML 태그
+											<p class="t1">연습</p>
+											- JSP에서 접근
+											$(".t1")
+											
+											
+3) HTML 엘리먼트의 내용에 접근 - get/set
+
+HTML 엘리먼트 객체의 내용에 접근해야 엘리먼트의 내용을 변경할 수 있다. $("p")와 같은 형태는 HTML 엘리먼트의 객체 자체에 접근하는 것이며, 내용에 접근하려면 text(),
+html(), val() 메소드 중 하나를 사용해야 한다.
+
+
+메소드		설명
+
+text()		선택한 엘리먼트의 내용을 텍스트 형태로 지정하거나 얻어낸다.
+
+html()		선택한 엘리먼트의 내용을 HTML 태그를 포함하여 지정하거나 얻어낸다.
+
+val()		폼 필드의 값을 지정하거나 얻어낸다.
+
+
+엘리먼트의 내용을 얻어낼 때는 [엘리먼트.메소드]와 같은 형태로 text(), html(), val() 메소드를 사용한다.
+
+
+- HTML 태그
+<p>연습</p>
+
+- JSP에서 접근
+$('p').text()	// text() 메소드를 사용해서 <p> 태그의 내용을 얻어냄
+
+
+엘리먼트의 내용을 변경할 때는 [엘리먼트.메소드("변경할 내용");]과 같은 형태로 text(), html(), val() 메소드를 사용한다.
+
+
+- HTML 태그
+<p>연습</p>
+
+- JSP에서 접근
+$('p').text("작업");	// text() 메소드를 사용해서 <p> 태그의 내용을 변경함
+
+
+이 예제는 jQuery의 실렉터와 내용 접근 메소드를 사용해서 엘리먼트의 내용을 얻어내고 변경하는 것이다.
+
+jQTest2.jsp		230쪽
+
+
+4) 이벤트
+
+이벤트는 마우스를 이동하거나 엘리먼트 또는 라디오버튼 등을 클릭하는 동작에 의해 발생하는 것으로 jQuery 에서도 웹 페이지에서 발생한 이벤트를 제어하는 방법을 제공한다.
+자주 사용하는 이벤트들은 다음과 같다.
+
+
+마우스 이벤트 			설명
+(Mouse Event)
+
+click				엘리먼트 클릭 시 발생
+
+dbclick				엘리먼트 더블 클릭 시 발생
+
+mouseenter			엘리먼트에 마우스 포인터가 위치
+
+mouseleave			엘리먼트에 위치한 마우스 포인터가 벗어나면 발생
+
+
+// 예시
+$('p').click(function() {	// <p> 엘리먼트에서 클릭 이벤트 발생 시 실행
+	alert("test");
+});
+
+$('#s1').mouseenter(function() {	// id 속성의 값이 s1인 엘리먼트
+	alert("마우스포인터가 위치됨");
+});
+
+
+키보드 이벤트(keyboard Events)	설명
+
+keypress					키보드를 눌렀다 놓으면 발생
+
+keydown						키보드를 누르면 발생
+
+keyup						눌린 키보드를 놓으면 발생
+
+
+// 예시
+$('input').keypress(function() {			// <input> 엘리먼트에서 키보드를 눌렀다 놓으면 발생
+	$(this).css("font-color", "#cccccc");
+});
+
+
+폼 이벤트(Form Events)		설명
+
+submit					폼 전송 시 발생
+
+change					폼 엘리먼트가 변경되면 발생
+
+focus					폼 엘리먼트의 포커스가 위치되면 발생
+
+blur					폼 엘리먼트가 포커스를 잃으면 발생
+
+
+// 예시
+$('input').focus(function() {
+	$(this).css("background-color", "#cccccc");
+});
+
+
+도큐먼트/윈도우 이벤트
+(Document/Window Events)		설명
+
+ready							페이지의 로드가 완료되면 발생
+
+load							페이지가 로드되면 발생
+
+resize							웹 브라우저의 창의 크기를 변경하면 발생
+
+scroll							웹 브라우저 창의 스크롤을 이동하면 발생
+
+unload							페이지가 언로드되면 발생
+
+
+// 예시 
+$(document).ready(function() {	// 페이지가 로드가 완료되면 발생
+	// id 속성의 값이 result인 엘리먼트에 test.txt 파일을 로드함
+	$('#result').load('test.txt');
+});
+
+
+이 예제는 jQuery를 사용한 이벤트 처리 방법을 학습하는 것이다.
+
+jQTest3.jsp		234쪽
+
+
+4) jQuery Ajax
+
+jQuery는 Ajax 기능을 구현하는 메소드들을 제공한다. 이 메소드들은 서버로부터 text, HTML, XML 또는 JSON 형태의 파일을 요청하고 응답 받을 수 있는 기능을 제공한다.
+이들 메소드를 사용하면 간단한 코드만을 이용해서 Ajax 기능을 구현할 수 있다. jQuery의 Ajax 관련 메소드 중 서버 요청과 관련된 메소드는 다음과 같다.
+
+
+메소드			섬령
+
+$.get()			서버로 HTTP get 방식의 요청을 함
+
+$.getJSON()		HTTP get 방식을 사용해서 JSON 데이터를 요청함
+
+$.post()		서버로 HTTP post 방식의 요청을 함
+
+.load()			서버로 데이터를 요청하고 HTML 엘리먼트에 응답받은 결과를 로드함(넣음)
+
+$.ajax()		비동기 Ajax 요청을 수행함. get, post 방식을 지정해서 사용
+
+
+1) .load() 메소드
+
+이 메소드는 서버에 요청하고 지정한 엘리먼트에 응답받은 결과를 넣는다. 응답받은 결과를 화면에 표시해야 하는 로그인 폼, 회원 가입 폼, 글목록 등을 실행할 때 주로 사용한다.
+$.get(url, data, success) 메소드와 처리 결과가 거의 같다.
+
+	.load() 메소드
+	
+엘리먼트.load( url [,data] [, complete(responseText, textStatus, XMLHttpRequest)])
+
+	- url :  서버에 요청할 url이며 문자열로 지정한다. 반드시 기술해야 하는 필수 요소이다.
+	
+// 예시
+$('#result').load("ajax/test.html");
+
+	- data : 전송할 파라미터이며 키와 값의 쌍을 문자열 또는 객체로 기술한다. 필요할 때만 사용하는 선택 요소이다.
+	
+	- complete(responseText, textStatus, XMLHttpRequest) : 서버가 처리한 요청에 대한 응답 결과를 얻어낸다.
+		responseText에 응답 결과가, textStatus에 응답된 상태가, XMLHttpRequest에 XMLHttpRequest 객체가 포함된다. 필요할 때만 사용하는 선택 요소이다.
+		
+// 예시
+$('#div1').load("test.txt", function(responseText, textStatus, XMLHttpRequest) {
+	if(textStatus == "success")
+		// 정상적인 응답인 경우의 작업 처리
+	if(textStatus == "error")
+		// 정상적으로 처리되지 못한 경우의 처리
+});
+
+
+이 예제는 jQuery Ajax 메소드인 load() 메소드를 사용해서 특정 엘리먼트에 서버에 요청한 xhrTest1.jsp 페이지의 실행 결과를 표시하는 것이다.
+
+jQTest4.jsp		237쪽
+
+jQTest5.jsp
+
+
+2) $.get()
+
+서버로 HTTP get 방식의 요청을 한다. .load() 메소드를 사용하는 것과 결과가 거의 같으며 사용법은 다음과 같다.
+
+$.get( url, [, date] [, success(data, textStatus, jqXHR) ] [, dataType ])
+
+	- url : 서버에 요청할 url이며 문자열로 지정한다. 반드시 기술해야 하는 필수 요소이다.
+	
+// 예시
+$.get("ajax/test.html", function() {
+});
+
+	- data : 전송할 파라미터이며 키와 값의 쌍을 문자열 또는 객체로 기술한다. 필요할 때만 사용하는 선택 요소이다.
+	
+	- success(data, textStatus, jqXHR) : 서버가 처리한 요청이 성공하면 이 콜백 함수는 실행된다. 필요할 때만 사용하는 선택 요소이다.
+		매개 변수 data는 요청된 페이지의 내용(또는 처리 결과), textStatus는 처리 상태, jqXHR는 XMLHttpRequest 객체이다.
+		매개 변수는 경우에 따라 사용되지 않을 수 있다.
+		
+// 예시
+$.get("ajax/test.html", function(data, status) {
+	var resultStr = "데이터 : " + data + "\n처리상태 : " + status;
+	$("p").text(resultStr);
+});
+
+
+이 예제는 jQuery Ajax 메소드인 $.get() 메소드를 사용해서 get 방식으로 서버에 요청한 xhrTest3.txt 페이지의 내용을 엘리먼트에 표시하는 것이다.
+이때 서버에 요청한 페이지의 내용과 처리 상태를 응답받는다.
+
+jQTest6.jsp		242쪽
+
+
+3) $.post()
+
+서버로 HTTP post 방식의 요청을 하며, 사용법은 다음과 같다.
+
+$.post( url, [, data] [, success(data, textStatus, jqXHR) ] [, dataType ])
+
+	- url : 서버에 요청할 url이며 문자열로 지정한다. 반드시 기술해야 하는 필수 요소이다.
+	
+	- data : 전송할 파라미터로 문자열 또는 객체로 기술한다. 필요할 때만 사용하는 선택요소이다.
+	
+
+// 예시
+$.post("ajax/test.jsp",
+	{ // 전송할 파라미터
+		name: "kingdora",
+		status: "homebody"
+	},
+	function(data, status) {
+
+});
+
+
+	- success(data, textStatus, jqXHR) : 서버가 처리한 요청이 성공하면 이 콜백 함수는 실행된다. 필요할 때만 사용하는 선택 요소이다.
+		매개 변수 data는 요청된 페이지의 내용(또는 처리 결과), textStatus는 처리 상태, jqXHR는 XMLHttpRequest 객체이다.
+		매개 변수는 경우에 따라 사용되지 않을 수 있다.
+		
+
+이 예제는 jQuery Ajax 메소드인 $.post() 메소드를 사용해서 post 방식으로 서버에 요청한 process.jsp 페이지의 내용을 엘리먼트에 표시하는 것이다.
+이때 서버에 요청한 페이지에 파라미터를 보내 처리한 후 결과를 얻어낸다.
+
+jQTest7.jsp		244쪽
+
+process.sjp		246쪽
+
+
+4) $.ajax()
+
+서버로 비동기 Ajax 요청을 하며  주로 로그인 처리, 회원 가입 처리, 글쓰기 처리 등과 같이 DB와 연동 후 처리 결과만을 반환하는 경우에 사용하면 좋다.
+사용법은 다음과 같다.
+
+$.ajax( { type: value, url: value, data: value, success: function(data) {} ... })
+
+	- type : 서버에 요청할 HTTP 방식으로 get 또는 post를 지정한다.
+	
+	- url : 서버에 요청할 url이며 문자열로 지정한다. 반드시 기술해야 하는 필수 요소이다.
+	
+	- data : 전송할 파라미터이며 문자열 또는 객체로 기술한다. 필요할 때만 사용하는 선택 요소이다.
+	
+	- success : 서버가 처리한 요청이 성공하면 function(data) () 콜백 함수가 실행된다.
+		매개 변수 data는 처리 결과를 반환받는다. 이 처리 결과에 따른 작업이 필요한 경우 사용한다.
+	
+		
+// 예시
+var query = { id: $('#id').val(), 	// 전송할 데이터 - 폼에서 얻어냄
+					passwd: $('#passwd').val() };
+					
+$.ajax({
+		type: "POST",
+		url: "loginPro.jsp",
+		data: query,
+		success: function(data) {	// 요청 페이지 실행한 결과
+			if(data == 1)	// 로그인 성공
+				$('#main_auth').load('loginForm.jsp');
+			else if(data == 0) {	// 비밀번호 틀림
+				alert('비밀번호가 맞지 않습니다.');
+				$('#passwd').val("");
+				$('#passwd').focus();
+			} else if(data == -1) {	// 아이디 틀림
+				alert('아이디가 맞지 않습니다.');
+				$('#id').val("");
+				$('#passwd').val("");
+				$('#id').focus();
+			}
+		}
+});
+
+
+이 예제는 앞의 예제 <jQuery Ajax 메소드 사용 예제 - $.post() 메소드>를 $.ajax() 메소드를  사용해서 처리한 것으로 실행 결과가 같다.
+
+jQTest8.jsp		248쪽

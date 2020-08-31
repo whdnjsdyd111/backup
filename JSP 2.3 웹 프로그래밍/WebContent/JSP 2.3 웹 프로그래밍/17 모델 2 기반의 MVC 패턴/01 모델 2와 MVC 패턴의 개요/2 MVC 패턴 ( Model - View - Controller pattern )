@@ -1,0 +1,228 @@
+MVC 구조는 전통적인 GUI 기반의 애플리케이션을 구현하기 위한 디자인 패턴이다. MVC 구조는 사용자의 입력을 받아서 입력에 대한 처리를 하고, 그 결과를 다시 사용자에게 표시하기 위한 최적화된 설계를 재시한다.
+
+(1) MVC 패턴의 요소
+
+MVC 패턴은 모델, 뷰, 컨트롤러로 이루어져 있다.
+
+	- 모델(Model)
+	
+모델은 로직을 가지는 부분으로 DB와의 연동을 통해서 데이터를 가져와 어떤 작업을 처리하거나 처리한 작업의 결과를 데이터로서 DB에 저장하는 일을 한다. 모델은 애플리케시연의 수행에 필요한
+데이터를 모델링하고 비즈니스 로직을 처리한다. 즉, 데이터를 생성하고 저장하고 처리하는 역할만을 담당한다. JSP 기반의 웹 애플리케이션에서는 DB 연동 로직인 자바빈과 처리 로직인 자바 클래스가 모델에 해당한다.
+
+	- 뷰
+	
+뷰는 화면에 내용을 표시하는 역할을 담당하는 것으로, 데이터가 어떻게 생성되고 어디서 왔는지에 대해서는 전혀 관여하지 않고 단지 정보를 보여주는 역할을 담당한다.
+JSP 기반의 웹 애플리케이션에서는 JSP 페이지가 뷰에 해당한다.
+	
+	- 컨트롤러
+	
+컨트롤러는 애플리케이션의 흐름을 제어하는 것으로 뷰와 모델 사이에서 이들의 흐름을 제어한다. 컨트롤러는 사용자의 요청을 받아서 모델에 넘겨주고, 
+모델이 처리한 작업의 결과를 뷰에 보내주는 역할을 한다. JSP 기반의 웹 애플리케이션에서는 보통 서블릿(Servlet)을 컨트롤러로 사용한다.
+
+JSP 기반의 웹 애플리케이션 구조에 MVC 패턴을 적용한 구조도는 다음과 같다. 모델 2 구조와 MVC 구조가 일치함을 알 수 있다.
+
+										
+											  2				  3
+					 1		Controller		<--->	Model	<--->	DB
+					 →	(Servlet / JSP page		(JavaBean / 자바 객체
+					 		/ sessionBean)			/entityBean)
+								│
+		Web Browser				│ 4
+								V
+					 5			View
+					 ←	(JSP page / Servlet)
+					 
+					 
+JSP 웹 애플리케이션 작성 시 MVC 패턴의 각 요소에 해당하는 웹 애플리케이션의 요소는 다음과 같다.
+
+	-	뷰(View) : JSP 페이지 또는 서블릿(Servlet)
+	-	모델(Model) : 자바빈, 자바 클래스(객체) 또는 EJB(Enterprise Java Bean)의 entityBean
+	-	컨트롤러(Controller) : 서블릿(Servlet), JSP 페이지 또는 EJB(Enterprise JavaBean)의 sessionBean
+	
+일반적으로 컨트롤러에 서블릿(Servlet)을 많이 사용하는데 이것은 서블릿이 사용자의 요청을 받아서 비즈니스 로직을 처리하는 모델을 통해 수행 결과를 받아와 해당 JSP 페이지에 결과를 보내서
+뷰가 사용자에게 응답을 보내기에 적합한 구조를 가지고 있기 때문이다.
+여기서는 컨트롤러를 서블릿으로, 모델은 자바 클래스(자바빈 포함)로, 뷰는 JSP 페이지로 작성한다. 이들이 처리하는 각각의 작업은 다음과 같다.
+
+
+(2) 컨트롤러 : 서블릿
+
+컨트롤러는 웹 브라우저의 요청을 받는 진입점으로, 사용자의 요청을 받아서 요구사항을 분석 후 로직 처리를 모델로 보낸다. 다시 로직의 처리 결과를 모델로부터 받아서 사용자에게 응답하기 위해 뷰에 보낸다.
+각각의 작업에 대한 처리 과정은 다음과 같다.
+
+1) 웹 브라우저의 요청을 받음
+
+웹 브라우저의 요청은 서블릿의 서비스 메소드인 doGet() 또는 doPost() 메소드가 받는다.
+
+	- doGet() 메소드 :	<form> 태그의 method 속성값이 "get"인 경우, 웹 브라우저의 요청은 자동으로 이 메소드가 받는다.
+					method를 지정하지 않는 경우 get이 기본값이다.
+					
+	public void doGet(HttpServletRequest request, HttpServletResponse response) {
+		// get 방식의 요청을 받아서 처리
+	}
+	
+	- doPost() 메소드 :	<form> 태그의 method 속성값이 "post"인 경우, 웹 브라우저의 요청은 자동으로 이 메소드가 받는다.
+	
+	public void doPost(HttpServletRequest request, HttpServletResponse response) {
+		// post 방식의 요청을 받아서 처리
+	}
+	
+2) 웹 브라우저가 요구하는 작업을 분석
+
+사용자가 요구한 작업에 맞는 로직이 실행되도록 웹 브라우저의 요구 작업을 분석한다.
+다음은 요구 작업을 분석하는 예시이다.
+
+	String type = request.getParameter("type");
+
+3) 모델을 사용해서 요청한 작업을 처리
+
+요청한 작업에 해당하는 로직을 처리한다.
+다음은 요청 작업에 해당하는 로직을 처리하는 모델의 예시이다.
+
+	if(type.equals("a") {
+		// a 요청 처리
+	} else if(type.equals("b") {
+		// b 요청 처리
+	}
+	
+4) 로직 처리 결과를 request 객체의 속성에 저장
+
+로직의 처리 결과를 컨트롤러를 통해 뷰까지 사용할 수 있도록 request 객체의 속성에 처리 결과를 저장한다.
+이때 처리 결과는 같은 request 객체 영역에서 공유된다.
+다음은 처리 결과를 request 객체의 result 속성에 저장하는 예시이다. 이때 "result"가 속성명, result 변수가 속성값을 가진 변수이다.
+
+request.setAttribute("result", result);
+
+5) 적당한 뷰(JSP 페이지)를 선택한 후 해당 뷰로 포워딩(forwarding)
+
+처리 결과를 저장한 request 객체를 뷰로 전달한다. 이때 RequestDispatcher 클래스의 객체를 생성한 후 forward() 메소드를 사용한다.
+다음은 뷰로 처리 결과를 전달하는 예시이다. 이때 request, response는 doGet(), doPost() 메소드의 request와 response 객체와 같은 것이다.
+
+	// RequestDispatcher 객체 생성
+	RequestDispatcher dispatcher = reuqest.getRequestDispatcher("a.jsp");
+	dispatcher.forward(request, response);	// forward() 메소드를 사용한 처리 결과를 전달
+
+RequestDispatcher 클래스는 javax.serlvet 패키지에 있으며 클라이언트로부터 요청 request를 받고 그것을 서버상의 다른 웹 페이지(Servlet, HTML, JSP)로 보내는 작업을 할 때 사용한다.
+RequestDispatcher 클래스의 forward(request, response) 메소드는 서블릿에서 다른 웹 페이지(Servlet, HTML, JSP)로 요청을 전달한다.
+이때 요청을 전달받는 웹 페이지들과 request, response 객체를 공유한다.
+다음은 컨트롤러에서 필수로 처리할 작업이 포함된 작성한 예시이다.
+
+	public class MessageController extends HttpServlet {
+	
+		public void doGet(	// 1 웹 브라우저의 요청을 받음
+				HttpServletRequest request, HttpServletResponse response) 
+					throws ServletException, IOException {
+			requestPro(request, response);
+		}
+		
+		public void doPost(	// 1 웹 브라우저의 요청을 받음
+				HttpServletRequest request, HttpServletResponse response)
+					throws ServletException, IOException {
+			requestPro(request, response);			
+		}
+		
+		public void requestPro(
+				HttpServletRequest request, HttpServletResponse response)
+					throws ServletException, IOException {
+			
+			// 2 웹 브라우저가 요구하는 작업을 분석
+			String message = request.getParameter("message");
+			
+			// 3 모엘을 사용해서 요청한 작업을 처리
+			... 생략
+			
+			// 4 로직 처리 결과를 request 객체의 속성에 저장
+			request.setAttribute("result", result);
+			
+			// 5 적당한 뷰 (JSP 페이지)를 선택 후 해당 뷰로 포워딩(forwarding)
+			RequestDispatcher dispatcher = 
+				request.getRequestDispatcher("/ch18/messageView.jsp");
+			dispatcher.forward(request, response);
+		}
+	}
+	
+
+(3) 뷰 : JSP 페이지
+
+MVC 패턴의 뷰는 로직을 가지고 있지 않은 점을 제외하고는 일반적인 JSP 페이지와 같다. 다만 서블릿에서 dispatcher.forward(request, response)로 해당 JSP 페이지와
+request, response를 공유한 경우 이 JSP 페이지에서 request.getAttribute("result")와 같이 사용해서 결과를 화면에 표시한다. 
+이때 JSP 페이지의 request는 컨트롤러인 서블릿과 같은 객체로 공유되어진다.
+다음은 뷰의 예시이다. 여기서는 requestScope.result를 사용해서 request 객체의 result 속성값을 얻어낸 후 result 변수에 저장해서 화면에 출력한다.
+
+<c:set var="result" value="${ requestScope.result }" />
+<c:out value="${ result }" />
+
+
+(4) 모델 : 자바빈
+
+MVC 패턴의 모델은 JSP 페이지에서 요청받아서 처리했던 것과 달라지는 것이 없다. 다만 요청을 하는 주체가 JSP 페이지에서 컨트롤러인 서블릿으로 바뀐것 뿐이다.
+
+1) 컨트롤러의 요청을 받음
+
+컨트롤러에서 모델(로직 클래스)의 메소드를 호출한다.
+
+
+				컨트롤러
+				
+	private void requestPro(
+			HttpServletRequest request, HttpServletResponse response)
+				throws ServletException, IOException {
+		... 생략
+		
+		try {
+			String command = request.getParameter("command");
+			com = (CommandProcess) commandMap.get(command);
+			view = com.requestPro(request, response);	// 1 모델의 메소드 호출
+		} catch(Throwable e) {}
+		
+		RequestDispatcher dispatcher = request.getRequestDispatcher(view);
+		dispatcher.forward(request, response);			
+	}
+	
+2) 모델에서 로직을 처리
+
+모델인 자바 클래스에서 처리할 작업을 기술하고 request 객체에 결과를 저장한다.
+다음 로직 처리 클래스의 예시이다.
+
+				모델
+				
+	public class MessageProcess implements CommandProcess {
+		
+		public String requestPro(
+				HttpServletRequest request, HttpServletResponse response)
+					throws Throwable {
+			// 2 모델에서 로직을 처리 및 결과 저장
+			request.setAttribute("message", "요청 파라미터로 명령어를 전달");
+			return "/ch18/process.jsp";
+		}
+	}
+	
+3) 처리한 로직의 결과를 컨트롤러로 반환
+
+처리한 로직의 결과를 return 문을 사용해서 컨트롤러로 반환한다.
+다음 로직 처리 클래스의 예시이다.
+
+				모델
+				
+	public class MessageProcess implements CommandProcess {
+		
+		public String requestPro(
+				HttpServletRequest request, HttpServletResponse response)
+					throws Throwable {
+			request.setAttribute("message", "요청 파라미터로 명령어를 전달");
+			// 3 처리한 로직의 결과를 컨트롤러(Controller)로 반환한다.
+			return "/ch18/process.jsp";
+		}
+	}
+	
+
+(5) 간단한 MVC 패턴을 사용한 모델 2 예제 작성
+
+위에 제시한 처리 작업을 반영한 MVC 패턴을 사용한 모델 2 예제를 작성한다.
+
+
+이 예제는 컨트롤러인 MessageController 서블릿이 사용자의 요청을 받고 그 요청을 처리한 후, 결과를 뷰인 messageView.jsp 페이지로 보내서 사용자의 요청에 응답하는 것이다.
+간단한 예제이므로 모델 없이 컨트롤러가 로직을 처리한다.
+
+MessageController.java		696쪽
+
+messageview.jsp		699쪽

@@ -1,0 +1,7 @@
+package √©≈Õ06_≈¨∑°Ω∫;
+
+public class §µ1_Car {
+	public §µ1_Car(String color, int cc) {
+		
+	}
+}

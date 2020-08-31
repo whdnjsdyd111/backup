@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Button?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" prefWidth="300" prefHeight="300" >
+	<center>
+		<GridPane hgap="10.0" vgap="10.0" alignment="CENTER" >
+			<padding>
+				<Insets topRightBottomLeft="10.0" />
+			</padding>
+	
+			<children>
+				<Label text="이름" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+				<TextField fx:id="StName" GridPane.rowIndex="0" GridPane.columnIndex="1"
+							GridPane.hgrow="ALWAYS" />
+				<Label text="국어" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+				<TextField fx:id="StLanguage" GridPane.rowIndex="1" GridPane.columnIndex="1"
+							GridPane.hgrow="ALWAYS" />
+				<Label text="수학" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+				<TextField fx:id="StMath" GridPane.rowIndex="2" GridPane.columnIndex="1"
+							GridPane.hgrow="ALWAYS" />
+				<Label text="영어" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+				<TextField fx:id="StEnglish" GridPane.rowIndex="3" GridPane.columnIndex="1"
+							GridPane.hgrow="ALWAYS" />
+			</children>
+		</GridPane>
+	</center>
+	
+	<bottom>
+		<HBox alignment="CENTER">
+			<padding>
+				<Insets topRightBottomLeft="10.0" />
+			</padding>
+			
+			<children>
+				<Button fx:id="dialogAddBtn" text="저장" />
+				<Button fx:id="cancel" text="취소" />
+			</children>
+		</HBox>
+	</bottom>
+</BorderPane>

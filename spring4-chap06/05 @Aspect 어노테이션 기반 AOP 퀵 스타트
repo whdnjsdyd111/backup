@@ -1,0 +1,9 @@
+aop 스키마가 XML 설정을 이용해서 Advice, Poincut 등을 설정하는 방식이라면, @Aspect 어노테이션은 자바 코드에서 AOP를 설정하는 방식이다.
+@Aspect 어노테이션을 이용해서 AOP를 구현하는 과정은 XML 스키마 기반의 AOP를 구현하는 과정과 거의 유사하며, 차이점은 다음과 같다.
+
+
+	- 1. @Aspect 어노테이션을 이용해서 Aspect 클래스를 구현한다. 이때 Aspect 클래스는 Advice를 구현한 메소드와 Pointcut을 포함한다.
+	- 2. XML 설정에서 <aop:aspectj-autoproxy />를 설정한다. @Configuration 기반 자바 설정을 이용한다면 @EnableAspectJAutoProxy를 설정한다.
+	
+@Aspect 어노테이션을 이용한 경우 XML 설정 파일에서 Pointcut을 설정하는 것이 아니라 클래스에 Pointcut을 정의한다.
+다음은 @Aspect 어노테이션 및 Advice 관련 어노테이션인 @Around 어노테이션을 이용해서 구현한 Aspectr 클래스의 예이다.

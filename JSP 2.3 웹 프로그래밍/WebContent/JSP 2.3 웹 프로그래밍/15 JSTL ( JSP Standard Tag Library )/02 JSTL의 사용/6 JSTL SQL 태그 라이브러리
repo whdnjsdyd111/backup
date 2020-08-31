@@ -1,0 +1,195 @@
+DataSource를  이용한 SQL 작업 처리에 사용된다.
+
+	- SQL 태그 라이브러리 사용법
+	
+1	JSP 페이지에 다음과 같이 taglib 디렉티브를 작성한다.
+
+<%@ taglib prefix="sql" uri="http://java.sun.com/jsp/sql" %>
+
+-	prefix : sql 태그 라이브러리에서는 "sql"
+-	uri : I18N 태그 라이브러리에서는 "http://java.sun.com/jsp/sql"
+
+2	필요한 태그를 필요한 위치에 <sql:태그명>과 같이 쓴다. 사용 예시는 다음과 같다.
+
+<sql:query var="rs" dataSource="jdbc/jsptest" >
+
+-	<sql:query> : sql이 prefix 값으로 네임스페이스명이고, query 태그명이다.
+
+	- SQL 태그의 기능별 분류
+	
+-	DataSource 설정 : <sql:setDataSource>
+-	SQL : <sql:query>(<sql:dataParam>, <sql:param>), update(<sql:dataParam>, <sql:param>), <sql:transaction>
+
+	- JSTL SQL 태그 리스트
+	
+		태그 요약(Tag Summary)
+		
+transaction		트랜잭션을 구현할 때 사용한다.
+
+query			sql 태그의 속성 또는 body에 정의된 SQL 쿼리 문장을 실행한다. executeQuery()와 같은 기능을 한다.
+
+update			sql 태그의 속성 또는 body에 정의된 SQL 쿼리 문장을 실행한다. executeUpdate()와 같은 기능을 한다.
+
+param			java.sql.PreparedStatement.setString()과 같은 역할을 한다.
+
+dataParam		java.sql.PreparedStatement.setTimestamp와 같은 역할을 한다.
+
+setDataSource	DataSource를 지정한다.
+
+
+(1) <sql:setDataSource> - DataSource 지정
+
+DB에 접근하기 위한 DataSource를 지정한다.
+<sql:setDataSource> 태그의 기본형은 다음과 같다.
+
+<sql:setDataSource> [{dataSource="dataSource" | url="jdbcUrl" driver="driverClassName" | user="userName" password="password"}]
+	[var="varName"][scope="{page | request | session | application}"] />
+	
+-	url : JDBC url
+-	driver : JDBC driver
+-	user : DB 사용자 계정
+-	password : 사용자 패스워드
+-	var : 데이터 소스의 설정값 저장 변수
+-	scope : var의 scope 지정
+
+	- DataSource 설정 방법 1 : Oracle 표준 드라이바를 시용할 경우 일반형
+	
+<sql:setDataSource url="jdbc:oracle:thin:@localhost:1521:xe"
+	driver="oracle.jdbc.driver.OracleDriver" user="jspid" password="jsppass" var="ds"
+	scope="application"	 />
+	
+	- DataSource 설정 방법 2 : 콘텍스트에 JNDI가 설정되어 있는 경우
+	
+기존에 설정된 JNDI를 불러와 사용하는 경우 <sql:setDataSource> 태그의 사용법은 다음과 같다. 이 경우 dataSource 속성의 값에는 server.
+xml에서 정의한 <Resource> 태그의 name 속성값(JNDI의 리소스 네임)이 들어간다.
+
+<sql:setDataSource dataSource="jdbc/jsptest" var="ds" scope="application" />
+
+	- 그 외의 방법 : 콘텍스트에 JNDI가 설정되어 있는 경우
+	
+더 간단한 방법으로 <sql:query> 또는 <sql:update> 태그에서 설정된 컨텍스트의 JNDI를 가지고 쿼리를 수행한다.
+이 경우 <sql:setDataSource> 태그를 사용할 필요가 없다. <sql:query> 또는 <sql:update> 태그에서 설정된 JNDI를 사용해 쿼리를 수행하는 경우,
+dataSource 속성의 속성값에는 server.xml 에서 정의한 <Resource> 태그의 name 속성값 (JNDI의 리소스 네임)을 넣어서 사용한다.
+
+<sql:query var="rs" dataSource="jdbc/jsptest">
+
+
+(2) <sql:query> - select 문을 사용하는 쿼리 수행
+
+이 태그의 속성 또는 내용(body)에 정의된 select 문을 사용한 SQL 쿼리문을 실행하며, executeQuery() 메소드와 유사하다.
+<sql:query> 태그의 기본형은 다음과 같다.
+
+	- 속성에 SQL 쿼리문을 기술한 경우
+	
+<sql:query sql="sqlQuery" var="varName" scope="{page | request | session | application}"
+	dataSource="dataSource" maxRows="maxRows" startRows="startRow" />
+	
+	- 속성에 SQL 쿼리문을 기술하고, 쿼리의 파라미터가 태그 내용(body)에 있는 경우
+	
+<sql:query sql="sqlQuery" var="varName" scope="{page | request | session | application}"
+	dataSource="dataSource" maxRows="maxRows" startRows="startRow">
+		<sql:param> 태그들
+</sql:query>
+
+	- 태그 내용(body)에 SQL 쿼리문과 파라미터들을 기술한 경우
+	
+<sql:query var="varName" scope="{page | request | session | application}"
+	dataSource="dataSource" maxRows="maxRows" startRow="startRow" >
+	SQL 쿼리문
+	<sql:param> 태그들
+</sql:query>
+
+-	sql : SQL 쿼리 문장
+-	var : 쿼리의 결과를 저장
+-	scope : var의 scope 지정
+-	dataSource : JNDI의 리소스 네임 또는 DriverManager를 위한 파라미터
+-	maxRows : 쿼리의 결과에 포함될 최대 행의 수
+-	startRow : 쿼리의 결과에 포함될 시작 행 번호. 0부터 시작
+
+
+이 예제는 <sql:query>를 사용해서 데이터베이스 테이블로부터 레코드를 검색해서 가져오는 쿼리를 실행한 것이다.
+
+jstlEx09.jsp		627쪽
+
+
+(3) <sql:datePara>, <sql:param> - 날짜 파라미터와 문자 파라미터 값 지정
+
+JSTL sql 라이브러리에서 지원하는 파라미터에는 두 가지 형식이 있는데, 하나가 날짜 형식이고 다른 하나가 문자열 형식이다. 날짜 형식은 <sql:dateParam> 태그를 사용하고 문자열 형식은 <sql:param> 태그를 사용한다.
+<sql:dateParam> 태그는 java.sql.PreparedStatement.setTimestamp()와 같은 역할을 하고,
+<sql:param> 태그는 java.sql.PreparedStatement.setString()과 같은 역할을 한다.
+<sql:param> 태그의 기본형은 다음과 같다.
+
+<sql:param value="value" />
+
+- value : 파라미터의 값을 지정
+
+<sql:dateParam> 태그의 기본형은 다음과 같다.
+
+<sql:dateParam value="value" type="{timestamp | time | date}" />
+
+-	value : 파라미터의 값 지정
+-	type : timestamp, time, date 중 하나를 기술
+
+
+(4) <sql:update> - insert, update, delete문을 사용하는 쿼리 수행
+
+이 태그의 속성 또는 내용(body)에 정의된 insert, update문을 사용한 SQL, 쿼리문을 실행하며 executeUpdate() 메소드와 같은 기능을 한다.
+<sql:update> 태그의 기본형은 다음과 같다.
+
+	- 속성에 SQL 쿼리 문장을 기술한 경우
+	
+<sql:update sql="sqlUpdate" dataSource="dataSource" var="varName"
+	scope="{page | request | session | application}" />
+	
+	- 속성에 SQL 쿼리 문장을 기술하고 쿼리의 파라미터가 body에 있는 경우
+	
+<sql:update sql="sqlUpdate" dataSource="dataSource" var="varName"
+	scope="{page | request | session | application}"
+	<sql:param> 태그들
+</sql:update>
+	
+	- body에 SQL 쿼리 문장과 파라미터들을 기술한 경우
+	
+<sql:update dataSource="dataSource" var="varName"
+	scope="{page | request | session | application}" >
+	SQL 쿼리문
+	<sql:param>
+</sql:update>
+
+
+이 예제는 <sql:update>와 <sql:param> 태그를 사용해서 테이블의 해당 레코드 필드 값을 수정하는 쿼리를 실행한다.
+
+jstlEx10.jsp		631쪽
+
+
+(5) <sql:transaction> - 트랜잭션 처리
+
+이 태그는 JSTL에서 트랜잭션을 구현할 때 사용한다.
+<sql:transaction> 태그의 기본형은 다음과 같다.
+
+<sql:transaction [dataSource="dataSource"][isolation="isolationLevel"] >
+	<sql:query> 태그
+	<sql:query> 태그
+	...
+</sql:transaction>
+
+-	dataSource : JNDI의 리소스 네임 또는 DriverManager를 위한 파라미터
+-	isolation 속성 : 	격리 수준(isolationLevel) 값을 넣는데, java.sql.Connection의 setTransactionIsolation() 메소드를 사용한다.
+					"read_committed", "read_uncommitted", "repeatable_read", serializable" 중 하나를 사용
+					
+<sql:transaction> 태그의 사용 예는 다음과 같다.
+
+<sql:transaction dataSource="jdbc/jsptest">
+	<sql:update dataSource="jdbc/jsptest"> <!-- 장바구니목록을 구매목록에 추가 -->
+		INSERT INTO buy(buy_id, buyer) VALUES (?, ?)
+		<sql:param value="${buyId}" />
+		<sql:param value="${id}" />
+	</sql:update>
+	... 생략
+	<sql:update dataSource="jdbc/jsptest"> <!-- 장바구니 비용 -->
+		DELETE FROM cart WHERE buyer = ?
+		<sql:param value="${id}" />
+	</sql:update>
+</sql:transaction>
+
+<sql:transaction> 태그 내에 <sql:update> 태그 2개가 존재하며, 이들이 모두 성공적으로 수행되어야 처리가 완료된다. 이들 중 하나라도 수행에 실패하면 모든 처리가 수행되기 전으로 되돌려진다.

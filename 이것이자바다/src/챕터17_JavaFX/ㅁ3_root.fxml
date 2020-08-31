@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Button?>
+
+<HBox xmlns:fx="http://javafx.com/fxml"
+	fx:controller="챕터17_JavaFX.ㅁ3_RootController"
+	prefHeight="50.0" prefWidth="300.0"
+	alignment="CENTER" spacing="20.0" >
+	<children>
+		<Button fx:id="btn1" text="버튼1" />
+		<Button fx:id="btn2" text="버튼2" />
+		<Button text="버튼3" onAction="#handleBtn3Action" />
+	</children>	
+</HBox>

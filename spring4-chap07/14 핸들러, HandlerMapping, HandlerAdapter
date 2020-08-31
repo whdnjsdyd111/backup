@@ -1,0 +1,117 @@
+다음을 보자.
+
+																4: 실행
+		<< spring bean >>					<< spring bean >>	  →		<< spring bean >>
+		: HandlerMapping					: HandlerAdapter──────────────── * 컨트롤러
+			└───────────────┐				┌──────┘			  ←
+		2: 요청 URL과 매칭되는	│				│					5: 결과 리턴
+			컨트롤러 검색		│				│
+							│		3: 요청	│	6: 컨트롤러 실행 결과를
+							│↑		       처리  ↑	│↓	ModelAndView로 변환해서 리턴
+							│				│
+			1: 요청 전송		│				│
+				→			│				│
+	웹 브라우저	───────────────: DispatcherServlet
+							│				│	7: 컨트롤러의 실행 결과를 
+				  		↓	│				│ ↓		보여줄 View 검색
+			8: 응답 생성 요청		│				│
+						: View			<< spring bean >>
+							│			: ViewResolver
+						↓	│
+			9: 응답 생성	 * JSP
+			
+			
+위 그림을 보면 DispatcherServlet은 컨트롤러를 직접 실행하지 않고 HandlerAdapter를 통해서 간접적으로 컨트롤러를 실행하고 있다.
+그런데, HandlerAdapter의 이름이 ControllerAdapter가 아니다. 마찬가지로 HandlerMapping 역시 ControllerMapping이 아니다.
+
+DispatcherServlet은 웹 요청을 실제로 처리하는 객체의 타입을 @Controller 어노테이션을 구현한 클래스로 제한하지 않는다.
+실제로 거의 모든 종류의 객체로 웹 요청을 처리할 수 있다. 그래서 웹 요청을 처리하는 객체를 좀 더 범용적인 의미로 '핸들러(Handler)' 라고 부른다.
+
+DispatcherServlet은 핸들러 객체의 실제 타입이 무엇인지는 상관하지 않는다. 단지, 웹 요청 처리 결과로 ModelAndView만 리턴하면 DispatcherServlet이 올바르게 동작한다.
+그런데, 모든 핸들러 객체가 ModelAndView 객체를 리턴하는 것은 아니다. 예를 들어, 최초에 만들었던 HelloController 클래스는 다음과 같이 String을 결과로 리턴 했었다.
+
+
+	@Controller
+	public class HelloController {
+			
+		@RequestMapping("/hello.do")
+		public String hello(Model model) {
+			model.addAttribute("greeting", "안녕하세요");
+			return "hello";
+		}
+	}
+	
+	
+HelloController가 리턴한 객체는 ModelAndView가 아닌 String 타입이다. DispatcherServlet은 ModelAndView 타입을 필요로 하는데
+실제 리턴 결과는 String타입이다. 따라서, 누군가는 중간에서 String 타입을 ModelAndView로 변경해주어야 하는데, 이때 사용되는 것이 바로 HandlerAdapter이다.
+
+HandlerAdapter는 핸들러의 실행 결과를 DispatcherServlet이 요구하는 ModelAndView로 변환해준다.
+따라서, 어떤 종류의 핸들러 객체가 사용되더라도 알맞은 HandlerAdapter만 있으면 스프링 MVC 프레임워크에 기반해서 웹 요청을 처리할 수 있게 된다.
+
+
+	14.1	HandlerMapping의 우선순위
+	
+MVC 설정을 이용하면 최소 두 개 이상의 HandlerMapping이 등록된다. 각 HandlerMapping은 우선순위를 갖고 있으며, 요청이 들어왔을 때
+DispatcherServlet은 우선순위에 따라 HandlerMapping에 요청을 처리할 핸들러 객체를 의뢰한다.
+
+우선순위가 높은 HandlerMapping이 요청을 처리할 핸들러 객체를 리턴하면, 그 핸들러 객체를 이용한다.
+만약 HandlerMapping이 null을 리턴하면, 그 다음 우선순위를 갖는 HandlerMapping을 이용한다.
+이렇게 HandlerMapping이 null을 리턴하지 않을 때까지 이 과정을 반복하고 마지막 HandlerMapping까지 null을 리턴하면,
+DispatcherServlet은 404 에러 코드를 응답한다.
+
+HandlerMapping이 요청을 처리할 핸들러 객체를 리턴하면, 핸들러 객체를 처리할 HandlerAdapter를 찾은 뒤에 HandlerAdapter에 핸들러 객체 실행을 위임한다
+
+
+	14.2	MVC 설정에서의 HandlerMapping과 HandlerAdapter
+	
+<mvc:annotation-driven> 설정이나 @EnableWebMvc 어노테이션을 사용하면, 다음과 같은 HandlerMapping과 HandlerAdapter를 등록한다.
+
+
+	빈 클래스								설명
+	
+	RequestMappingHandlerMapping		@Controller 적용 빈 객체를 핸들러로 사용하는 HandlerMapping 구현. 적용 우선순위 높음
+	
+	SimpleUrlHandlerMapping				<mvc:default-servlet-handler>, <mvc:view-controller> 또는 <mvc:resources> 태그를 사용할 때
+										등록되는 HandlerMapping 구현. URL과 핸들러 객체를 매핑함. 적용 우선순위 낮음
+	
+	RequestMappingHandlerAdapter		@Controller 적용 빈 객체에 대한 어댑터.
+	
+	HttpRequestHandlerAdapter			HttpReqeustHandler 타입의 객체에 대한 어댑터.
+	
+	SimpleControllerHandlerAdapter		Controller 인터페이스를 구현한 객체에 대한 어댑터.
+	
+	
+@Controller 어노테이션 기반의 컨트롤러는 주로 개발자가 구현할 코드이다.
+앞서 구현한 모든 예제 코드가 이에 해당하며, RequestMappingHandlerMapping/Adapter를 이용해서 @Controller 기반 컨트롤러 객체를 핸들러로 사용하게 된다.
+
+HttpRequestHandler 인터페이스는 주로 스프링이 기본으로 제공하는 핸들러 클래스가 구현하고 있다.
+예를 들어, 디폴트 서블릿 핸들러 설정을 위해 다음의 태그를 사용했다.
+
+
+	<mvc:default-servlet-handler />
+
+
+위 설정을 하면, 아래 설정과 같이 HttpRequestHandler 인터페이스를 구현한 DefaultServletHttpRequestHandler 클래스와
+SimpleUrlHandlerMapping 클래스를 빈으로 등록한다.
+
+
+	<bean id="defaultServletHttpRequestHandler"
+			class="[생략].web.servlet.resource.DefaultServletHttpRequestHandler">
+	</bean>
+	
+	<bean class="[생략].web.servlet.handler.SimpleUrlHandlerMapping" >
+		<property name="urlMap">
+			<map>
+				<entry key="/**" value-ref="defaultServletHttpRequestHandler" />
+			</map>
+		</property>
+	</bean>
+	
+	
+<mvc:annotation-driven> 태그가 등록하는 RequestMappingHandlerMapping의 우선순위가 <mvc:default-servlet-handler> 태그가 등록하는
+SimpleUrlHandlerMapping의 우선순위보다 높다. 따라서, 특정 요청이 들어올 경우 RequestMappingHandlerMapping을 먼저 확인하고,
+그 다음에 SimpleUrlHandlerMapping을 확인한다.
+
+<mvc:default-servlet-handler> 설정이 등록하는 SimpleUrlHandlerMapping은 우선순위가 낮기 때문에, @Controller 클래스에 매핑되어 있지 않거나
+<mvc:view-controller>, <mvc:resources> 등에 매핑되어 있지 않은 요청 경로는 최종적으로
+defaultServletHttpRequestHandler가 처리하게 된다. (위 설정에서 "/**" 요청 경로를 defaultServletHttpRequestHandler에 매핑하고 있다.)

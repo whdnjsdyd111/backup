@@ -1,0 +1,1199 @@
+스프링 MVC를 이용한 웹 개발의 핵심인 컨트롤러의 구현 방법을 살펴볼 차례이다.
+이 절에서는 기본적인 내용들을 설명하고, 폼 값 검증, 익셉션 처리, JSON 처리 등에 대한 내용은 이 장 및 다음 장에서 이어서 살펴볼 것이다.
+
+
+	4.1 @Controller/@RequestMapping/Model을 이용한 컨트롤러 구현
+	
+컨트롤러를 구현하는 과정은 다음과 같다.
+
+	- 1. @Controller 어노테이션을 클래스에 적용한다.
+	- 2. @RequestMapping 어노테이션을 이용해서 처리할 요청 경로를 지정한다.
+	- 3. 웹 브라우저의 요청을 처리할 메소드를 구현하고, 뷰 이름을 리턴한다.
+	
+다음은 작성 예이다.
+
+	
+	import org.springframework.stereotype.Controller;
+	import org.springframework.web.bind.annotation.RequestMapping;
+	
+	@Controller
+	public class EventController {
+	
+		@ReqeustMapping("/event/list")
+		public String list() {	// 웹 요청을 처리할 메소드
+			return "event/list";	// 뷰 이름 리턴
+		}
+		
+	}
+	
+	
+@ReqeustMapping 어노테이션의 값은 메소드가 처리할 요청 경로를 지정한다. 위 코드의 경우 "/event/list" 요청 경로를 list() 메소드가 처리하도록 설정했다.
+
+@RequestMapping이 적용된 메소드는 클라이언트의 요청 결과를 보여줄 뷰 이름을 리턴한다. String 타입 외에 다른 타입의 객체를 리턴할 수도 있는데,
+이에 대한 내용은 뒤에서 다시 살펴볼 것이다. 일단 지금은 @ReqeustMapping 메소드가 String을 리턴할 경우,
+처리 결과를 보여줄 뷰 이름을 리턴한다는 정도만 알고 넘어가자.
+
+위 코드처럼 단순히 뷰 이름만 리턴하는 컨트롤러 메소드를 구현할 수도 있지만, 대부분의 @ReqeustMapping 메소드는 뷰 이름을 리턴하기 전에 다음의 두 가지 작업을 수행한다.
+
+	- 클라이언트의 요청을 처리한다.
+	- 처리 결과 데이터를 뷰에 전달한다.
+
+예를 들어 이벤트 목록을 조회하는 요청을 받은 경우, 사용자 화면에 이벤트 목록을 보여줘야 한다.
+이를 위해서 컨트롤러는 EventService나 EventDao와 같은 객체를 이용해서 Event 타입의 List를 조회하고(클라이언트 요청 처리), 뷰가 이벤트 목록을 출력할 수 있도록 List를 뷰에 전달해야 한다.
+
+뷰에서 결과를 보여줄 때 필요한 데이터를 전달하기 위해 사용하는 것이 바로 모델이다.
+컨트롤러는 뷰에서 필요로 하는 데이터를 모델에 담아서 전달하고, 뷰는 결과를 생성하는데 필요한 데이터를 모델에서 가져와 사용하게 된다.
+
+컨트롤러는 다양한 방식으로 모델에 데이터를 담을 수 있는데, 가장 간단한 방법은 Model을 파라미터로 추가하고, Model 파라미터에 데이터를 추가하는 것이다.
+다음은 코드 작성 예이다.
+
+
+	import org.springframework.stereotype.Controller;
+	import org.springframework.ui.Model;
+	import org.springframework.web.bind.annotation.RequestMapping;
+	
+	@Controller
+	public class EventController {
+		
+		@RequestMapping("/event/list")
+		public String list(Model model) {
+			List<Event> eventList = getOpenedEventList();
+			model.addAttribute("eventList", eventList);
+			return "event/list";
+		}
+
+		
+Model 클래스는 addAttribute() 메소드를 제공하고 있다. 이 메소드는 첫 번째 파라미터로 모델 데이터의 이름을, 두 번째 파라미터로 값을 입력받는다.
+이렇게 입력받은 모델 데이터는 뷰 코드에서 이름을 통해 접근할 수 있다. 예를 들어, JSP를 뷰로 사용할 경우 아래 코드와 같이 표현식에서 "eventList"를 사용할 수 있다.
+
+	
+	<ul>
+		<!-- 모델 데이터를 이름으로 접근 -->
+		<c:forEach var="event" items="${eventList}">
+			<li>${event.name}</li>
+		</c:forEach>
+	</ul>
+	
+	
+Model에 모델 데이터를 추가하는데 사용되는 메소드는 다음과 같다.
+
+	- Model addAttribute(String attrName, Object attrValue) : 이름이 attrName이고 값이 attrValue인 모델 속성을 추가한다.
+	- Model addAllAttribute(Map<String, ?> attrbutes) : 맵의 <키, 값> 쌍들을 모델 속성 이름과 값으로 추가한다.
+	- boolean containsAttribute(String attrName) : 이름이 attrName인 모델 속성을 포함할 경우 true를 리턴한다.
+	
+Model의 추가 메소드는 Model 자신을 리턴하기 때문에, 다음과 같이 메소드 체이닝 방식으로 코드를 작성해서 불필요한 코드 입력을 줄일 수 있다.
+
+
+	@RequestMapping("/event/list")
+	public String list(Model model) {
+		List<Event> eventList = getOpenedEventList();
+		model.addAttribute("eventList", eventList)
+			.addAttribute("categoryList", getCategoryList());
+		return "event/list";
+	}
+	
+	
+Model 타입 대신에 ModelMap 타입을 사용해도 동일한 결과를 얻을 수 있다.
+
+
+	import org.springframework.ui.ModelMap;
+	
+	@Controller
+	public class EventController {
+	
+		@RequestMapping("/event/list")
+		public String list(Model model) {
+			List<Event> eventList = getOpenedEventList();
+			model.addAttribute("eventList", eventList);
+			return "event/list";
+		}
+	
+	
+ModelMap 클래스는 Model 인터페이스와 동일한 메소드를 제공하고 있기 때문에, addAttribute() 등의 메소드를 그대로 사용할 수 있다.
+
+	(1) ModelAndView를 사용한 모델/뷰 처리
+	
+ModelAndView는 모델 설정과 뷰 이름을 합쳐 놓은 것이다. @Controller를 이용한 컨트롤러 구현이 대세로 자리 잡기 전에 컨트롤러 클래스 메소드의 리턴 타입은 ModelAndView 였다.
+@Contoller를 이용하는 경우에도 ModelAndView를 사용할 수 있다. 다음은 ModelAndView의 사용 예를 보여주고 있다.
+
+
+	import org.springframework.ui.ModelMap;
+	
+	@Controller
+	public class EventController {
+	
+		@RequestMapping("/event/list2")
+		public ModelAndView list2() {
+			List<Event> eventList = getOpenedEventList();
+			ModelAndView modelView = new ModelAndView();
+			modelView.setViewName("event/list");
+			modelView.addObject("eventList", eventList);
+			return modelView;
+		}
+		
+		
+앞서 Model을 사용하는 경우와 비교해보면 다음의 차이점이 있다.
+
+	- Model을 사용하는 경우 뷰 이름을 리턴하는데, ModelAndView를 사용하는 경우는 setViewName()을 이용해서 뷰 이름을 지정한다.
+	- Model은 addAttribute() 메소드를 사용하는데, ModelAndView를 사용하는 경우는 addObject() 메소드를 사용한다.
+	
+[스프링 MVC에서 @Controller 어노테이션 기반의 컨트롤러를 지원하기 시작한 이후로 ModelAndView를 잘 사용하지 않는다.
+위 내용은 컨트롤러 코드에서 ModelAndView를 사용 가능하다는 것을 언급하기 위해 추가했다.
+ModelAndView 외에 java.util.Map을 Model 대신 사용할 수도 있는데, Map 보다는 Model 타입을 사용하는 것이 보다 명시적이기 때문에 Model을 사용할 것을 권한다.]
+
+
+	4.2 @ReqeustMapping을 이용한 요청 매핑
+	
+컨트롤러를 구현한다는 것은 클라이언트의 요청을 처리할 메소드를 구현한다는 것을 뜻한다. 클라이언트는 URL로 요청을 전송하는데, 요청 URL을 어떤 메소드가 처리할지 여부를 결정하는 것이
+@ReqeustMapping 어노테이션이다. 이 절에서는 @ReqeustMapping 어노테이션의 다양한 설정 방법에 대해 살펴보도록 하겠다.
+
+	(1) @ReqeustMapping을 이용한 경로 지정
+	
+@RequestMapping 어노테이션의 값으로 경로를 지정한다. 스프링 MVC는 웹 브라우저의 요청이 들어오면 @ReqeustMapping의 값을 이용해서 요청을 처리할 컨트롤러 메소드를 결정한다.
+아래 코드는 @RequestMapping 어노테이션을 이용해서 "/event/list" 경로를 list() 메소드가 처리하도록 설정하고 있다.
+
+
+	@Collector
+	public class EventController {
+		
+		@RequestMapping("/event/list")
+		public String list(ModelMap model) {
+			...
+		}
+	
+	
+@RequestMapping 어노테이션의 값을 "event/list"로 지정했는데, 실제로 어떤 URL을 처리하는 지는 앞서 '서블릿 매핑에 따른 컨트롤러 경로 매핑과 디폴트 서블릿 설정' 절에서 설명했듯이
+서블릿 매핑의 URL 패턴에 따라 달라진다. 예를 들어, 컨텍스트 경로 및 DispatcherServlet의 매핑 URL 패턴에 따라 "/event/list" 경로에 매핑되는 실제 URL은 다음과 같이 달라진다.
+
+
+	컨텍스트 경로	DispatcherServlet 매핑 URL 패턴		실제 URL
+	
+	/chap07				/						http://host:port/chap07/event/list
+	
+	/chap07				/main/*					http://host:port/chap07/main/event/list
+	
+	
+@RequestMapping 어노테이션은 여러 속성을 제공하고 있는데, 이들 속성들을 사용해야 할 경우 value 속성을 사용해서 경로를 지정할 수 있다.
+
+
+	@Controller
+	public class EventController {
+	
+		@RequestMapping(value="/event/create", method=RequestMethod.POST)
+		public String create(...) {
+			...
+		}
+	
+	
+여러 경로를 한 메소드에서 처리하고 싶다면, 배열로 경로 목록을 지정하면 된다.
+
+
+	@Controller
+	public class HomeController {
+		
+		@RequestMapping({"/main", "/index"})
+		public String aliasOfHome() {
+			...
+		}
+	
+	
+	(2) 클래스와 메소드에 @RequestMapping 적용하기
+	
+아래 코드처럼 컨트롤러 클래스와 메소드에 @RequestMapping을 함께 적용할 수도 있다.
+
+	
+	@Controller
+	@RequestMapping("/event")
+	public class EventController {
+	
+		@RequestMapping("/list")
+		public String list(Model model) {
+			...
+			return "event/list";
+		}
+		
+		@RequestMapping("/home")
+		public String home(Model model) {
+			...
+		}
+	}
+	
+	
+위와 같이 컨트롤러와 메소드에 @RequestMapping 어노테이션을 모두 사용하면, 클래스에 적용한 값과 메소드에 적용한 값을 조합해서 매핑될 경로를 결정한다.
+예를 들어, 위 코드에서 list() 메소드에 매핑되는 경로는 "/event/list"가 되고, home() 메소드에서 매핑되는 경로는 "/event/home"이 된다.
+
+클래스에 @RequestMapping 어노테이션을 적용하는 것은 컨트롤러 클래스가 특정 경로를 기준으로 그 하위 경로만을 처리한다는 것을 의미한다.
+즉, 같은 경로를 공유하는 경우, 클래스에 @RequestMapping 어노테이션을 적용함으로써 코드에서 직관적으로 공통 경로를 확인할 수 있다.
+
+	(3) HTTP 전송 방식 지정
+	
+웹 어플리케이션을 개발할 때, 로그인 데이터를 전송하거나 게시글 데이터를 전송해야 할 경우 <form> 태그에서 method 속성값을 "post"로 지정하는 것이 일반적이다.
+
+	
+	<form action="/spring4-chap07/member/register" method="post" >
+		...
+	</form>
+	
+	
+POST는 HTTP의 전송 방식(method) 중 하나인데, @RequestMapping 어노테이션은 method 속성을 이용해서 메소드에서 처리할 전송 방식을 지정할 수 있다.
+예를 들어, 다음의 코드를 보자.
+
+
+	import org.springframework.stereotype.Controller;
+	import org.springframework.web.bind.annotation.RequestMapping;
+	import org.springframework.web.bind.annotation.RequestMethod;
+	
+	@Controller
+	public class RegistrationController {
+		
+		@RequestMapping(value="/member/regist", method=RequestMethod.GET)
+		public String form(...) {
+			return "member/registrationForm";
+		}
+		
+		@RequestMapping(value="/member/regist", method=RequestMethod.POST)
+		public String regist(...) {
+			return "member/registered";
+		}
+	}
+	
+	
+이 코드에서 form() 메소드와 regist() 메소드에 적용된 @RequestMapping 어노테이션은 둘 다 "/member/regist"를 값으로 갖고 있다.
+차이점이 있다면 method 속성의 값을 다르게 지정했다는 것이다. 이 경우 같은 URL 요청이 들어오더라도 HTTP 전송 방식이 GET이면 form() 메소드가 처리하게 되고,
+HTTP 전송 방식이 POST면 regist() 메소드가 처리하게 된다.
+
+위 코드처럼 각 메소드에 적용된 @RequestMapping이 동일한 경로를 값으로 갖고 method 속성만 다를 수 있다. 이 경우, 다음과 같이 클래스의 @RequestMapping에 경로를 지정하고
+메소드의 @RequestMapping에는 method 속성만 지정해도 된다.
+
+
+	@Controller
+	@RequestMapping("/member/regist")
+	public class RegistrationController {
+		
+		@RequestMapping(method=RequestMethod.GET)
+		public String form() {
+			...
+		}
+		
+		@RequestMapping(method=RequestMethod.POST)
+		public String regist(...) {
+			...
+		}
+	}
+	
+	
+o.s.web.bind.annotation.RequestMethod는 열거 타입으로 다음의 값을 정의하고 있다.
+
+	- GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, TRACE
+	
+[웹 브라우저는 GET과 POST 방식만 지원하기 때문에, 웹 브라우저에서 실행하는 자바 스크립트에서 웹 서버에 PUT이나 DELETE 방식의 요청을 보낼 수 없다.
+REST API를 만들 때, PUT, DELETE 전송 방식을 이용해서 구현해야 하는 경우 웹 브라우저의 전송 방식 제한은 문제가 된다.
+이런 문제를 해소하기 위해 스프링은 HiddenHttpMethodFilter를 제공하고 있는데, 이 필터를 사용하면 컨트롤러 메소드가 PUT, DELETE 등의 전송 방식을 처리하도록 구현하면서,
+동시에 같은 메소드를 이용해서 Ajax 요청을 처리할 수 있게 된다.]
+
+
+	(4) @PathVariable을 이용한 경로 변수
+	
+게시글의 내용을 보여주는 URL을 보면 http://host/readArticles?id=10 와 같이 요청 파라미터를 이용해서 읽어온 게시글을 지정하는 경우가 많다. 
+하지만, 아래와 같이 요청 파라미터를 사용하지 않고 URL 자체를 이용해서 게시글 링크를 표현하는 경우도 많다.
+
+	- http://host/articles/10, http://host/articles/20
+	- http://host/member/bkchoi/orders
+	- http://host/member/mdvirus/orders/30
+	
+RESTful API의 증가와 함께 이런 방식의 URL 구성이 증가하고 있는데, @PathVariable 어노테이션을 사용하면 위와 같은 URL을 쉽게 처리할 수 있다.
+다음은 @PathVariable 어노테이션의 사용 예를 보여주고 있다.
+
+
+	import org.springframework.web.bind.annotation.PathVariable;
+	
+	@Controller
+	public class MemberController {
+		
+		@RequestMapping("/members/{memberId}")
+		public String memberDetail(@PathVariable String memberId, Model model) {
+			MemberInfo mi = getMemberInfo(memberId);
+			if(mi == null) {
+				return "member/memberNotFound";
+			}
+			model.addAttribute("member", mi);
+			return "member/memberDetail";
+		}
+	
+	
+@RequestMapping 어노테이션은 경로에 {변수} 형식의 경로 변수를 사용할 수 있는데, @PathVariable 어노테이션을 사용하면 경로 변수의 값을 파라미터로 전달받을 수 있다.
+위 코드의 경우 {memberId} 경로 변수의 실제 값을 memberId 파라미터를 통해 전달받게 된다.
+
+@PathVariable 어노테이션은 이름과 동일한 이름을 갖는 경로 변수를 사용한다. 위 코드는 @PathVariable 어노테이션을 적용한 파라미터의 이름이 memberId 인데,
+이 경우 {memberId}에 해당하는 값이 memberId 파라미터에 값으로 전달된다. 예를 들어, 요청 경로가 "/members/yuna"일 경우,
+다음처럼 {memberId} 경로 변수의 값은 "yana"가 되고, 따라서 @PathVariable이 적용된 memberId 파라미터에는 "yuna"가 값으로 전달된다.
+
+
+	http://host/contextPath/members/yuna
+									  │
+									  │
+	MemberController.class			  └─────┐
+									  		↓
+			@RequestMapping("/members/{memberId}")
+			public String memberDetail(		↓
+					@PathVariable String memberId,
+					...
+					) {
+				...
+			}
+			
+			
+파라미터 이름이 경로 변수와 다를 경우, 다음 코드처럼 @PathVariable에 경로 변수를 값으로 지정한다.
+
+
+	@Controller
+	public class MemberController {
+		
+		@RequestMapping("/members/{mid}")
+		public String memberDetail(@PathVariable("mid") String memberId, Model model) {
+			...
+		}
+
+		
+경로 변수는 한 개 이상 사용할 수 있다.
+
+
+	@RequestMapping("/members/{memberId}/orders/{orderId}")
+	public String memberOrderDetail(
+			@PathVariable("memberId") String memberId,
+			@PathVariable("orderId") Long orderId, Model model) {
+		...
+	}
+	
+	
+스프링은 경로 변수의 값을 파라미터의 타입에 맞게 변환해준다. 위 코드에서 @PathVariable("orderId")가 적용된 파라미터의 타입은 Long인데,
+이 경우 {orderId} 경로 변수의 값을 Long 타입으로 변환해준다. 따라서, 실제 경로가 "/members/yuna/orders/1"일 경우, "1"을 Long 타입으로 변환해서 orderId 파라미터에 전달한다.
+
+경로 변수를 파라미터 타입으로 변환할 수 없을 경우, 스프링 MVC는 웹 브라우저에 400 에러 코드를 응답 결과로 전송한다. 예를 들어, 위 코드에서 "/member/yuna/orders/od10"과 같이
+{orderId} 경로 변수 값이 "od10"이면 Long 타입으로 변환할 수 없게 되는데, 이 경우 웹 브라우저는 400 에러 코드 화면을 출력하게 된다.
+
+경로 변수에 정규 표현식을 사용할 수도 있다. 경로 변수 이름 뒤에 콜론과 정규 표현식을 함께 사용해서 정규표현식에 매칭되는 경로만 매핑되도록 제한할 수 있다.
+예를 들어, 아래 코드는 정규 표현식을 이용해서 fileId 경로 변수가 첫 글자는 알파벳이고 이후 세 개의 숫자로 구성됨을 한정짓고 있다.
+
+
+	@ReuqestMapping("/file/{fileId:[a-zA-Z]\\d\\d\\d}")
+	public String fileInfo(@PathVariable String fileID) {
+		...
+	}
+	
+	
+URL에 "/files/a100"과 같이 정규 표현식에 매칭되는 경로를 입력하면, @RequestMapping이 적용된 메소드를 통해서 해당 요청을 처리하게 된다.
+반면에 "/files/a10a"와 같이 정규 표현식에 매칭되지 않는 경로를 입력하면 스프링은 404 에러를 응답한다.
+
+[정규표현식을 사용해서 경로 변수를 제한할 수 있는 것이 유용해 보일 수 있지만, 실제 정규 표현식이 사용되는 부분은 업무 영역의 규칙인 경우가 많다.
+예를 들어, 업로드한 파일의 ID 생성은 컨트롤러가 아닌 파일을 관리하는 도메인 영역 코드에서 하게 된다. 즉, 서비스와 같은 도메인 영역의 코드에서 파일 ID 생성 규칙을 관리하게 된다.
+따라서, 컨트롤러의 경로 변수에 정규 표현식을 사용하는 것보다는, 서비스와 같은 도메인 영역의 코드에서 잘못 들어온 파일 ID를 검사하는 것이 코드의 유지보수성을 높이는 데 도움이 된다.]
+
+	(5) Ant 패턴을 이용한 경로 매핑
+	
+@RequestMapping 어노테이션의 값으로 Ant 패턴을 사용할 수도 있다.
+Ant 패턴은 *, **, ?의 세 가지 특수 문자를 이용해서 경로를 표현하는 패턴으로, 세 가지 문자는 다음의 의미를 갖는다.
+
+	- * : 0개 또는 그 이상의 글자
+	- ? :  1개 글자
+	- ** : 0개 또는 그 이상의 디렉토리 경로
+	
+이들 문자를 사용한 경로 표현 예는 다음과 같다.
+
+	- @RequestMapping("/member/?*.info") : /member/ 로 시작하고 확장자가 .info로 끝나는 모든 경로
+	- @RequestMapping("/faq/?00.fq") : /faq/f 로 시작하고, 1글자가 사이에 위치하고 00.fq 로 끝나는 모든 경로
+	- @RequestMapping("/folders/**/files") : /folders/ 로 시작하고, 중간에 0개 이상의 중간 경로가 존재하고 /files로 끝나는 모든 경로.
+		예를 들어, /folders/files, /folders/1/2/3/files 등이 매핑된다.
+		
+Ant 패턴을 유용하게 사용할 수 있는 경우는 트리 형식으로 표현된 경로를 정의하고 싶을 때이다. 예를 들어, 클라우드 파일 시스템의 디렉토리 경로에 따라 파일 목록을 보여주고 싶을 때에는
+URL을 다음과 같은 형식으로 정의할 수 있을 것이다.
+
+	- http://host/ctxpath/folders/category1/files
+	- http://host/ctxpath/folders/category1/sub1/files
+	- http://host/ctxpath/folders/cat2/sub2/sub3/sub4/files
+	
+경로 깊이에 따라 별도의 @RequestMapping 을 지정해도 되겠지만, Ant 경로 패턴을 사용하면 다음과 같이  간결하게 중첩 디렉토리 경로를 매핑할 수 있다.
+
+
+	@RequestMapping("/folders/**/files")
+	public String list(HttpServletRequest request, Model model) {
+		String uri = request.getRequestURI();
+		String[] folderIds = null;
+		if(uri.endsWith("/folders/files")) {
+			folderIds = new String[0];
+		} else {
+			String ctxPath = request.getContextPath();
+			String path = ctxPath.isEmpty() ? uri : uri.substring(ctxPath.length());
+			String folderTreePath = 
+				path.substring("/folders/".length(), path.length() - "/files".length());
+			folderIds = folderTreePath.split("/");
+		}
+		model.addAttribute("folderIds", folderIds);
+		return "files/filesInFolder";
+	}
+	
+	
+Ant 패턴을 사용할 경우, 실제 경로 값을 구하려면 위 코드처럼 요청 URI로부터 패턴 부분을 분리하는 작업을 해야 한다.
+
+[o.s.util.AntPathMatcher 클래스를 사용하면 요청 URI에서 패턴 부분을 조금 더 쉽게 찾아올 수 있는데,
+이 클래스의 사용법이 궁금한 독자는	http://javacan.tistory.com/entry/Using-AntPathMatcher	문서를 참고하기 바란다.]
+
+	(6) 처리 가능한 요청 컨텐트 타입/응답 가능한 컨텐트 타입 한정
+	
+서비스 또는 클라이언트/서버 간 통신 방식으로 REST API가 자리를 잡으면서 HTTP의 데이터로 JSON이나 XML을 전송하는 경우가 증가했다.
+예를 들어, 웹 브라우저에서 폼을 전송할 때 사용하는 application/x-www-form-urlencoded 컨텐트 타입이 아니라 application/json이나 application/xml과 같은 컨텐트 타입을 이용해서
+서버와 데이터를 주고 받는 경우가 증가하고 있다.
+
+@RequestMapping은 컨트롤러 메소드에서 처리 가능한 요청 컨텐트 타입과 응답 컨텐트 타입을 제한하는 방법을 제공하고 있으며, 
+이를 사용하면 같은 URL이라 하더라도 컨텐트 타입에 따라 다른 응답을 보여주도록 처리할 수 있다.
+
+요청 컨텐트 타입을 제한하고 싶다면, comsumes 속성을 사용하면 된다.
+예를 들어, Content-Type 요청 헤더가 "application/json"인 경우만 처리하고 싶다면 다음과 같은 코드를 사용하면 된다.
+
+
+	@RequestMapping(value="/members", method=RequestMethod.POST,
+		consumes="application/json")
+	public Result addMember(@RequestBody NewMember mem) {
+		...
+	}
+	
+	
+반대로 응답 결과로 JSON을 요구하는 요청을 처리하고 싶다면, 즉 Accept 요청 헤더에 application/json이 포함된 경우만 처리하고 싶다면,
+produces 속성을 사용하면 된다.
+
+	
+	@RequestMapping(value="/members/{memberId}", method=RequestMethod.GET,
+		produces="application/json")
+	@RequestBody
+	public MemberInfo getMember(@PathVariable String memberId) {
+		...
+	}
+	
+	
+consumes 속성과 produces 속성은 요청/응답이 XML 이나 JSON인 경우에 이를 명시적으로 지정하고 제한하기 위해 사용된다.
+
+
+	4.3 HTTP 요청 파라미터와 폼 데이터 처리
+	
+지금까지 @RequestMapping을 이용해서 요청 URL과 컨트롤러 메소드를 매핑하는 방법을 설명했다.
+지금부터는 웹 브라우저에서 서버에 전송한 데이터를 처리하는 방법에 대해서 살펴보도록 하자.
+
+웹 브라우저는 웹 서버에 HTTP 요청 파라미터를 통해서 데이터를 전송한다.
+스프링 MVC에서 요청 파라미터 값을 구하는 방법은 크게 다음의 세 가지 정도로 구분할 수 있다.
+
+	- HttpServletRequest의 getParameter() 메소드를 이용해서 구하기
+	- @RequestParam 어노테이션을 이용해서 구하기
+	- 커맨드 객체를 이용해서 구하기
+	
+이 세 가지 방법에 대해 차례대로 살펴보도록 하자.
+
+	(1) HttpServletRequest를 이용한 요청 파라미터 구하기
+	
+요청 파라미터를 처리하는 첫 번째 방법은 HttpServletRequest를 이용하는 것이다.
+@RequestMapping 메소드에 HttpServletRequest 타입의 인자를 추가한 뒤, getParameter() 메소드를 이용해서 HTTP 요청 파라미터를 구하면 된다.
+
+
+	import javax.servlet.http.HttpServletRequest;
+	
+	@Controller
+	@RequestMapping("/event")
+	public class EventController {
+
+		@RequestMapping("/detail")
+		public String list(HttpServletRequest request, Model model) throws IOException {
+			String id = request.getParameter("id");
+			if (id == null) return "redirect:/event/list";
+			
+			Long eventId = null;
+			try {
+				eventId = Long.parseLong(id);
+			} catch (NumberFormatException e) {
+				return "redirect:/event/list";
+			}
+			Event event = findEventById(eventId);
+			if (event == null) return "redirect:/event/list";
+	
+			model.addAttribute("event", event);
+			return "event/detail";
+		}
+		
+		
+HttpServletRequest의 getParameter()로 값을 구하고, 이 ID 값을 알맞게 사용하고 있다.
+id 요청 파라미터가 존재하지 않거나 값이 잘못 된 경우 "/event/list"로 리다이렉트되도록 뷰를 리턴하고 있다.
+(뷰 이름이 "redirect:"로 시작할 경우, HttpServletResponse의 리다이렉트를 사용해서 지정한 경로로 리다이렉트하게 된다. 이 내용은 뒤에 살펴볼 것이다.)
+
+	(2) @RequestParam 어노테이션을 이용한 요청 파라미터 구하기
+	
+HttpServletRequest을 사용하는 방법이 다소 번잡하게 느껴진다면, @RequestParam 어노테이션을 이용해보자. @RequestParam 어노테이션을 사용하면 메소드의 파라미터를 이용해서
+HTTP 요청 파라미터를 받을 수 있다. 다음은 @RequestParam 어노테이션의 사용 예이다.
+
+	
+	import org.springframework.stereotype.Controller;
+	import org.springframework.web.bind.annotation.RequestMapping;
+	import org.springframework.web.bind.annotation.RequestParam;
+	
+	@Controller
+	@RequestMapping("/event")
+	public class EventController {
+	
+		@RequestMapping("/detail2")
+		public String list2(@RequestParam("id") long eventId, Model model) {
+			Event event = getEvent(eventId);
+			if (event == null) return "redirect:/event/list";
+			model.addAttribute("event", event);
+			return "event/detail";
+		}
+		
+		
+위 코드에서 @RequestParam 어노테이션의 값으로 "id"를 지정했는데, 이 경우 id 요청 파라미터 값이 eventId 파라미터를 통해서 전달된다.
+스프링은 파라미터 타입에 맞게 변환을 한다. 위 코드는 eventId 파라미터의 타입이 long이므로, "id" 요청 파라미터의 값을 long 타입으로 알맞게 변환해준다.
+
+id 요청 파라미터의 값이 없거나 long 타입으로 변환할 수 없을 경우 ,스프링은 컨트롤러의 메소드를 실행하지 않고 바로 400 에러 코드를 클라이언트에 응답한다.
+위 예의 경우 요청 URL이 "/event/detail2?id=", "/event/detail2?id="abc", "event/detail2"와 같이 id 요청 파라미터의 값이 정수 타입이 아니면,
+list2() 메소드가 실행되지 않고 웹 브라우저는 400 에러를 응답 결과로 받게 된다.
+
+
+	@Controller
+	public class SearchController {
+		
+		@RequestMapping("/search")
+		public String search(@RequestParam(value="q", required=false) String query,
+				Model model) {
+			...		
+		}
+	
+	
+위 코드는 required 속성 값을 false로 지정했는데, 이렇게 하면 "q" 요청 파라미터가 존재하지 않아도 스프링 MVC는 400 에러를 응답하지 않고 query 파라미터의 값으로 null을 리턴한다.
+
+defaultValue 속성을 사용하면, 요청 파라미터가 존재하지 않을 때 null 대신 다른 값을 사용하도록 설정할 수도 있다.
+예를 들어, 다음 코드는 "q" 요청 파라미터 값이 없을 경우 빈 문자열("")을 query 파라미터의 값으로 사용한다.
+
+
+	@Controller
+	public class SearchController {
+	
+		@RequestMapping("/search")
+		public String search(@RequestParam(value = "q", defaultValue = "") String query,
+				@RequestParam(value = "p", defaultValue = "1") int pageNumber,
+				Model model)
+			...
+		}
+		
+		
+defaultValue를 이용하면 null 검사를 생략할 수 있기 때문에, 페이징 처리에서의 페리지 번호를 위한 요청 파라미터를 처리할 때 유용하게 사용할 수 있다.
+
+	(3) 커맨드 객체를 이용한 폼 전송 처리하기
+	
+회원 가입을 받기 위해 다음과 같은 HTML 폼을 사용한다고 하자.
+
+
+	<form method="post">
+		이메일: <input type="text" name="email" />
+		이름: <input type="text" name="name" />
+		암호: <input type="password" name="password" />
+		암호확인: <input type="password" name="confirmPassword" />
+		<input type="submit" value="가입" />
+	
+	
+이 폼을 이용해서 전송한 요청 파라미터를 사용하기 위해 다음 코드처럼 요청 파라미터를 개별적으로 처리할 수 있을 것이다.
+
+
+	@RequestMapping(method=RequestMethod.POST)
+	public String regist(@RequestParam("email") String email,
+			@RequestParam("name") String name, @RequestParam("password") password,
+			@RequestParam("confirmPassword") String confirmPassword) {
+		...		
+	}
+	
+	
+그런데, HTTP 요청 파라미터를 모아서 하나의 객체에 담아야 한다면 어떻게 될까?
+예를 들어, 다음과 같이 자바빈 규약에 맞게 프로퍼티에 대한 get/set 메소드를 정의하고 있는 클래스가 있다고 해보자.
+
+
+	public class MemberRegistRequest {
+		private String email;
+		private String name;
+		priavte String password;
+		private String confirmPassword;
+		
+		public String getEmail() {
+			return email;
+		}
+		
+		public void setEamil(String email) {
+			this.email = email;
+		}
+		
+		... // name, password, confirmPassword에 대한 get/set 메소드
+	}
+	
+	
+이 경우 HTTP 요청 파라미터를 MemberRegistRequest 객체에 복사하려면, 다음처럼 번거로운 코드를 작성해야 한다.
+
+
+	@RequestMapping(method=RequestMethod.POST)
+	public String regist(@RequestParam("email") String email,
+			@RequestParam("name") String name, @RequestParam("password") password,
+			@RequestParam("confirmPassword") String confirmPassword) {
+		MemberRegistRequest memRegReq = new MemberRegistRequest();
+		memRegReq.setEmail(email);
+		memRegReq.setName(name);
+		memRegReq.setPassword(confirmPassword);
+		...
+	}
+	
+	
+스프링 MVC는 이런 불편함을 줄여주는 방법을 제공하고 있다. 방법은 매우 쉽다.
+다음과 같이 요청 파라미터를 값으로 전달받을 객체를 메소드의 파라미터로 지정해주기만 하면 된다.
+
+
+	@Controller
+	@RequestMapping("/member/regist")
+	public class RegistrationController {
+		...
+		@RequestMapping(method = RequestMethod.POST)
+		public String regist(MemberRegistRequest memRegReq) {
+			...
+			return "member/registered";
+		}
+	}
+	
+	
+스프링 MVC는 @RequestMapping이 적용된 메소드의 파라미터에 객체를 추가하면, 그 객체의 set 메소드를 호출해서 요청 파라미터 값을 전달한다.
+이때 요청 파라미터의 값을 객체의 프로퍼티로 복사할 때에는 같은 이름을 갖는 요청 파라미터와 프로퍼티를 매핑한다. 예를 들어, memRegReq.setEmail() 메소드를 이용해서
+email 요청 파라미터의 값을 전달받으며, memRegReq.setPassword() 메소드를 이용해서 password 요청 파라미터의 값을 전달받는다.
+
+여기서 MemberRegistRequest 객체와 같이 HTTP 요청 파라미터 값을 전달받을 때 사용되는 객체를 커맨드 객체라고 부른다.
+커맨드 객체로 사용될 클래스에 제한은 없으며, 자바빈 규약에 맞춰 알맞은 set 메소드만 제공하면 된다.
+
+커맨드 객체는 뷰에 전달한 모델에 자동으로 포함된다. 위 코드의 경우 memRegReq 커맨드 객체는 "memberRegistRequest"라는 이름의 모델 이름으로 뷰에 전달된다.
+(즉, 단순 클래스 이름의 첫 글자를 소문자로 변환한 이름을 사용한다.) 따라서, 뷰 코드에서는 "memberRegistRequest"라는 이름을 사용해서 커맨드 객체의 값을 사용할 수 있다.
+
+
+	<!-- JSP 코드의 예 -->
+	$PmemberRegistRequest.name} 님의 회원 가입을 완료했습니다.
+	
+	
+@RequestParam과 비슷하게 HTTP 요청 파라미터의 값을 커맨드 객체의 프로퍼티 타입에 맞게 변환해준다.
+예를 들어, MemberRegistRequest 클래스에 boolean 타입의 allowNoti 프로퍼티가 있다고 해보자.
+
+
+	public class MemberRegistRequest {
+		...
+		private boolean allowNoti;
+		
+		public void setAllowNoti(boolean allowNoti) {
+			this.allowNoti = allowNoti;
+		}
+		...
+	
+	
+이 경우 다음과 같이 boolean 타입으로 변환 가능한 값을 갖는 요청 파라미터를 사용하면 스프링 MVC가 알맞게 타입 변환을 해서 "true"를 boolean 타입으로 변환해준다.
+
+
+	<label>
+		<input type="checkbox" name="allowNoti" value="true" />
+		이메일을 수신합니다.
+	</label>
+	
+	
+같은 이름의 요청 파라미터가 두 개 이상 존재할 경우, 배열을 이용해서 요청 파라미터 목록을 전달받으면 된다.
+아래 코드는 이름이 "favoriteIds"인 요청 파라미터 목록을 setFavoriteIds() 메소드로 전달받은 커맨드 클래스 구현 예를 보여주고 있다.
+
+
+	public class MemberRegReq {
+		private int[] favoriteIds;
+		
+		public void setFavoriteIds(int[] favoriteIds) {
+			this.favoriteIds = favoriteIds;
+		}
+		
+		public int[] getFavoriteIds() {
+			return favoriteIds;
+		}
+	
+	
+배열 대신에 Collection이나 List와 같은 컬렉션 타입을 사용해도 된다.
+
+
+	public class MemberRegReq {
+		private List<Integer> favoriteIds;
+		
+		public void setFavoriteIds(List<Integer> favoriteIds) {
+			this.favoriteIds = favoriteIds;
+		}
+		
+		public List<Integer> getFavoriteIds() {
+			return favoriteIds;
+		}
+	
+	
+다수의 요청 파라미터 값을 한 개의 객체에 담을 수 있기 때문에, 폼 전송이나 요청 파라미터 개수가 많은 경우 커맨드 객체를 사용하면 컨트롤러 코드를 간결하게 유지할 수 있다.
+이런 장점 외에도 스프링이 제공하는 객체 검증, 타입 변환 등을 이용하면, 번거로운 코드를 줄일 수 있는데, 이에 대한 내용은 뒤에서 계속 알아보자.
+
+	(4) 커맨드 객체의 중첩 객체 프로퍼티 지원
+	
+스프링은 커맨드 객체의 중첩 프로퍼티를 지원한다. 예를 들어, 다음의 클래스를 커맨드 객체로 사용한다고 해보자.
+
+
+	public class MemberRegistRequest {
+		
+		private String email;
+		private String name;
+		private String password;
+		private String confirmPassword;
+		private boolean allowNoti;
+		private Address address;
+		
+		public String getEmail() {
+			return email;
+		}
+	
+		public void setEmail(String email) {
+			this.email = email;
+		}
+	
+		public Address getAddress() {
+			return address;
+		}
+	
+		public void setAddress(Address address) {
+			this.address = address;
+		}
+	}
+	
+	
+이 코드에서 address 프로퍼티는 Address 타입의 객체이다.
+Address 클래스는 다음과 같이 주소를 표현하는데 사용되는 프로퍼티를 정의하고 있다.
+
+
+	public class Address {
+	
+		private String address1;
+		private String address2;
+		private String zipcode;
+		
+		// 각 필드에 대한 get/set 메소드
+	}
+	
+	
+컨트롤러가 MemberRegistRequest 객체를 커맨드 객체로 사용하면서, address 프로퍼티에도 값을 채우고 싶다면 파라미터 이름을 다음과 같이 중첩해서 사용하면 된다.
+
+
+	<form method="post">
+		<label for="email">이메일</label>:
+		<input type="text" name="email" id="email" /> <br/>
+		...
+		<label>주소</label>:
+		주소1
+		<input type="text" name="address.address1" /> <br/>
+		주소2
+		<input type="text" name="address.address2" /> <br/>
+		우편번호
+		<input type="text" name="address.zipcode" /> <br/>
+		...
+		<input type="submit" value="가입" />
+	</form>
+	
+	
+위 HTML 폼에서 이름이 "address.address1", "address.address2", "address.zipcode"인 <input> 태그가 있는데,
+이들 입력 값은 커맨드 객체의 "address" 프로퍼티 객체의 "address1", "address2", "zipcode" 프로퍼티 값으로 설정된다.
+따라서 ,다음과 같이 MemberRegistRequest 타입을 커맨드 객체로 사용하면, 중첩 파라미터에 알맞은 요청 파라미터 값이 할당된다.
+
+
+	@Controller
+	@RequestMapping("/member/regist")
+	public class RegistrationController {
+	
+		@RequestMapping(method = RequestMethod.POST)
+		public String regist(
+				@ModelAttribute("memberInfo") MemberRegistRequest memRegReq) {
+			// memRegReq.getAddress.getZipcode()는 "address.zipcode" 파라미터 값 할당
+			memberService.registNewMember(memRegReq);
+			return "member/registered";
+		}
+		
+		
+	(5) 커맨드 객체의 배열/리스트 타입 프로퍼티 처리
+	
+계정별로 읽기/생성/수정/삭제 권한을 관리하는 어플리케이션에서 한 계정의 권한 설정 정보를 표현하기 위해 다음의 AccessPern 클래스를 사용한다고 가정해보자.
+
+
+	public class AccessPerm {
+	
+		private String id;
+		private boolean canRead;
+		...
+	
+		public String getId() {
+			return id;
+		}
+	
+		public void setId(String id) {
+			this.id = id;
+		}
+	
+		public boolean isCanRead() {
+			return canRead;
+		}
+	
+		public void setCanRead(boolean canRead) {
+			this.canRead = canRead;
+		}
+		
+		...
+	}
+	
+	
+한 번에 여러 계정에 대한 접근 권한을 변경하는 기능을 구현해야 할 때, 다음의 클래스를 이용해서 변경할 정보를 한 곳에 담아 전달하도록 구현할 수 있을 것이다.
+
+
+	public class AclModRequest {
+		private List<AccessPerm> perms;
+		
+		public List<AccessPerm> getPerms() {
+			return perms;
+		}
+		
+		public void setPerms(List<AccessPerm> permissions) {
+			this.perms = permission;
+		}
+	}
+	
+	
+접근 권한 정보 변경 기능을 제공하는 코드는 다음과 같이 AclModRequest를 이용해서 정보를 변경하도록 구현할 것이다.
+
+
+	public class AclService {
+		...
+		public void modifyAccess(AclModRequest modReq) {
+			for(AccessPerm perm : modReq.getPerms()) {
+				AccessPerm ap = findById(perm.getId());
+				if(ap != null)
+					ap.copyForm(perm);
+			}
+		}
+	
+	
+여기서 고민거리는 요청 파라미터를 어떻게 AclModRequest 객체로 변환하느냐에 대한 것이다.
+컨트롤러 코드는 아래 코드처럼 클라이언트의 요청이 들어오면, 요청 파라미터의 값을 이용해서 aclService.modifyAccessControl() 메소드를 실행하는데 필요한
+AclModRequest 객체를 생성하야 한다.
+
+
+	@Controller
+	public class AclController {
+		@ReqeustMapping(value="/acl/modify", method=RequestMethod.POST)
+		public String modify(...) {
+			// 어떻게 요청 파라미터를 AclModRequest 객체로 변환할까?
+			AclModRequest modReq = ...;
+			aclService.modifyAccessControl(modReq);
+			return "redirect:/acl/list";
+		}
+	
+	
+스프링 MVC는 중첨 프로퍼티 뿐만 아니라 List나 배열처럼 인덱스를 가진 프로퍼티의 값을 설정하는 기능도 제공하고 있다.
+이를 사용하면 요청 파라미터를 매우 간단하게 AclModRequest 객체로 변환할 수 있다. AclModRequest 타입을 커맨드 객체로 사용하려면 다음과 같이
+요청 파라미터의 이름에 인덱스 값을 지정하면 된다.
+
+	
+	<input type="hidden" name="params[0].id" value="bkchoi">
+	<input type="checkbox" name="params[0].canRead" value="true" checked>
+	...
+	<input type="hidden" name="params[1].id" value="bkchoi">
+	<input type="checkbox" name="params[1].canRead" value="true" checked>
+	...
+	
+	
+위 HTML 코드에서 파라미터 이름은 "프로퍼티이름[인덱스].프로퍼티이름"의 구조를 갖고 있다.
+커맨드 객체로 AclModRequest 클래스를 사용하면 각 요청 파라미터가 다음과 같이 매핑된다.
+
+	- perms[0] -> aclModRequest.perms.get(0)
+	- perms[0].id -> aclModRequest.perms.get(0).setId(파라미터값)
+	- perms[1].canRead -> aclModRequest.perms.get(1).setCanRead(파라미터값)
+	
+List 타입이나 배열 타입 프로퍼티의 경우, 위 매핑처럼 '프로퍼티이름[인덱스]'의 형식으로 해당 인덱스의 값에 접근할 수 있다.
+또한, 중첩 프로퍼티를 사용해서 프로퍼티를 설정할 수 있다. 인덱스 기반 프로퍼티와 중첩 프로퍼티를 이용하면, 
+컨트롤러는 다음과 같이 AclModRequest 클래스를 커맨드 객체로 사용해서 간단하게 요청 파라미터를 입력받을 수 있게 된다.
+
+
+	@Controller
+	public class ACLController {
+		
+		@RequestMapping("/acl/modify")
+		public String modify(AclModRequest modReq) {
+			aclService.modifyAccessController(modReq);
+			return "redirect:/acl/list";
+		}
+	
+	
+만약 인덱스 번호가 중간에 비면 어떻게 될까? 예를 들어, HTML 코드가 다음과 같이 만들어졌다면 어떻게 될까?
+
+
+	<input type="hidden" name="params[0].id" value="bkchoi">
+	<input type="checkbox" name="params[0].canRead" value="true" checked>
+	<!-- 인덱스 1에 해당하는 파라미터가 없음 -->
+	<input type="hidden" name="params[2].id" value="madvirus">
+	<input type="checkbox" name="params[2].canRead" value="false" checked>
+	
+	
+위 HTML 코드는 인덱스가 1인 값이 존재하지 않는데, 이 경우 커맨드 객체의 perms 필드는 다음과 같은 값을 갖는 개체 목록을 갖게 된다.
+
+	- perms.get(0) : (id : "bkchoi", canRead : "true")
+	- perms.get(1) : (id : null, canRead : null)
+	- perms.get(2) : (id : "madvius", canRead : "false")
+	
+위 목록을 보면 perms의 1번 인덱스 값이 null이 아니라는 점에 주목하자. 스프링은 빈 인덱스 번호에 객체를 생성하고, 
+중첩 프로퍼티의 각 값에 null을 할당하고 있다. 따라서, 위와 같이 데이터가 없는 인덱스 항목이 존재할 수 있다면 알맞게 처리해야 한다.
+
+	
+	@RequestMapping("/acl/modify")
+	public String modify(AclModRequest modReq) {
+		List<AccessPerm> perms = new ArrayList<>();
+		for(AccessPerm reqPerm : modReq.setPerms())
+			// 목록에 값이 없는 경우에 대한 처리가 필요할 수 있따.
+			if(reqPerm.hasData()) perms.add(reqPerm);
+			
+		modReq.setPerms(perms);
+		
+		aclService.modifyAccessController(modReq);
+		return "redirect:/acl/list";
+	}
+	
+	
+인덱스 기반 프로퍼티 타입으로 int나 String과 같은 단순 데이터 타입을 사용해도 된다.
+
+	(6) GET과 POST에서 동일 커맨드 객체 사용하기
+	
+아래 코드를 보자.
+
+	
+	@Controller
+	@RequestMapping("/member/modify")
+	public class MemberModificationController {
+	
+		private static final String MEMBER_MODIFICATION_FORM = "member/modificationForm";
+		private static final String MEMBER_NOT_FOUND_VIEW = "member/memberNotFound";
+		private MemberService memberService;
+
+		@RequestMapping(method = RequestMethod.GET)
+		public String form(MemberModRequest modReq,
+				@RequestParam("mid") String memberId) {
+			MemberInfo mi = memberService.getMemberInfo(memberId);
+			if (mi == null) return MEMBER_NOT_FOUND_VIEW;
+	
+			modReq.setId(mi.getId());
+			modReq.setName(mi.getName());
+			modReq.setEmail(mi.getEmail());
+			modReq.setAllowNoti(mi.isAllowNoti());
+			return MEMBER_MODIFICATION_FORM;
+		}
+	
+		@RequestMapping(method = RequestMethod.POST)
+		public String modify(MemberModRequest modReq) {
+			try {
+				memberService.modifyMemberInfo(modReq);
+				return "member/modified";
+			} catch (NotMatchPasswordException ex) {
+				return MEMBER_MODIFICATION_FORM;
+			} catch (MemberNotFoundException ex) {
+				return MEMBER_NOT_FOUND_VIEW;
+			}
+		}
+		
+		
+위 코드에서 form() 메소드는 GET 요청을 처리하는데, 폼 화면에서 필요로 하는 데이터를 커맨드 객체에 담고 있다.
+폼을 보여주는 뷰 코드는 커맨드 객체를 이용해서 폼을 생성할 수 있다. modify() 메소드는 form() 메소드와 동일한 타입의 커맨드 객체를 사용한다.
+데이터 수정에 실패할 경우(즉, 익셉션이 발생할 경우) form() 메소드와 동일하게 폼 뷰를 리턴한다.
+
+두 메소드에서 사용하는 커맨드 객체의 타입이 같으므로 뷰 코드는 GET 요청이나 POST 요청인지의 여부에 상관없이 폼을 생성할 수 있다.
+아래 코드는 form() 메소드와 modify() 메소드를 위한 목적으로 사용되는 뷰 코드의 일부인데, 현재 전송 방식이 GET인지 POST인지 여부에 상관없이
+동일한 폼 코드를 사용하는 것을 알 수 있다.
+
+
+	<form method="post">
+		<input type="hidden" name="id" value="${memberModRequest.id}" />
+		<label for="email">이메일</label>:
+		<input type="text" name="email" id="email" value="${memberModRequest.email}" />
+		<br/>
+		<label for="name">이름</label>
+		<input type="text" name="name" id="name" value="${memberModRequest.name}" />
+		<br/>
+		<label>
+			<input type="checkbox" name="allowNoti" value="true"
+				<c:if test="${memberModRequest.allowNoti}">check='checked'</c:if> />
+			이메일을 수신합니다.
+		</label>
+		</br>
+		<label for="currentPassword">현재 암호</label>:
+		<input type="password" name="currentPassword" id="currentPassword" /><br/>
+		<input type="submit" value="수정" />
+	</form>
+	
+	
+	4.4	@ModelAttribute를 이용한 모델 데이터 처리
+	
+	(1) @ModelAttribute를 이용한 커맨드 객체 이름 지정
+	
+앞서 커맨드 객체는 (첫 글자를 소문자로 바꾼) 클래스 이름을 이용해서 모델에서 접근할 수 있다고 했다. 그런데, 클래스 이름이 다소 길어서 다른 이름을 대신 사용하고 싶다면 어떻게 해야 할까?
+이럴 때 @ModelAttribute 어노테이션을 사용하면 된다. 커맨드 객체로 사용될 파라미터에 @ModelAttribute를 적용하면 커맨드 객체의 모델 이름을 변경할 수 있다.
+
+
+	import org.springframework.web.bind.annotation.ModelAttribute;
+	
+	@Controller
+	@RequestMapping("/member/regist")
+	public class RegistrationController {
+		
+		@RequestMapping(method = RequestMethod.POST)
+		public String regist(
+				@ModelAttribute("memberInfo") MemberRegistRequest memRegReq) {
+			...
+			return "member/registered";
+		}
+	}
+	
+	
+위 코드에서 regist() 메소드를 보면 memRegReq 파라미터에 @ModelAttribute("memberInfo") 어노테이션을 적용했는데, 이 경우 memRegReq 커맨드 객체는 모델에
+"memberInfo" 라는 이름으로 저장된다. 따라서, 뷰 코드에서는 커맨드 객체의 클래스 이름이 아닌 "memberInfo"를 이용해서 커맨드 객체에 접근하게 된다.
+
+
+	<!-- JSP 코드에서 @ModelAttribute로 지정한 모델 이름 사용 -->
+	${memberInfo.name}님의 회원 가입을 완료했습니다.
+	
+	
+	(2) @ModelAttribute 어노테이션을 이용한 공통 모델 처리
+	
+목록 화면과 상세 보기 화면에서 함께 사용되는 데이터가 있다고 해보자. 이런 경우 @ModelAttribute 어노테이션을 메소드에 사용하면,
+코드를 중복하지 않으면서 함께 사용되는 데이터를 설정할 수 있다.
+다음 예를 보자.
+
+
+	@Controller
+	@RequestMapping("/event")
+	public class EventController {
+	
+		@ModelAttribute("recEventList")
+		public List<Event> recommend() {
+			return eventService.getRecommendedEventList();
+		}
+		
+		@RequestMapping("/list")
+		public String list(Model model) {
+			List<Event> eventList = eventService.getOpenedEventList();
+			model.addAttribute("eventList", eventList);
+			return "event/list";
+		}
+		
+		@RequestMapping("/detail")
+		public String list(HttpServletRequest request, Model model) throws IOException {
+			...
+			return "event/detail";
+		}
+
+		
+위 코드에서 recommend() 메소드에 @ModelAttribute 어노테이션을 붙였는데, 스프링 MVC는 recommend() 메소드의 리턴 결과를 "recommendList" 모델 속성으로 추가한다.
+따라서 요청 경로가 "/event/list"나 "/event/detail"인지에 상관없이 뷰 코드에서는 "recommendList" 이름을 이용해서 recommend() 메소드가 리턴한 객체에 접근할 수 있다.
+
+@ModelAttribute 어노테이션이 적용된 메소드의 객체를 @ModelAttribute 어노테이션이 적용된 메소드에 접근할 수도 있다.
+다음과 같이 같은 값을 갖는 @ModelAttribute 어노테이션을 사용하면 된다. 아래 코드에서 list() 메소드의 첫 번째 파라미터로 전달되는 객체는 recommend() 메소드가 리턴한 객체가 된다.
+
+
+	@ModelAttribute("recEventList")
+	public List<Event> recommend() {
+		return eventService.getRecommendedEventList();
+	}
+	
+	@RequestMapping("/list")
+	public String list(
+			@ModelAttribute("recEventList") List<Event> recEventList,
+			Model model) {
+		...
+	}
+	
+	
+	4.5 @CookieValu와 @RequestHeader를 이용한 쿠키 및 요청 헤더 구하기
+	
+HttpServletRequest를 사용하는 대신 @RequestParam 어노테이션을 사용해서 요청 파라미터 값을 구했던 것처럼 쿠키 값과 헤더를 구하기 위해
+@CookieValue 어노테이션과 @RequestHeader 어노테이션을 사용할 수 있다. 다음은 두 어노테이션의 사용 예이다.
+
+
+	import javax.servlet.http.Cookie;
+	import org.springframework.web.bind.annotation.CookieValue;
+	import org.springframework.web.bind.annotation.RequestHeader;
+	
+	@Controller
+	public class SimpleHeaderController {
+	
+		@RequestMapping("/header/simple")
+		public String simple(@RequestHeader("Accept") String acceptType,
+				@CookieValue("auth") Cookie cookie,
+				Model model) {
+			...
+		}
+	
+	
+위 코드는 이름이 "Accept"인 요청 헤더의 값과 이름이 "auth"인 쿠키를 각각 acceptType 파라미터와 cookie 파라미터에 전달한다. 지정한 이름의 헤더나 쿠키가 존재하지 않을 경우
+스프링은 400 에러를 응답한다.
+
+두 어노테이션 모두 required 속성과 defaultValue 속성을 이용해서 필수 여부와 기본값을 지정할 수 있다. 아래 코드는 "Accept" 헤더가 존재하지 않을 경우 기본값으로
+"text/html"을 사용하고 "auth" 쿠키가 존재하지 않으면 cookie 파라미터에 null을 전달하도록 설정한 코드의 작성 예이다.
+
+
+	@Controller
+	public class SimpleHeaderController {
+		
+		@RequestMapping("/header/simple")
+		public String simple(
+				@RequestHeader(value="Accept", defaultValue="text/html") String accpetType,
+				@CookieValue(value="auth", required=false) Cookie cookie,
+				Model model) {
+			...
+		}
+	
+
+javax.servlet.http.Cookie 타입 대신에 쿠키 값에 해당하는 타입은 바로 사용해도 된다.
+예를 들어, 쿠키 값이 정수 타입이라면 다음과 같이 Integer나 int 등의 타입을 사용하면 알 맞게 타입 변환을 한다.
+
+
+	@RequestMapping("/header/simple")
+	public String simple(
+			@RequestHeader(value = "Accept", defaultValue = "text/html") String acceptType,
+			@CookieValue(value = "auth", required = false) Integer authValue,
+			Model model) {
+			
+			
+	4.6 리다이렉트 처리
+	
+컨트롤러에서 클라이언트의 요청을 처리한 후에 다른 페이지로 리다이렉트하고 싶다면 뷰 이름 앞에 "redirect:" 접두어를 붙이면 된다.
+아래 코드는 작성 예이다.
+
+
+	@RequestMapping("/header/createauth")
+	public String createAuth(HttpServletResponse response) {
+		...
+		return "redirect:/main";
+	}
+	
+	
+"redirect:" 접두어 뒤에 경로는 웹 어플리케이션 내에서의 경로가 된다. 호스트가 http://localhost:8080이고 컨텍스트 경로가 /spring4-chap07 이라고 해보자.
+이 경우 "redirect:/main" 뷰 이름은 http://localhost:8080/spring4-chap-7/main URL로 리다이렉트하도록 만든다.
+
+"redirect:/main"과 같이 경로 부분이 "/"로 시작하면 웹 어플리케이션 내에서의 절대 경로를 사용한다.
+"/"로 시작하지 않으면 @RequestMapping 어노테이션의 경로를 기준으로 상대 경로로 리다이렉트 된다. 아래 코드의 경우 "redirect:/header/main"과 동일한 URL로 리다이렉트 된다.
+
+
+	@RequestMapping("/header/createauth")
+	public String createAuth(HttpServletResponse response) {
+		...
+		return "redirect:main";
+	}
+	
+	
+"redirect:" 뒤에 완전한 URL을 적으면, 해당 URL로 리다이렉트 된다.
+
+
+	@RequestMapping(value="/files/{fileId}", method=RequestMethod.POST)
+	public String updateFile(@PathVariable String fileId, ...) {
+		...
+		return "redirect:/files/{fileId}";
+	}

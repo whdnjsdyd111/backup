@@ -1,0 +1,47 @@
+여기에서는 왜 JSTL을 사용하는가에 대해서 살펴본다.
+SJP에서는 XML 처럼 사용자가 태그를 정의해서 사용하는 것이 가능하다. 이런 사용자 정의 태그를 커스텀 태그라고 하며, 이들 중 자주 사용하는 것을 표준으로 만들어 제공하게 되었는데
+바로 이것이 JSTL(JSP Standard Tag Library)이다. 즉, JSTL은 자주 사용하는 커스텀 태그의 표준인 '표준 커스텀 태그(Custom Tag)'라고 할 수 있다.
+JSTL은 많은 JSP 애플리케이션을 간단한 태그로 제공한다.
+우리가 자바빈 객체를 생성할 때 사용했던 액션 태그는 시스템이 제공하는 일종의 커스텀 태그라 할 수 있다. 다음은 자바빈 객체를 생성하는 코드를
+<jsp:useBean> 액션 태그로 작성한 것이다.
+
+<jsp:useBean id="article" class="ch12.BoardDataBean">
+
+액션 태그를 사용하지 않으면 자바빈 객체는 new 키워드로 사용해서 생성해야 할 것이다.
+
+<% ch12.BoardDataBean article = new ch12.BoardDataBean %>
+
+위와 같이 액션 태그를 사용한 것이 HTML 코드에 더 가까워서 코드를 이해하기가 한결 쉽다. 마찬가지로 JSTL을 사용하면 JSTL가 제공하는 액션 태그들처럼 작업을 수행하는 코드들은 태그로 간략화해 보기 쉽게 할 수 있다.
+다음은 우리가 지금까지 작성해왔던 JSP의 스크립트 코드와 HTML 코드가 되섞인 형태이다. 별 내용 아닌데도 불구하고 괜히 복잡해 보인다.
+
+<% if(c.getEmail() == null) { %>
+	<input type="text" name="email" size="40" maxlength="30">
+<% } else { %>
+	<input type="text" name="email" size="40" maxlength="30" value="<%= c.getEmail() %>">
+<% } %>
+
+이렇게 복잡해 보이는 코드를 다음과 같이 JSTL을 사용하면 훨씬 간결하게 표현할 수 있다.
+
+<c:if test="empty ${c.getEmail}">
+	<input type="text" name="email"size="40" maxlength="30">
+</c:if>
+<c:if test="!empty ${c.getEmail}">
+	<input type="text" name="email" size="40" maxlength="30" value="${c.getEmail}">
+</c:if>
+
+JSP 스크립트 코드들이 사라지니 가독성이 좋아지는 것을 알 수 있다. JSP의 스크립트와 HTML 코드를 혼용하는 것은 개발의 편리성이라는 면에서는 장점이 있으나 이처럼 코드를 복잡하게 만드는 문제점이 있다.
+이러한 문제를 해결하고자 처리를 담당하는 로직 부분의 JSP 코드를 태그로 대치시켜서 태그로만 이루어진 JSP 페이지 작성 방법이 제시된 것이다.
+JSTL은 JSP 페이지의 로직을 담당하는 부분인 if, for, while, 데이터베이스 처리 등과 관련된 표준 커스텀 태그를 제공함으로써 코드를 깔끔하게 하고 JSP 페이지의 가독성을 좋게한다.
+다만, 한 가지 주의할 사항은 액션태그도 그렇지만 JSTL과 커스텀 태그도 XML 기반이기 때문에 모든 태그는 시작 태그와 종료 태그의 쌍으로 작성해야 한다는 점이다.
+
+	시작 태그와 종료 태그가 존재하는 경우
+
+<c:if test="empty ${c.getEmail}"> <!-- 시작 태그 -->
+	<input type="text" name="email" size="40" maxlength="30"> <!-- 태그 내용 -->
+</c:if>
+
+내용을 갖지 않는 <br>, <img> 태그 같은 경우 종료 태그가 없는데, JSTL에서 이런 경우의 태그들은 태그를 닫는 기호(>) 전에 '/'를 입력해 태그가 종료되었음을 나타낸다.
+
+	종료 태그가 없는 단독 태그의 경우
+	
+<c:set var="name" scope="page" /><!-- 단독 태그 -->

@@ -1,0 +1,30 @@
+LogonDBBean은 회원 관리 시스템에서 DB와 연동해서 쿼리문을 수행하는 DB 처리빈이다.
+LogonDBBean은 커넥션 풀로부터 커넥션 객체를 가져오는 메소드 및 JSP 페이지에서 발생한 데이터를 저장하거나 DB 테이블의 레코드를 얻어내는 등의 쿠러를 수행하는 메소드드롤 이루어져 있다.
+
+메소드명						역할
+
+getInstance()				전역 LogonDBBean 객체의 레퍼런스를 리턴한다.
+
+getConnection()				쿼리 작업에 사용할 Connection 객체를 커넥션 풀로부터 얻어내서 리턴한다.
+
+insertMember(LogonData		회원 가입을 한 사용자를 member 테이블에 추가한다. 회원 가입 폼 처리(registerPro.jsp)에서 사용한다.
+Bean member)
+
+userCheck(String id,		사용자 인증 시 사용한다. 회원 인증 처리(loginPro.jsp) 및 회원 정보 수정/탈퇴를 위한 인증(memberCheck.jsp)에서 사용한다.
+String passwd)
+
+confirmId(String id)		회원 가입 시 아이디 중복 확인(comfirmId.jsp)을 할 때 사용한다. 회원 가입 폼(registerForm.jsp)에서 사용한다.
+
+getMember(String id,		id에 해당하는 레코드를 member 테이블에서 검색한다. 회원 정보 수정 폼(modifyForm.jsp)에서 사용한다.
+String passwd)
+
+updateMember(LogonData		수정된 회원 정보를 갱신할 때 사용된다. 회원 정보 수정 처리(modifyPro.jsp)에서 사용한다.
+Bean member)
+
+deleteMember(String id,		id에 해당하는 레코드를 member 테이블에서 삭제한다. 회원 탈퇴 처리(deletePro.jsp)에서 사용한다.
+String passwd)
+
+
+이 예제는 회원 관리 시스템의 DB 처리빈인 LogonDBBean.java를 작성하는 것이다.
+
+LogonDBBean.java		423쪽

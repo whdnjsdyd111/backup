@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Button?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" prefWidth="500" prefHeight="400">
+	<padding>
+		<Insets topRightBottomLeft="10.0" />
+	</padding>
+	
+	<center>
+		<BarChart fx:id="barchart" >
+			<xAxis>
+				<CategoryAxis side="BOTTOM" />
+			</xAxis>
+			
+			<yAxis>
+				<NumberAxis side="LEFT" />
+			</yAxis>
+		</BarChart>
+	</center>
+	
+	<bottom>
+		<HBox alignment="CENTER" >
+			<children>
+				<Button fx:id="cencel1" text="닫기" />
+			</children>
+		</HBox>
+	</bottom>
+</BorderPane>
+

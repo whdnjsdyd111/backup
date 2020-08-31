@@ -1,0 +1,190 @@
+지금 하는 프로젝트에서 코딩 규칙을 정해 놓고 엄격하게 준수한다고 가정하자.
+예를 들어, 모든 컨트롤러 구형 클래스는 com.mycom.web 패키지에 위치해야 하고, 모든 DAO 클래스는 com.mycom.dao 패키지에 위치해야 한다.
+그리고, 모든 의존은 프로퍼티 설정 메소드를 통해서 정의해야 하고, 모든 빈의 이름은 타입 이름과 동일하게 정의해야 한다고 하자.
+
+이런 경우에 특정 패키지에 위치한 클래스를 스프링 빈으로 자동으로 등록하고 의존 자동 설정을 통해서 각 빈의 의존을 처리할 수 있다면, 설정 코드를 만드는 수로를 덜 수 있을 것이다.
+이런 기능을 스프링이 제공하고 있는데, 그것이 바로 컴포넌트 스캔 기능이다.
+
+스프링은 특정 패키지 또는 그 하위 패키지에서 클래스를 찾아 스프링 빈으로 등록새주는 기능을 제공하고 있다. 이때 검색 대상은 o.s.stereotype.Component 어노테이션이 붙은 클래스다.
+다음과 같이 @Component 어노테이션이 붙은 클래스가 있다고 하자.
+
+
+	package net.madvirus.spring4.chap02.shop;
+	
+	import org.springframework.stereotype.Component;
+	
+	@Component
+	public class OrderService {
+		...
+	}
+	
+	package net.madvirus.spring4.chap02.shop;
+
+	import org.springframework.stereotype.Component;
+	
+	@Component
+	public class ProductService {
+		...	
+		@Resource(name = "productSearchClientFactory")
+		public void setSearchClientFactory(SearchClientFactory searchClientFactory) {
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+net.madvirus.spring4.chap02.shop 패키지에 속한 두 클래스 OrderService, ProductService에 @Component 어노테이션을 적용하였다.
+
+@Component 어노테니션을 적용했다면, <context:component-scan> 태그를 이용해서 스프링이 클래스를 검색할 패키지를 지정하면 된다.
+<context:component-scan> 태그를 추가하면 스프링은 지정한 페키지에서 @Component 어노테이션이 (또는 하위 어노테이션) 적용된 클래스를 검색하여 빈으로 등록하게 된다.
+
+	
+	<?xml version="1.0" encoding="UTF-8"?>
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/context
+	       http://www.springframework.org/schema/context/spring-context.xsd">
+	
+		<context:component-scan base-package="net.madvirus.spring4.chap02.shop">
+		</context:component-scan>
+		...
+	<beans>
+	
+	
+<context:component-scan> 태그는 base-package 속성에 지정한 패키지 및 그 하위 패키지에 위치한 클래스 중에서 @Component 어노테이션이 적용된 클래스를 검색해서 스프링 빈으로 등록한다.
+
+스프링 컨테이너가 클래스를 검색해서 스프링 빈으로 등록하기 때문에, 해당 빈의 생성지나 프로퍼티에 의존 객체를 전달하려면 @Autowired와 같은 어노테이션을 사용해야 한다.
+예를 들어, 앞서 코드에서도 다음과 같이 @Resource 어노테이션을 이용해서 의존을 자동으로 연결하도록 하였다.
+
+
+	@Component
+	public class ProductService {
+		...
+		// 스캔을 통해 빈으로 등록될 경우, 자동 의존 설정이 필요함	
+		@Resource(name = "productSearchClientFactory")
+		public void setSearchClientFactory(SearchClientFactory searchClientFactory) {
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+[<context:component-scan> 태그는 어노테이션과 관련해서 아래의 BeanPostProcessor를 함께 등록해준다.
+
+	- AutowiredAnnotationBeanPostProcessor
+	- CommonAnnotationBeanPostProcessor
+	- ConfigurationClassPostProcessor
+	
+따라서, <context:component-scan> 태그를 사용하면 @Component 어노테이션 뿐만 아니라 @Required, @Autowired, @Inject와 같은 어노테이션을 함께 처리한다.
+]
+
+자바 코드 설정을 사용하고 있다면, @ComponentScan 어노테이션을 사용하면 @Component 어노테이션이 붙은 클래스를 검색해서 빈으로 등록해준다.
+
+	import org.springframework.context.annotation.ComponentScan;
+	import org.springframework.context.annotation.Configuration;
+	
+	@Configuration
+	@ComponentScan(basePackages = "net.madvirus.spring4.chap02.shop")
+	public class ConfigScan {
+	
+	
+[@Component 어노테이션은 용도 별로 의미를 부여하는 하위 타입을 갖고 있는데, 다음은 그 종류들이다.
+
+	- o.s.steoertype.Component : 스프링 빈 임을 의미한다.
+	- o.s.steoertype.Service : DDD(도메인 주도 설계)에서의 서비스를 의미한다.
+	- o.s.steoertype.Repository : DDD(도메인 주도 설계)에서의 리파지터리를 의미한다.
+	- o.s.steoertype.Controller : 웹 MVC의 컨트롤러를 의미한다.
+	
+@Component 어노테이션을 포함한 네 개의 어노테이션은 스프링의 스캔 대상이다.
+]
+
+
+	6.1 자동 검색된 빈의 이름과 범위
+	
+스프링은 기본적으로 검색된 클래스를 빈으로 등록할 때, 클래스의(첫 글자를 소문자로 바꾼) 이름을 빈의 이름으로 사용한다.
+예를 들어, 아래의 코드의 경우 자동으로 등록되는 빈의 이름은 "productService"가 된다.
+
+
+	@Component
+	public class ProductService {
+		...
+	}
+	
+	
+따라서, ApplicationContext를 사용하는 코드에서는 다음과 같이 "productService"를 이용하여 스프링 컨테이너로부터 빈 객체를 가져오면 된다.
+
+
+	ProductService svc = context.getBean("productService", ProductService.class);
+	
+	
+만약 특정한 이름을 명시해주고 싶다면 다음과 같이 어노테이션의 속성에 빈의 이름을 입력하면 된다.
+
+
+	@Component("orderSvc")
+	public class OrderService {
+		...
+	}
+	
+	
+	6.2 스캔 대상 클래스 범위 지정하기
+	
+<context:include-filter> 태그와 <context:exclude-filter> 태그를 사용하면 자동 스캔 대상에 포함시킬 클래스와 제외시킬 클래스를 구체적으로 명시할 수 있다. 
+아래 코드는 필터 태그의 사용 예이다.
+
+
+	<context:component-scan base-package="net.madvirus.spring4.chap02.shop">
+		<context:include-filter type="regex" expression="*.Service" />
+		<context:exclude-filter type="aspectj" expression="net..*Dao" />
+	</context:component-scan>
+	
+	
+<context:include-filter> 태그와 <context:exclude-filter> 태그는 각각 type 속성과 expression 속성을 갖는다.
+type 속성에 따라 expression 속성에 올 수 있는 값이 달라지는데, type 속성에 입력 가능한 값은 다음과 같다.
+
+
+	type 속성			설명
+	
+	annotation		클래스에 지정한 어노테이션이 적용됐는지의 여부. 
+					expression 속성에는 "org.example.SomeAnnotation"와 같이 타입 이름을 입력한다.
+	
+	assignable		클래스가 지정한 타입으로 할당 가능한지의 여부.
+					expression 속성에는 "org.example.SomeClass"와 같이 타입 이름을 입력한다.
+	
+	regex			클래스 이름이 정규 표현식에 매칭되는지의 여부.
+					expression 속성에는 "org\.example\.Default.*" 와 같이 정규 표현식을 입력한다.
+	
+	aspectj			클래스 이름이 AspectJ의 표현식에 매칭되는지의 여부.
+					expression 속성에는 "org.example..*Service+"와 같이 AspectJ의 표현식을 입력한다.
+					
+					
+@ComponentScan 어노테이션을 사용하는 경우에는 includeFilters 속성과 excludeFilters 속성을 이용해서 설정할 수 있다.
+다음은 이 두 속성의 사용 예이다.
+
+
+	import org.springframework.context.annotation.ComponentScan;
+	import org.springframework.context.annotation.ComponentScan.Filter;
+	import org.springframework.context.annotation.FilterType;
+
+	@Configuration
+	@ComponentScan(basePackages = "net.madvirus.spring4.chap02.shop",
+		includeFilters = {@Filter(type = FilterType.REGEX, pattern = ".*Service")},
+		excludeFilters = @Filter(type = FilterType.ASPECTJ, pattern = "net..*Dao")
+	)
+	
+	
+includeFilters 속성은 excludeFilters 속성과 @ComponentScan 어노테이션의 중첩 타입인 @Filter 어노테이션을 값 목록으로 갖는다.
+@Filter의 type 속성에 사용하는 값이 무엇이냐에 따라서 pattern 속성이나 value 속성을 사용해서 포함/제외 대상을 지정한다.
+다음은 type 속성의 값에 따라 pattern 속성을 사용할 지 value 속성을 사용할지 여부를 정리한 것이다.
+
+	
+	@Filter 어노테이션의 type 속성에 따른 값 지정 방법
+	
+	type 속성						값 속성		설명
+	
+	FilterType.ANNOTATION		value		특정 어노테이션이 적용된 클래스를 필터링 대상으로 삼는다. Class 목록을 값으로 갖는다.
+		
+	FilterType.ASSIGNABLE_TYPE	value		지정한 타입에 할당 가능한 클래스를 필터링 대상으로 삼는다. Class 목록을 값으로 갖는다.
+	
+	FilterType.REGEX			pattern		이름이 정규표현식에 매칭되는 클래스를 필터링 대상으로 삼는다. 정규 표현식 목록을 값으로 갖는다.
+	
+	FilterType.ASPECTJ			pattern		이름이 AspectJ 표현식에 매칭되는 클래스를 대상으로 삼는다. AspectJ 표현식 목록을 값으로 갖는다.

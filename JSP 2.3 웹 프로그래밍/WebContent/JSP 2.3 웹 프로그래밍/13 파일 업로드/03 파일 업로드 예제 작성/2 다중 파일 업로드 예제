@@ -1,0 +1,33 @@
+이번에는 Ajax 기반의 다중 파일 업로드를 이해하기 위해서 <input type="file"> 태그에 multiple 속성을 사용하는 방법과
+jQuery Multiple File Upload Plugin 사용 방법을 예제를 통해 학습한다.
+다중 파일 업고드와 단일 파일 업로드는 기본적으로 처리 방식이 같다. 다만, 업로드 폼에서 파일을 1개만 선택하는지, 여러 개를 선택할 수 있는지의 차이점만 있을 뿐이다.
+
+
+(1) 다중 파일 업로드 예제 - <input type="file"> 태그에 multiple 속성 사용
+
+Ctrl, Shift 키를 사용해 다중 파일을 선택한 후 [다중 파일 업로드] 버튼을 클릭하면 선택된 파일이 서버상의 특정 폴더로 업로드된다. 업로드할 파일을 선택하는 폼은 multipleUploadForm.jsp가 제공하고,
+파일의 업로드는 multiUploadPro.jsp가 한다. 이때 다중 파일 업로드 처리 페이지 multiUploadPro.jsp는 multiupload.js가 비동기적으로 요청한다.
+
+multiUploadForm.jsp		565쪽
+
+multiupload.js			566쪽
+
+multiUploadPro.jsp		567쪽
+
+
+(2) 다중 파일 업로드 예제 - jQuery Multiple File Upload Plugin 사용
+
+jQuery Multiple File Upload Plugin을 다운로드하여 프로젝트상의 특정 위치에 배치한 후 예제를 작성한다.
+
+http://www.fyneworks.com/jquery/multiple-file-upload/
+
+디운로드 후 js 폴더에 넣는다.
+
+https://github.com/malsup/blockui/
+
+다운로드 후 js 폴더에 넣는다.
+
+
+다중 파일을 선택하고 [다중 파일 업로드] 버튼을 클릭하면 선택한 파일들이 서버상의 특정 폴더로 업로드된다.
+업로드할 파일을 선택하는 폼은 multiUploadForm2.jsp가 제공하고, 파일의 업로드는 multiUploadPro.jsp가 한다.
+이때 다중 파일 업로드 처리 페이지 multiUploadPro.jsp는 multiupload.js가 비동기적으로 요청한다.

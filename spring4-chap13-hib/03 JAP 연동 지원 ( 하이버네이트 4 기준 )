@@ -1,0 +1,435 @@
+스프링은 하이버네이트와 비슷한 방식으로 JPA(Java Persistence API) 연동을 지원한다.
+JPA는 오라클에서 정의한 자바 ORM 표준으로 스프링 4 버전은 JPA 2.1/2.0을 지원하고 있다. JPA 표준을 지원하는 프로바이더로는 하이버네이트,
+EclipseLink, OpenJPA 등이 존재하는데, 이 중에서 가장 널리 사용되는 JPA 프로바이더로 하이버네이트를 들 수 있다.
+이 책에서는 하이버네이트를 중심으로 스프링과 JPA를 연동하는 방법을 설명할 것이며, 이외에 다른 JPA 프로바이더와 스프링을 연동하는 방법이 필요한 독자는 각 JPA 프로바이더 사이트의 문서를 참고하자.
+
+[JPA는 지연 로딩, 객체 간 연관 처리 등을 위해 클래스 로딩 과정에서 클래스를 변경한다. JPA 프로바이더마다 클래스를 변환하는 방식이 다른데, 이를 위해 별도의 JVM 에이전트를 사용하기도 한다.
+스프링의 경우 LoadTimeWeaver를 이용해서 실행 환경에 따라 알맞게 클래스 변환 처리를 할 수 있도록 하고 있다. 하이버네이트는 별도의 클래스 변환 과정이 필요 없기 때문에,
+다른 JPA 프로바이더와 비교해서 실행 환경의 영향을 덜 받는다. 필자는 하이버네이트의 이런 특징 때문에 JPA 프로바이더로 하이버네이트를 선호한다.]
+
+스프링에서 JPA를 설정하는 과정은 다음과 같다.
+	
+	- 의존에 JPA 프로바이더 모듈 추가(이 책에서는 하이버네이트 모듈 추가)
+	- 스프링 설정
+		~ LocalContainerEntityManagerFactoryBean으로 EntityManagerFactory 설정
+		~ JpaTransactionManager로 트랜잭션 관리자 설정
+		~ DAO에서 EntityManagerFactory나 EntityManager 사용
+		
+[책에서 제공하는 소스 코드를 다운로드 받으면, mvnprj/spring4-chap13-jpa 디렉토리에 하이버네이트 4.3 기준 JPA 연동 코드가 포함되어 있고,
+mvnprj/spring4-chap13-jpa-jta 디렉토리에 JPA와 JTA 연동 설정 코드가 포함되어 있다.]
+
+
+	3.1 JPA 프로바이더 모듈 의존 설정
+	
+먼저 할 일은 JPA 프로바이더 모듈을 메이븐 의존 설정에 추가하는 것이다. 이 책에서는 하이버네이트를 JPA 프로바이더로 사용할 것이므로,
+다음과 같이 하이버네이트 의존을 추가해주면 된다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>4.3.4.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.7.4</version>
+		</dependency>
+		...
+	</dependencies>
+	
+	
+hibernate-entitymanager 모듈은 하이버네이트의 JPA 프로바이더 모듈이다. 위 의존 설정에서는 하이버네이트 4.3 버전을 사용했는데,
+하이버네이트 4.3 버전은 JPA 2.1 버전을 지원한다. JPA 2.0 버전을 사용하려면 하이버네이트 4.2나 3.6 버전을 사용하면 된다.
+
+위 메이븐 의존 설정을 보면 하이버네이트 4.3 버전 모듈만 설정하고 JPA 2.1 스펙 의존을 설정하지 않았는데, 그 이유는 하이버네이트 4.3 모듈을 의존에 추가하면,
+하이버네이트가 사용하는 JPA 2.1 스펙 모듈이 자동으로 포함되기 때문이다.
+
+
+	3.2 LocalContainerEntityManagerFactoryBean과 트랜잭션 관리자 설정
+	
+DB 연결과 트랜잭션 관리는 스프링이 처리하기 때문에 JPA의 설정 파일인 persistence.xml에는 매핑 관련 정보와 JPA 프로바이더에 특화된 프로퍼티만 설정하면 된다.
+클래스의 META-INF/persistence.xml 파일이 다음과 같다고 해보자.
+
+
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+		http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd"
+	version="2.1">
+
+	<persistence-unit name="store">
+		<class>net.madvirus.spring4.chap13.store.domain.Item</class>
+		<class>net.madvirus.spring4.chap13.store.domain.PaymentInfo</class>
+		<class>net.madvirus.spring4.chap13.store.domain.PurchaseOrder</class>
+		<exclude-unlisted-classes>false</exclude-unlisted-classes>
+	</persistence-unit>
+</persistence>
+
+
+위 persistence.xml을 위한 LocalContainerEntityManagerFactoryBean 클래스를 설정할 때에는 다음과 같이 영속성 단위 이름이 "store"를
+persistenceUnitName 프로퍼티 값으로 지정하면 된다. dataSource 프로퍼티는 DB 연결에 사용할 DataSource를 전달한다.
+트랜잭션 관리자로는 JpaTransactionManager를 사용한다.
+
+
+	<bean id="jpaVendorAdapter"
+		class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+		<property name="database" value="MYSQL" />
+	</bean>
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="persistenceUnitName" value="store" />
+		<property name="dataSource" ref="dataSource" />
+		<property name="jpaVendorAdapter" ref="jpaVendorAdapter" />
+	</bean>
+
+	<bean id="transactionManager" 
+		class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory" />
+	</bean>
+
+	
+LocalContainerEntityManagerFactoryBean 설정에서 눈여겨볼 부분은 jpaVendorAdapter 프로퍼티다.
+이 프로퍼티는 JPA 프로바이더에 알맞게 설정을 제공하기 위한 어댑터 클래스로 DB, SQL 출력 여부 등을 설정한다.
+위 코드에서는 하이버네이트를 위한 어댑터인 HibernateJpaVendorAdapter 클래스를 사용했다. (이외에 OpenJpaVendorAdapter 클래스와
+EclipseLinkJpaVendorAdapter를 제공하고 있다.) 벤터 어댑터를 통해 설정할 수 있는 프로퍼티는 다음과 같다.
+
+
+	프로퍼티				타입				설명
+	
+	database			o.s.jpa.vendor.Database		DB 종류를 지정한다.
+	
+	databasePlatform	String			프로바이더에 맞는 DB 관련 값을 지정한다. 하이버네이트의 경우 "hibernate.dialect" 설정 프로퍼티 값으로 사용할 클래스 이름을 지정한다.
+	
+	generateDdl			boolean			EntityManagerFactory를 초기화할 때 관련된 테이블을 생성할지 여부를 지정한다. 기본값은 false이다.
+	
+	showSql				boolean			실행하는 쿼리를 로그로 기록할지 여부를 지정한다. 기본값은 false이다.
+	
+	
+JAP 프로바이더가 올바르게 동작하려면 DBMS를 알맞게 지정해주어야 한다. 따라서, database 프로퍼티와 databasePlatform 프로퍼티 중 하나는 반드시 설정해주어야 한다.
+그렇지 않을 경우 정상적으로 동작하지 않을 수 있다.
+
+스프링 4.0.4 버전 기준으로 Database 열거 타입이 정의하고 있는 DBMS 목록은 다음과 같다.
+
+	- DEFAULT
+	- DB2
+	- DERBY
+	- H2
+	- HSQL
+	- INFORMIX
+	- MYSQL
+	- ORACLE
+	- POSTGRESQL
+	- SQL_SERVER
+	- SYBASE
+	
+JpaTransactionManager는 스프링 트랜잭션과 JPA 트랜잭션을 연동해준다.
+
+entityManagerFactory 프로퍼티를 이용해서 트랜잭션을 연동한 EntityManagerFactory 빈을 지정한다.
+
+@Configuration을 이용한 LocalContainerEntityManagerFactoryBean 설정 예는 다음 코드와 같다.
+
+
+	@Configuration
+	@EnableTransactionManagement
+	public class JavaConfig {
+	
+		@Bean(destroyMethod = "close")
+		public DataSource dataSource() {
+			ComboPooledDataSource ds = new ComboPooledDataSource();
+			...
+			return ds;
+		}
+	
+		@Bean
+		public PersistenceExceptionTranslationPostProcessor persistenceExceptionTranslationPostProcessor() {
+			return new PersistenceExceptionTranslationPostProcessor();
+		}
+	
+		@Bean
+		public LocalContainerEntityManagerFactoryBean emf() {
+			LocalContainerEntityManagerFactoryBean emfBean = new LocalContainerEntityManagerFactoryBean();
+			emfBean.setDataSource(dataSource());
+			emfBean.setPersistenceUnitName("store");
+			HibernateJpaVendorAdapter jpaVendorAdapter = new HibernateJpaVendorAdapter();
+			jpaVendorAdapter.setDatabase(Database.MYSQL);
+			emfBean.setJpaVendorAdapter(jpaVendorAdapter);
+			return emfBean;
+		}
+	
+		@Bean
+		public PlatformTransactionManager transactionManager(EntityManagerFactory emFactory) {
+			JpaTransactionManager txMgr = new JpaTransactionManager();
+			txMgr.setEntityManagerFactory(emFactory);
+			return txMgr;
+		}
+		...
+	}
+	
+	
+	3.3 EntityManagerFactory와 EntityManager 사용하기
+	
+JPA를 이용해서 DB 연동 코드를 작성하려면, EntityManagerFactory에서 EntityManager를 구해야 한다.
+가장 간단한 방법은 EntityManagerFactory를 DI를 통해서 전달받는 것이다. 예를 들어, 다음 코드처럼 설정 메소드를 이용해서
+EntityManagerFactory를 전달받도록 구현한 코드가 있다고 하자.
+
+
+	import javax.persistence.EntityManager;
+	import javax.persistence.EntityManagerFactory;
+	
+	public class JpaItemRepository implements ItemRepository {
+	
+		private EntityManagerFactory entityManagerFactory;
+	
+		public void setEntityManagerFactory(EntityManagerFactory emf) {
+			this.entityManagerFactory = emf;
+		}
+	
+		@Override
+		public Item findById(Integer itemId) {
+			EntityManager entityManager = entityManagerFactory.createEntityManager();
+			entityManager.joinTransaction();
+			return entityManager.find(Item.class, itemId);
+		}
+	
+	}
+	
+	
+스프링 설정에서는 설정 프로퍼티에 EntityManagerFactory 빈을 전달해주면 끝이다.
+
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		...
+	</bean>
+	
+	<bean id="itemRepository"
+		class="net.madvirus.spring4.chap13.store.persistence.JpaItemRepository">
+		<property name="entityManagerFactory" ref="entityManagerFactory" />
+	</bean>
+	
+	
+EntityManagerFactory를 전달받는 또 다른 방법은 javax.persistence.PersistenceUnit 어노테이션을 이용하는 것이다.
+스프링은 @PersistenceUnit 어노테이션을 지원하고 있으며, @PersistenceUnit 어노테이션이 적용된 대상에 등록된 EntityManagerFactory 빈을 할당한다.
+
+
+	import javax.persistence.EntityManager;
+	import javax.persistence.EntityManagerFactory;
+	import javax.persistence.PersistenceUnit;
+	
+	public class JpaPaymentInfoRepository implements PaymentInfoRepository {
+	
+		@PersistenceUnit
+		private EntityManagerFactory entityManagerFactory;
+	
+		@Override
+		public void save(PaymentInfo paymentInfo) {
+			EntityManager entityManager = entityManagerFactory.createEntityManager();
+			entityManager.joinTransaction();
+			entityManager.persist(paymentInfo);
+		}
+	
+	}
+
+	
+@PersistenceUnit 어노테이션을 적용하려면 PersistenceAnnotationBeanPostProcessor 클래스를 빈 객체로 등록해주어야 한다.
+또는 PersistenceAnnotationBeanPostProcessor 대신에 <context:annotation-config> 태그를 사용해도 된다.
+AnnotationConfigApplicationContext와 같은 어노테이션 기반 스프링 컨테이너를 사용하면 기본으로 등록된다.
+
+
+	<bean class=
+		"org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor" />
+		
+	<!-- 또는 아래 태그 사용
+	<context:annotation-config />
+	-->
+	
+	
+JPA를 이용한 코드를 보면 EntityManagerFactory로부터 생성한 EntityManager를 이용해서 DB 연동 코드를 작성한다.
+EntityManagerFactory로부터 매번 EntityManager를 가져올 수 있지만, 현재 진행중인 트랜잭션 범위에서 EntityManager가 동작하게 하려면
+아래 코드처럼 EntityManager.joinTransaction() 메소드를 실행해야 한다.
+
+
+	@Repository
+	public class JpaPaymentInfoDao implements PaymentInfoDao {
+		
+		private EntityManagerFactory emf;
+		
+		@Override
+		public void insert(PaymentInfo paymentInfo) {
+			EntityManager entityManager = emf.createEntityManager();
+			entityManager.joinTransaction();	// 현재 진행 중인 트랜잭션에 참여
+			entityManager.persist(paymentInfo);
+			...
+		}
+
+	
+EntityManager.joinTransaction() 메소드를 호출하면 현재 진행중인 트랜잭션에 EntityManager를 연동할 수 있지만, 
+그것보다는 아래 코드와 같이 @PersistenceContext 어노테이션을 이용하면 사용하면 트랜잭션에 이미 연동된 EntityManager를 사용할 수 있다.
+
+
+	import javax.persistence.EntityManager;
+	import javax.persistence.PersistenceContext;
+	
+	public class JpaPurchaseOrderRepository implements PurchaseOrderRepository {
+	
+		@PersistenceContext
+		private EntityManager entityManager;
+	
+		@Override
+		public void save(PurchaseOrder order) {
+			entityManager.persist(order);
+		}
+	
+	}
+
+
+스프링은 @PersistenceContext 어노테이션이 적용된 대상에 프록시 객체를 할당한다. 이 프록시 객체는 내부적으로 현재 진행중인 트랜잭션과 연동된 EntityManager에 모든 요청을 위임한다.
+예를 들어, 위 코드에서 entityManager.persist(order) 코드를 실행하면 실제로는 스프링이 제공한 프록시 객체의 persist() 메소드가 호출되며,
+프록시의 persist() 메소드는 현재 진행중인 트랜잭션과 연동된 EntityManager의 persist() 메소드를 호출한다.
+
+@PersistenceContext 어노테이션이 올바르게 동작하려면 @PersistenceUnit 어노테이션과 마찬가지로 PersistenceAnnotationBeanPostProcessor 클래스나
+<context-annotation-config> 태그를 설정 파일에 등록해주어야 한다. AnnotationConfigApplicationContext와 같은 어노테이션 기반 스프링 컨테이너를
+사용하면 기본으로 등록된다.
+
+
+	3.4 LocalContainerEntityManagerFactoryBean 클래스의 기타 설정
+	
+	(1) 영속성 설정 XML 파일 경로 사용과 영속 단위 이름
+	
+LocalContainerEntityManagerFactoryBean 클래스는 JPA 설정을 위한 다양한 프로퍼티를 제공하고 있다.
+스프링은 기본적으로 classpath:/META-INF/persistence.xml 경로에서 JPA 영속 단위 정보를 읽어오는데,
+이 경로가 아닌 다른 경로에 위치한 파일을 사용하고 싶다면 persistenceXmlLocation 프로퍼티를 이용하면 된다.
+
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="persistenceXmlLocation" 
+			value="classpath:/META-INF/otherpath.xml" />
+		<property name="persistenceUnitName" value="store-other" />
+		...
+	</bean>
+	
+	
+persistenceUnitName 프로퍼티는 영속성 설정 XML 파일에 있는 영속성 단위 이름을 지정한다.
+persistenceUnitName 프로퍼티를 지정하지 않을 경우, 지정한 영속성 설정 XML 파일에 명시된 영속성 단위 이름을 사용한다.
+
+	(2) JPA 매핑 클래스 스캔
+	
+persistence.xml 파일을 사용하는 대신 클래스 스캔 기능을 이용해서 매핑 클래스 정보를 읽어올 수 있다. 이를 위해 해야 할 작업은 packagesToScan 프로퍼티에
+클래스를 검색할 패키지 목록을 지정하는 것이다.
+
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="packagesToScan">
+			<list>
+				<value>net.madvirus.spring4.chap13.store</value>
+			</list>
+		</property>
+		<property name="dataSource" ref="dataSource" />
+		<property name="jpaVendorAdapter" ref="jpaVendorAdapter" />
+	</bean>
+	
+	
+위 설정을 사용하면 지정한 패키지 및 그 하위 패키지에 위치한 JPA 매핑 클래스를 검색해서 JPA 매핑 정보를 사용하게 된다. 따라서, 매핑 클래스 목록을 지정하기 위해 별도의
+persistence.xml 파일을 작성하지 않아도 된다.
+
+	(3) jpaPropertyMap과 jpaProperties를 이용한 프로바이더 설정 추가
+	
+JpaVendorAdapter 클래스를 사용하면 JPA 프로바이더들이 공통으로 제공하는 프로퍼티를 설정할 수 있는데,
+이외에 특정 JPA 프로바이더를 위한 설정을 추가하고 싶다면 jpaPropertyMap 프로퍼티나 jpaProperties 프로퍼티를 이용하면 된다.
+
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="jpaVendorAdapter" ref="jpaVendorAdapter" />
+		<property name="jpaProperties">
+			<value>
+				hibernate.format_sql = true
+			</value>
+		</property>
+	</bean>
+	
+	
+	3.5 JPA와 JTA 연동 ( 하이버네이트 4.3 기준 )
+	
+JPA와 JTA 트랜잭션을 연동하는 것은 간단한 듯 하면서도 설정에 어려움이 따른다. 각 JPA 프로바이더와 사용하는 JTA 구현에 따라 연동 설정 방법이 조금씩 다르기 때문이다.
+이 절에서는 하이버네이트 4.3 JPA 구현을 (JPA 2.1 지원) 기준으로 설명하겠다.
+
+하이버네이트 4.3 기반 JPA 프로바이더가 JTA 트랜잭션과 연동되도록 설정하려면 다음과 같이 LocalContainerEntityManagerFactoryBean의
+jpaProperties 프로퍼티 또는 jpaPropertyMap 프로퍼티를 이용해서 하이버네이트의 hibernate.transaction.jta.platform 설정 속성을 JTA 플랫폼에 맞게 설정해주어야 한다.
+
+
+	<!-- JTA 관련 설정 생략 -->
+	
+	
+	<!-- XaDataSource 관련 설정 생략 -->
+	<bean id="shopDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		<property name="uniqueResourceName" value="shopXaDs" />
+		...
+	</bean>
+	
+	<!-- JPA EntityManagerFactory 설정 -->
+	<bean id="shopEntityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="persistenceXmlLocation" value="/META-INF/conf-4-jta1.xml" />
+		<property name="persistenceUnitName" value="shop" />
+		<property name="jtaDataSource" ref="shopDataSource" />
+		<property name="jpaVendorAdapter" ref="jpaVendorAdapter" />
+		<property name="jpaProperties">
+			<props>
+				<prop key="hibernate.transaction.jta.platform">
+					net.madvirus.spring4.chap13.atomikos.AtomikosJtaPlatform
+				</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<bean id="jpaVendorAdapter"
+		class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+		<property name="database" value="MYSQL" />
+		<property name="showSql" value="true" />
+	</bean>
+	
+	
+하이버네이트의 hibernate.jta.platform 설정 속성은 하이버네이트 4 버전에서 사용되는 설정으로 하이버네이트가 JTA 트랜잭션 관리자를 찾을 때 사용할
+JtaPlatform 구현체를 지정한다. 하이버네이트는 각 컨테이너마다 알맞은 JtaPlatform 구현 클래스를 제공하고 있는데, TransactionEssentials의 경우
+하이버네이트에 기본으로 포함되어 있지 않다. TransactionEssentials은 자체적으로 하이버네이트 연동에 필요한 구현 클래스를 제공하고 있는데,
+TransactionEssentials 3.9 버전까지는 하이버네이트 4 지원을 위한 클래스가 제공되고 있지 않다. 이런 이유로 이 책에서는 하이버네이트 4의 JtaPlatform을
+TransactionEssentials 3.9 버전에 맞게 구현한 클래스를 사용했다. 소스 코드는 다음과 같다.
+
+
+	atomikos/AtomikosJtaPlatform.java		562쪽
+	
+	
+[TransactionEssentials 4 버전에 대해서는 인터넷 문서를 찾아 참고하자.]
+
+하이버네이트 4.3은 각 플랫폼에 맞는 JtaPlatform 구현체를 제공하고 있는데, 주요 목록은 다음과 같다.
+
+	- org.hibernate.engine.transaction.jta.platform.internal.WeblogicJtaPlatform
+	- org.hibernate.engine.transaction.jta.platform.internal.WebSphereJtaPlatform
+	- org.hibernate.engine.transaction.jta.platform.internal.JBossAppServerJtaPlatform
+	- org.hibernate.engine.transaction.jta.platform.internal.ResinJtaPlatform
+	- org.hibernate.engine.transaction.jta.platform.internal.JOTMJtaPlatform
+	- org.hibernate.engine.transaction.jta.platform.internal.BitronixJtaPlatform

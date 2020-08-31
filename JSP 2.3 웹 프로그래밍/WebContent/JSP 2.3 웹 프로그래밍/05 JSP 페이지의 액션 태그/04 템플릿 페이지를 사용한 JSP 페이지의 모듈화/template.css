@@ -1,0 +1,36 @@
+@charset "UTF-8";
+
+body { /* 배경색에 그라데이션 지정 */
+	background: -webkit-gradient(linear, left top, left bottom, from(#55f),
+		to(#fff));
+}
+
+header { /* header 엘리먼트에 적용 */
+	position: relative;
+	height: 15%
+}
+
+#content { /* id 속성의 값이 content인 엘리먼트에 적용 */
+	margin: -10px 9px 50px;
+	height: 65%;
+	width: 90%;
+}
+
+#areaMain { /* id 속성의 값이 areaMain인 엘리먼트에 적용 */
+	width: 70%;
+	float: right; /* 배치 : 오른쪽 */
+	padding: 10px 0;
+	background-color: #fff;
+	border-radius: 8px;
+	-webkit-border-radius: 8px;
+	position: relative;
+}
+
+#areaSub { /* id 속성의 값이 areaSub인 엘리먼트에 적용 */
+	float: left; /* 배치: 왼쪽 */
+}
+
+footer { /* footer 엘리먼트에 적용 */
+	clear: both;
+	height: 15%;
+}

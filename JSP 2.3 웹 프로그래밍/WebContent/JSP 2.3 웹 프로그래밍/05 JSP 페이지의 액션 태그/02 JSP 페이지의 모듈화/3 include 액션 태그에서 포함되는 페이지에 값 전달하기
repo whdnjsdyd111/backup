@@ -1,0 +1,28 @@
+include 액션 태그는 포함되는 JSP 페이지에 값을 전달할 수 있다. 포함되는 JSP 페이지에 값 전달은 요청 파라미터를 추가적으로 지정하여 사용할 수 있는데, include 액션 태그의 바디(body) 안에
+param 액션 태그(<jsp:param>)를 사용하여 다음과 같은 형태로 사용하면 된다.
+
+<jsp:include page="포함되는 페이지" flush="false" >
+	<jsp:param name="paramName1" value="var1" />
+	<jsp:param name="paramName2" value="var2" />
+</jsp:include>
+
+	name 속성
+	
+포함되는 JSP 페이지에 전달할 파라미터의 이름을 표시한다.
+
+	value 속성
+	
+전달할 파라미터의 값을 표시한다. 이때 value 속성의 값으로 표현식을 사용할 수 있다.
+
+<jsp:include page="b.jsp" flush="false" >
+	<jsp:param name="p1" value="<%= var %>" />
+</jsp:include>
+
+
+include 액션 태그에 param 액션 태그를 추가로 사용해 포함되는 페이지에 정보를 전달하는 예제이다.
+include 액션 태그를 가지고 파라미터 값을 전달해서 다른 페이지의 실행 결과를 가져오는 작업은 includeParamTest.jsp 페이지가 하고, 
+정보를 넘겨받아 처리한 결과가 포함되는 페이지 includedParamTest.jsp
+
+includeParamTest.jsp		179쪽
+
+includedParamTest.jsp		

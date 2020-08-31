@@ -1,0 +1,26 @@
+게시판의 글을 저장하기 위해 먼저 board 테이블을 생성한다. board 테이블의 필드 구조는 기본적인 PC 브라우저용 게시판의 계층 구조를 표현하기 위해 비교적 복잡한 편이다.
+이 구조로 테이블을 만들어 놓으면 PC용 계층형 게시판 및 모바일용 단순 구조 게시판도 작성할 수 있다.
+
+
+게시판 시스템에서 사용할 board 테이블을 생성한다. 작성할 테이블 구조는 다음과 같다.
+
+474쪽
+
+CREATE TABLE board
+(
+	num NUMBER CONSTRAINT board_num_pk PRIMARY KEY,
+	writer VARCHAR2(50) CONSTRAINT board_writer_nn NOT NULL,
+	subject VARCHAR2(50) CONSTRAINT board_sub_nn NOT NULL,
+	passwd VARCHAR2(60) CONSTRAINT board_pass_nn NOT NULL,
+	reg_date DATE CONSTRAINT board_reg_date_nn NOT NULL,
+	readcount NUMBER CONSTRAINT board_readcount_nn NOT NULL,
+	ref NUMBER CONSTRAINT board_ref_nn NOT NULL,
+	re_step NUMBER CONSTRAINT board_re_step_nn NOT NULL,
+	re_level NUMBER CONSTRAINT board_re_level_nn NOT NULL,
+	content CLOB CONSTRAINT board_content_nn NOT NULL,
+	ip VARCHAR2(30) CONSTRAINT board_ip_nn NOT NULL,
+);
+
+CREATE SEQUENCE board_seq
+INCREMENT BY 1
+START WITH 1;

@@ -1,0 +1,61 @@
+내장 객체(Implied Object)는 JSP에서 제공하는 것으로, 객체의 레퍼런스를 사용해 객체의 프로퍼티(멤버 필드, 전역 변수)와 메소드에 접근한다. JSP 페이지에서 사용하는 내장 객체는
+레퍼런스 타입의 변수를 선언과 객체 생성 없이 사용할 수 있는데, 이것은 JSP 페이지가 서블릿으로 변환될 때 JSP 컨테이너가 자동으로 제공하기 때문이다.
+지금까지 어떤 선언이나 객체를 생성하지 않고도 request와 out이라는 객체를 사용한 이유는 이들은 바로 JSP 페이지에서 내부적으로 지원이 되는 내장 객체였기 때문이다.
+
+String name = request.getParameter("name");
+
+위의 예시에서 name이라는 파라미터 변수의 값을 얻어내는 getParameter() 메소드는 request 내장 객체의 메소드이다.
+자바의 내장 객체는 자바 클래스 또는 인터페이스의 형태이며, JSP 페이지에서 제공하는 내장 객체는 다음과 같다. ( 자주 사용되는 객체는 * 표시 )
+객체에 대한 자세한 설명은 "http://tomcat.apache.org/tomcat-9.0-doc/servletapi/index.html" 와
+"http://tomcat.apache.org/tomcat-9.0-doc/jspapi/index.html"에서 볼 수 있다.
+
+
+내장 객체명		리턴 타입(Return Type)								설명
+
+request		javax.servlet.http.HttpServletRequset 또는		웹 브라우저의 요청 정보를 저장하고 있는 객체
+			javax.servlet.ServletRequest
+			
+response	javax.servlet.http.HttpServletResponse 또는		웹 브라우저의 요청에 대한 응답 정보를 저장하고 있는 객체
+			javax.servlet.ServletResponse
+
+out			javax.servlet.jsp.JspWriter						JSP 페이지의 출력할 내용을 가지고 있는 출력 스트림 객체
+
+session		javax.servlet.httpSession						하나의 웹 브라우저 내에서 정보를 유지하기 위한 세션 정보를 저장하고 있는 객체
+
+application	javax.servlet.ServletContext					웹 애플리케이션 Context의 정보를 저장하고 있는 객체
+
+pageContext	javax.servlet.jsp.PageContext					JSP 페이지에 대한 정보를 저장하고 있는 객체
+
+page		java.lang.Object								JSP 페이지를 구현한 자바 클래스 객체
+
+config		javax.servlet.ServletConfig						JSP 페이지에 대한 설정 정보를 저장하고 있는 객체
+
+exception	java.lang.Throwable								JSP 페이지에서 예외가 발생한 경우에 사용되는 객체
+
+
+위 표에서 exception 내장 객체는 JSP 페이지가 에러 페이지로 지정될 때 만들어지는 객체이므로 일반적인 JSP 페이지에서는 만들어지지 않는다.
+좀 더 자세한 내용은 exception 내장 객체에서 살핀다.
+
+내장 객체명과 관련하여 주의할 사항이 있는데, 스크립트릿(<%%>)에서 내장 객체명과 같은 이름으로 변수를 선언할 수 없다는 것이다. 만약에 9개의 내장 객체의 이름과 동일한 이름으로 선언하면 에러가 발생한다.
+선언문(<%!%>)에서는 내장 객체명과 같은 이름으로 변수를 선언할 수는 있지만 가급적이면 사용하지 않는 것이 좋다.
+request, session, application, pageContext 내장 객체는 속성(attribute)값을 저장하고 읽을 수 있는 메소드인 setAttribute() 메소드와 getAttribute() 메소드를 제공한다.
+속성값을 저장하고 읽을 수 있는 기능은, 내장 객체를 사용해서 JSP 페이지들 및 서블릿 간에 정보를 주고받을 수 있게 해 준다.
+
+
+메소드 : 리턴 타입						설명
+
+setAttribute(String key, 			해당 내장 객체의 속성(attribute)값을 설정하는 메소드로, 속성명에 해당하는 key 매개 변수에 속성값에 해당하는 value 매개 변수의 값을 지정한다.
+	Object value) : void
+	
+getAttributeNames() :				해당 내장 객체의 속성명을 읽어오는 메소드로, 모든 속성의 이름을 얻어낸다.
+java.util.Enumeration
+
+getAttribute(String key) : Object	해당 내장 객체의 속성명을 읽어오는 메소드로, 주어진 key 매개 변수에 해당하는 속성값을 얻어낸다.
+
+removeAttribute(String key) : void	해당 내장 객체의 속성을 제거하는 메소드로, 주어진 key 매개 변수에 해당하는 속성명을 제거한다.
+
+
+	setAttribute(String key, Object value) 메소드
+	
+setAttribute(String key, Object value) 메소드의 매개 변수 value는 Object 타입이므로 모든 타입의 객체를 저장할 수 있으며, key는 String 타입으로만 속성명을 지정할 수 있다.
+앞으로 많은 예제들에서 이들 공통 메소드들을 다룰게 될 것이다.

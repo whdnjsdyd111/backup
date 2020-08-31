@@ -1,0 +1,184 @@
+지금까지 리파지터리 인터페이스를 작성하는 방법에 대해서 살펴봤다. 인터페이스만 작성하면 런타임에 리파지터리 구현 객체를 만들어주기 때문에,
+실제 작성할 코드 양이 상당히 줄어들게 된다. 그런데, 이 인터페이스를 작성하다 보면 역시나 save(), findOne() 과 같은 메소드를 여러 리파지터리에서 반복해서 작성하게 된다.
+
+
+	// findOne, save 등 동일한 메소드 이름을 가진 중복 코드 작성
+
+	public interface EmployeeRepository extends Repository<Employee, Long> {
+	
+		Employee findOne(Long id);
+		Employee save(Employee emp);
+		...
+	}
+	
+	public interface TeamRepository extends Repository<Team, Long> {
+		Team findOne(Long id);
+		Team save(Team team);
+		...
+	}
+	
+	
+스프링 데이터 JPA는 이런 기본 메소드를 각 리파지터리마다 작성해야 하는 번거로움을 없애기 위해, 자주 사용되는 기본 메소드를 정의한 인터페이스를 이미 제공하고 있다.
+이들 인터페이스는 다음과 같이 구성되어 있다.
+
+
+			<< interface >>
+				Repository
+				  ↑
+			<< interface >>
+			CrudRepository
+				  ↑
+			<< interfacce >>				<< interface >>
+		PagingAndSortingRepository		JpaSpecificationExecutor
+				  ↑
+			<< interface >>
+			JpaRepository
+			
+			
+리파지터리로 사용할 인터페이스는 필요한 메소드를 정의한 인터페이스를 상속받기만 하면 된다. 예를 들어, CrudRepository 인터페이스는 findOne()과 save()를 비롯해
+CRUD에 필요한 기본적인 메소드를 포함하고 있기 때문에, 기본 CRUD 기능 외에 자신만의 추가적인 조회 메소드가 필요하다면 Repository 인터페이스 대신
+CrudRepository 인터페이스를 상속받은 리파지터리를 만들면 된다.
+
+
+	public interface EmployeeRepository extends CrudRepository<Employee, Id> {
+		// findOne(), save() 등의 메소드는 이미 CrudRepository에 정의
+		public List<Employee> findByJoinedDateBetween(Date from, Date to);
+	}
+	
+	
+만약 위 그림에 표시한 인터페이스에 정의된 모든 메소드가 필요하다면 JpaRepository와 JpaSpecificationExecutor 인터페이스를 상속받으면 된다.
+
+[JpaRepository 인터페이스와 JpaSpecificationExecutor 인터페이스를 상속받으면, 기본적인 모든 메소드를 상속받기 때문에
+추가할 메소드는 몇 개 되지 않는다. 이런 이유로 코딩의 편리함을 위해 이 두 인터페이스를 모두 상속받고 시작할 때도 있다. 반면에, 일부 개발자는 필요한 메소드만 추가하는 것을 선호하는데,
+이런 성향의 개발자는 이들 인터페이스를 상속받아 필요하지도 않은 메소드를 포함시키기 보다는 필요한 메소드만 직접 추가한다.]
+
+
+	5.1 CrudRepository 인터페이스의 메소드
+	
+o.s.data.repository.CrudRepository 인터페이스가 제공하는 메소드는 다음과 같다.
+
+
+	@NoRepositoryBean
+	public interface CrudRepository<T, ID extends Serializable> extends Repository<T, ID> {
+		<S extends T> S save(S entity);
+		<S extends T> Iterable<S> save(Iterable<S> entities);
+		T findOne(ID id);
+		boolean exists(ID id);
+		Iterable<T> findAll();
+		Iterable<T> findAll(Iterable<ID> ids);
+		long count();
+		void delete(ID id);
+		void delete(T entity);
+		void delete(Iterable<? extends T> entities);
+		void deleteAll();
+	}
+	
+	
+앞에서 설명했던 기본적인 CRUD 메소드가 정의되어 있는 것을 알 수 있다.
+
+
+	5.2 PagaingAndSortingRepository 인터페이스의 메소드
+	
+o.s.data.repository.PagingAndSortingRepository 인터페이스가 정의한 메소드는 다음과 같다.
+이름에서 알 수 있듯이 정렬과 페이징에 대한 메소드가 추가되어 있다.
+
+
+	public interface PagingAndSortingRepository<T, ID extends Serializable>
+			extends CrudRepository<T, ID> {
+		Iterable<T> findAll(Sort sort);		
+		Page<T> findAll(Pageable pageable);
+	}
+	
+	
+	5.3 JpaRepository 인터페이스의 메소드
+	
+o.s.data.jpa.repository.JpaRepository 인터페이스가 제공하는 메소드는 다음과 같으며, JPA 영속성 컨텍스트를 플러시하는 기능과
+리턴 타입이 List인 조회 메소드 등이 포함되어 있다.
+
+
+	public interface JpaRepository<T, ID extends Serializable>
+			extends PagingAndSortingRepository<T, ID> {
+		List<T> findAll();
+		List<T> findAll(Sort sort);
+		List<T> findAll(Iterable<ID> ids);
+		<S extends T> List<S> save(Iterable<S> entities);
+		void flush();
+		<S extends T> S saveAndFlush(S entity);
+		void deleteInBatch(Iterable<T> entities);
+		void deleteAllInBatch();
+		T getOne(ID id);
+	}
+	
+	
+메소드 목록에서 flush() 메소드는 아직 DB에 반영되지 않은 내용을 DB에 반영시킨다.
+saveAndFlush() 메소드는 save()를 수행한 뒤에 flush()를 한다.
+
+deleteInBatch() 메소드는 파라미터로 전달받은 엔티티 목록의 식별값을 이용해서 다음의 쿼리를 실행한다. (JPA Query의 executeUpdate() 메소드를 이용해서 실행한다.)
+
+
+	delete from 엔티티타입 x where x = ?1 or x = >2 or ...
+	
+	
+deleteAllInBatch() 메소드는 다음 쿼리를 이용해서 전체 삭제 처리를 한다.
+
+
+	delete from 엔티티타입 x
+	
+	
+getOne() 메소드는 EntityManager의 getReference() 메소드를 이용해서 엔티티에 대한 레퍼런스를 구한다.
+참고로 EntitiyManager.getReference()가 리턴한 레퍼런스 객체는 실제 엔티티 객체가 아닌 프록시 객체다.
+이 프록시 객체는 최초로 데이터에 접근할 때 DB에서 데이터를 읽어오는데 만약 DB에 식별값에 해당하는 데이터가 존재하지 않으면 EntityNotFoundException을 발생시킨다.
+(스프링은 EntityNotFoundException을 다시 스프링에 맞는 ObjectRetrievalFailureException으로 변환해서 발생한다.)
+
+
+	5.4 JpaSpecificationExecutor 인터페이스의 메소드
+	
+o.s.date.jpa.repository.JpaSpecificationExecutor 인터페이스는 Specification 타입을 파라미터로 갖는 메소드를 정의하고 있다.
+정의된 메소드는 다음과 같다.
+
+
+	public interface JpaSpecificationExecutor<T> {
+		T findOne(Specification<T> spec);
+		List<T> findAll(Specification<T> spec);
+		Page<T> findAll(Specification<T> spec, Pageable pageable);
+		List<T> findAll(Specification<T> spec, Sort sort);
+		long count(Specification<T> spec);
+	}
+	
+	
+	5.5 공통 인터페이스 만들기
+	
+많은 엔티티 클래스가 PK에 해당하는 식별값 프로퍼티 외에 추가로 고유한 값을 갖는 name 프로퍼티를 갖는다고 해보자. 이 경우 각 엔티티에 해당하는 리파지터리 인터페이스는
+다음과 같이 findByName(String name) 메소드를 정의할 것이다.
+
+
+	// findByName 메소드 중복 입력 발생
+	
+	public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+		Employee findByName(String name);
+		...
+	}
+	
+	public interface TeamRepository extends JpaRepository<Team, Long> {
+		Team findByName(Long name);
+	}
+	
+	
+이렇게 중복해서 출련하는 메소드가 있다면, 이 중복 메소드를 정의한 인터페이스를 정의하는 방법으로 메소드 중복 입력을 줄일 수 있다.
+예를 들어, 다음과 같이 findByName() 메소드를 정의한 인터페이스를 만들 수 있다.
+
+
+	import org.springframework.data.repository.NoRepositoryBean;
+	
+	public interface NameFindableRepository<T> {
+		T findByName(String name);
+	}
+	
+	
+이제 findByName() 메소드가 필요한 리파지터리 인터페이스는 이 메소드를 직접 추가하는 대신 NameFindableRepository를 상속받으면 된다.
+
+
+	public interface EmployeeRepository
+			extends JpaRepository<Employee, Long>, NameFindableRepository<Employee> {
+			
+	}

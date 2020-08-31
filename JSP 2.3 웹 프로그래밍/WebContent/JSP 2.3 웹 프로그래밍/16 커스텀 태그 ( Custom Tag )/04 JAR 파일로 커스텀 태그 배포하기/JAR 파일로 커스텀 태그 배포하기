@@ -1,0 +1,21 @@
+기존에 작성한 태그 핸들러(자바 클래스 파일)와 태그 파일을 JAR로 배포하기 위한 순서는 다음과 같다.
+
+1	먼저 임의의 드라이브에 임의의 폴더를 만든다. 여기서는 [temp] 폴더를 생성한다.
+
+2	워크스페이스 프로젝트의 [build] - [classes] 폴더에 있는 태그 핸들러(자바 클래스 파일)들을 [temp] 폴더에 복사한다.
+	여기서는 [project] 워크스페이스의 [studyjsp] 프로젝트의 [build] - [classes] 폴더 안에 있는 [ch16] 폴더를 [temp] 폴더에 복사한다.
+
+3	[temp] 폴더 안에 [META-INF] 폴더를 생성한다.
+
+4	워크스페이스 프로젝트의 [WebContent] - [WEB-INF] 폴더 안에 있는 [tags] 폴더를 [temps]-[META-INF] 폴더에 복사한다.
+	여기서는 [project] 워크스페이스의 [studyjsp] 프로젝트의 [WebContent] - [WEB-IFN] 폴더 안에 있는 [tags] 폴더를 [temp] - [META-INF] 폴더에 복사한다.
+
+5	워크스페이스 프로젝트의 [WebContent] - [WEB-INF] - [tlds] 폴더 안에 있는 모든 tld 파일을 [temp] - [META-INF] 폴더에 복사한다.
+	여기서는 [project] 워크스페이스의 [studyjsp] 프로젝트의 [WebContent] - [WEB-INF] - [tlds] 폴더 안에 있는 모든
+	tld 파일을 [temp] - [META-INF] 폴더에 복사한다.
+
+6	tag 파일의 경우 JAR 파일로 배포할 때 tld 파일을 생성해서 배포해야 한다.	
+	tag 파일을 [temp] - [META-INF] 폴더에 복사한다.
+
+7	[명령 프롬프트] 창을 열어 아래 명령을 입력하고 실행한다.
+	jar cvf0 study.jar

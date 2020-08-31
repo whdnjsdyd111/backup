@@ -1,0 +1,117 @@
+스프링은 공통 기능인 Aspect를 지정할 Pointcut을 지정하기 위해 AspectJ의 문법을 사용한다.
+예를 들어, <aop:태그>를 이용하여 Aspect를 설정하는 경우 다음과 같이 execution 명시자를 이용하여 Advice가 적용될 Pointcut을 설정했었다.
+
+
+	<aop:config>
+		<aop:aspect id="traceAspect" ref="profiler">
+			<aop:pointcut id="publicMethod"
+				expression="execution(public * net.madvirus.spring4.chap06..*(..))" />
+		</aop:aspect>
+	</aop:config>
+	
+	
+AspectJ는 Pointcut을 명시할 수 있는 다양한 명시자를 제공하는데, 스프링은 메소드 호출과 관련된 명시자(designator)만을 지원하고 있다.
+이 절에서는 execution 명시자와 within 명시자, 그리고 스프링에서 추가적으로 제공하는 bean 명시자에 대해서 살펴보도록 하겠다.
+
+
+	10.1	execution 명시자
+	
+execution 명시자는 Advice를 적용할 메소드를 명시할 때 사용되며, 기본 형식은 다음과 같다.
+
+
+	execution(수식어패턴? 리턴타입패턴 클래스이름패턴?메소드이름패턴(파라미터패턴)
+	
+
+'수식어패턴' 부분은 생략 가능한 부분으로서 public, protected 등이 온다. 스프링 AOP의 경우 public 메소드에만 적용 가능하기 때문에 사실상 public 이외의 값은 의미가 없다.
+
+'리턴타입패턴' 부분은 리턴 타입을 명시한다. '클래스이름패턴'과 '이름패턴' 부분은 클래스 이름 및 메소드 이름을 패턴으로 명시한다.
+'파라미터패턴' 부분은 매칭될 파라미터에 대해서 명시한다.
+
+각 패턴은 '*'을 이용하여 모든 값을 표현할 수 있다. 또한, '..' 을 이용하여 0개 이상이라는 의미를 표현할 수 있다.
+다음은 몇 가지 예이다.
+
+	- execution(public void set*(..)) : 리턴 타입이 void이고 메소드 이름이 set으로 시작하고, 파라미터가 0개 이상인 메소드 호출.
+		파라미터 부분에 '..'을 사용하여 파라미터가 0개 이상인 것을 표현하였다.
+		
+	- execution(* net.madvirus.spring4.chap06.*.*()) : net.madvirus.spring4.chap06 패키지의 파라미터가 없는 모든 메소드 호출
+	
+	- execution(* net.madvirus.spring4.chap06..*.*(..)) : net.madvirus.spring4.chap06 패키지 및 하위 패키지에 있는,
+		파라미터가 0개 이상인 메소드 호출. 패키지 부분에 '..' 을 사용하여 해당 패키지 또는 하위 패키지를 표현하였다.
+		
+	- execution(Integer net.madvirus.spring4.chap06.board.WriteArticleService.write(..)) : 리턴 타입이 Integer인
+		WriteArticleService 인터페이스의 write() 메소드 호출
+		
+	- execution(* get*(*)) : 이름이 get으로 시작하고 1개의 파라미터를 갖는 메소드 호출
+	
+	- execution(* get*(*, *)) : 이름이 get으로 시작하고 2개의 파라미터를 갖는 메소드 호출
+	
+	- execution(* read*(Integer, ..)) : 메소드 이름이 read로 시작하고, 첫 번째 파라미터 타입이 Integer이며, 1개 이상의 파라미터를 갖는 메소드 호출
+	
+
+	10.2	within 명시자
+	
+within 명시자는 특정 타입에 속하는 메소드를 Pointcut으로 설정할 때 사용된다. 
+다음은 설정 예이다.
+
+	- within(net.madvirus.spring4.chap06.board.WriteArticleService) : WriteArticleService 인터페이스의 모든 메소드 호출
+
+	- within(net.madvirus.spring4.chap06.board.*) : net.madvirus.spring4.chap06.board 패키지에 있는 모든 메소드 호출
+
+	- within(net.madvirus.spring4.chap06..*) : net.madvirus.spring4.chap06 패키지 및 그 하위 패키지에 있는 모든 메소드 호출
+	
+
+	10.3	bean 명시자
+	
+bean 명시자는 스프링에서 추가적으로 제공하는 명시자로서, 스프링 빈 이름을 이용하여 Pointcut을 정의한다. bean 명시자는 빈 이름의 패턴을 갖는다.
+다음은 설정 예이다.
+
+	- bean(writeArticleService) : 이름이 writeArticleService인 빈의 메소드 호출
+	
+	- bean(*ArticleService) : 이름이 ArticleService로 끝나는 메소드 호출
+	
+	10.4	Pointcut의 조합
+	
+각각의 표현식은 '&&' 또는 '||' 연산자를 이용하여 연결할 수 있다. 예를 들어, @Aspect 어노테이션을 이용하는 경우, 
+다음과 같이 '&&' 연산자를 사용하여 두 표현식을 모두 만족하는 JoinPoint에만 Advice가 적용되도록 할 수 있다.
+
+
+	@AfterThrowing(pointcut = "execution(public * get*()) && execution(public void set*(..))")
+	public void throwingLogging() {
+		...
+	}
+	
+	
+XML 스키마를 이용하여 Aspect를 설정하는 경우에도 다음과 같이 '&&' 또는 '||' 연산자를 사용할 수 있다.
+
+
+	<aop:pointcut id="propertyMethod"
+		expression="execution(public * get*()) &amp;&amp; execution(public void set*(..))"
+		/>
+		
+		
+설정 파일은 XML 문서이기 때문에 값에 들어가는 '&&'를 '&amp;&amp;'로 표현하였다.
+이렇게 입력하는 것은 불편하므로, 스프링은 설정 파일에서 '&&'나 '||' 대신 'and'와 'or'를 사용할 수 있도록 하고 있다.
+따라서, 위 XML 설정을 다음과 같이 입력할 수도 있다.
+
+
+	<aop:pointcut id="propertyMethod"
+		expression="execution(public * get*()) and execution(public void set*(..))"
+		/>
+		
+		
+@Pointcut 어노테이션을 사용하는 경우 메소드 이름을 이용해서 손쉽게 두 개 이상의 Pointcut을 조합할 수 있다.
+아래 코드는 @Pointcut 메소드를 이용한 Pointcut 조합의 작성 예이다.
+
+
+	@Pointcut("execution(public * *(..))")
+	private void publicMethod() {}
+	
+	@Pointcut("within(net.madvirus.spring4.chap06.board..*")
+	private void inBoard() {}
+	
+	@Pointcut("publicMethod() && inBoard()")
+	private void boardPublicOperation() {}
+	
+	
+@Pointcut 어노테이션을 이용하면 XML 스키마를 이용하는 경우에 비해 Pointcut의 조합 및 재사용이 보다 쉽기 때문에 공통으로 사용되는 Pointcut은
+@Pointcut 어노테이션을 이용해서 표현하는 것이 좋다.

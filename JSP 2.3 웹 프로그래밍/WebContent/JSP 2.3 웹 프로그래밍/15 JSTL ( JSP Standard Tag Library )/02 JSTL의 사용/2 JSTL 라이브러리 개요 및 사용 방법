@@ -1,0 +1,27 @@
+JSTL은 많은 태그를 제공하며 이들을 사용하기 위해 각각 네임스페이스로 라이브러리를 제공한다.
+라이브러리들은 URL로 제공되며 이들을 사용할 때는 접두어(prefix)를 사용한다. JSTL 라이브러리는 JSP 2.1 이상에서는 JSTL 1.2.1 최신 저번으로 제공되며
+Core, XML, 118N, SQL, Functions 라이브러리들을 제공한다.
+JSTL 라이브러리에서 제공하는 태그를 사용하려면 taglib 디렉티브에 사용할 라이브러리의 prefix 속성과 url 속성에 해당하는 값을 기술한다.
+
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+-	prefix : uri 속성에 명시 된 값 대신에 해당 페이지에서 prefix 속성값으로 지정된 값을 사용
+-	uri : 라이브러리의 네임스페이스
+
+
+각 라이브러리의 uri와 prefix(접두어) 및 제공 기능은 다음과 같다.
+
+라이브러리				URI										Prefix	제공 기능
+
+Core(코어)			http://java.sun.com/jsp/jstl/core c		c		변수, 흐름 제어, URL 제어 및 기타 기능 등
+
+XML					http://java.sun.com/jsp/jstl/xml		x		XML, 데이터 접근 및 파싱, 흐름 제어 및 XML 변환 등
+
+118N(국제화, 포맷팅)	http://java.sun.com/jsp/jstl/fmt		fmt		로케일, 메시지, 숫자 문자 형식 등
+
+SQL(데이터베이스)		http://java.sun.com/jsp/jstl/sql		sql		SQL 처리 등
+
+Functions(함수)		http://java.sun.com/jsp/jstl/functions	fn		함수를 사용한 문자열 및 컬렉션 처리 등
+
+
+JSTL 태그 라이브러리에 대한 자세한 내용은 SUN 사의 JSTL Tag Library Document 를 참조한다.

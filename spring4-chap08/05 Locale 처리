@@ -1,0 +1,201 @@
+스프링이 제공하는 <spring:message> 커스텀 태그는 웹 요청과 관련된 언어 정보를 이용해서 알맞은 언어의 메시지를 출력한다.
+다음은 웹 브라우저의 언어 설정을 한국어(ko_kr)로 했을 때와 영어(en_us)로 했을 때 <spring:message> 커스터 태그가 언어에 따라 알맞은 메시지를 출력해주는 결과 화면을 보여주고 있다.
+
+
+	http://localhost:8001/spring4-chap08/auth/login				[한국어 로그인 화면]
+	Locale 설정을 en_us 로 변경 후
+	http://localhost:8001/spring4-chap08/auth/login				[영어 로그인 화면]
+	
+	
+실제로, 스프링 MVC는 LocaleResolver를 이용해서 웹 요청과 관련된 Locale을 추출하고, 이 Locale 객체를 이용해서 알맞은 언어의 메시지를 선택하게 된다.
+이 절에서는 스프링이 제공하는 LocaleResolvver를 사용해서 Locale을 변경하는 방법에 대해서 살펴보도록 하겠다.
+
+
+	5.1	LocaleResolver 인터페이스
+	
+o.s.web.servlet.LocaleResolver 인터페이스는 다음과 같이 정의되어 있다.
+
+
+	package org.springframework.web.servlet;
+	
+	import java.util.Locale;
+	
+	import javax.servlet.http.HttpServletRequest;
+	import javax.servlet.http.HttpServletResponse;
+	
+	public interface LoacleResolver {
+		Locale resolveLocale(HttpServletRequest request);
+		void setLocale(HttpServletRequest request, HttpServletResponse response,
+			Locale locale);
+	}
+	
+	
+resolveLocale() 메소드는 요청과 관련된 Locale을 리턴한다. DispatcherServlet은 등록되어 있는 LocaleResolver의 
+resolveLocale() 메소드를 호출해서 웹 요청을 처리할 때 사용할 Locale을 구한다.
+
+setLocale() 메소드는 Locale()을 변경할 때 사용된다. 예를 들어, 쿠키나 HttpSession에 Locale 정보를 저장할 때에 이 메소드가 사용된다.
+
+
+	5.2 LocaleResolver의 종류
+	
+스프링이 기본적으로 제공하는 LocaleResolver 구현 클래스는 다음과 같다.
+모두 o.s.web.servlet.i18n	패키지에 위치한다.
+
+
+			클래스					설명
+	
+	AcceptHeaderLocaleResolver		웹 브라우저가 전송한 Accept-Language 헤더로부터 Locale 선택한다. setLocale
+	
+	CookieLocaleResolver			쿠키를 이용해서 Locale 정보를 구한다. setLocale() 메소드는 쿠키에 Locale 정보를 저장한다.
+	
+	SessionLocaleResolver			세션으로부터 Locale 정보를 구한다. setLocale() 메소드는 세션에 Locale 정보를 저장한다.
+	
+	FixedLocaleResolver				웹 요청에 상관없이 특정한 Locale로 설정한다. setLocale() 메소드를 지원하지 않는다.
+	
+	
+LocaleResolver를 직접 등록할 경우 빈의 이름을 "localeResolver"로 등록해주어야 한다.
+
+	(1) AcceptHeaderLocaleResolver
+	
+LocaleResolver를 별도로 설정하지 않을 경우 AcceptHeaderLocaleResolver를 기본 LocaleResolver로 사용한다.
+AcceptHeaderLocaleResolver는 Accept-Language 헤더로부터 Locale 정보를 추출한다.
+
+헤더로부터 Locale 정보를 추출하기 때문에, setLocale() 메소드를 이용해서 Locale 설정을 변경할 수 없다.
+
+	(2) CookieLocaleResolver
+	
+CookieLocaleResolver는 쿠키를 이용해서 Locale 정보를 저장한다. setLocale() 메소드를 호출하면 Locale 정보를 담은 쿠키를 생성하고,
+resolveLocale() 메소드는 쿠키로부터 Locale 정보를 가져와 Locale을 설정한다. 만약 Locale 정보를 담은 쿠키가 존재하지 않을 경우,
+defaultLocale 프로퍼티의 값을 Locale로 사용한다. defaultLocale 프로퍼티의 값이 null인 경우에는 Accept-Language 헤더로부터 Locale 정보를 추출한다.
+
+CookieLocaleResolver는 쿠키와 관련해서 별도 설정을 필요로 하지 않지만, 생성할 쿠키 이름, 도메인, 경로 등의 설정을 직접 하고 싶다면
+다음과 같은 프로퍼티를 알맞게 설정해주면 된다.
+
+	
+	프로퍼티 			설명
+		
+	cookieName		사용할 쿠키 이름
+	
+	cookieDomain	쿠키 도메인
+	
+	cookiePath		쿠키 경로. 기본값은 "/"이다.
+	
+	cookieMaxAge	쿠키 유효 시간
+	
+	cookieSecure	보안 쿠키 여부. 기본값은 false이다.
+	
+	
+	(3) SessionLocaleResolver
+	
+SessionLocaleResolver는 HttpSession에 Locale 정보를 저장한다. setLocale() 메소드를 호출하면 Locale 정보를 세션에 저장하고,
+resolveLocale() 메소드는 세션으로부터 Locale을 가져와 웹 요청의 Locale을 설정한다. 만약 Locale 정보가 세션에 존재하지 않으면,
+defaultLocale 프로퍼티의 값을 Locale로 사용한다. defaultLocale 프로퍼티의 값이 null인 경우에는 Accept-Language 헤더로부터 Locale 정보를 추출한다.
+
+	(4) FixedLocaleResolver
+	
+FixedLocaleResolver는 웹 요청에 상관없이 defaultLocale 프로퍼티 설정한 값을 웹 요청을 위한 Locale로 사용한다.
+FixedLocaleResolver는 setLocale() 메소드를 지원하지 않는다. setLocale() 메소드를 호출할 경우 UnsupportedOperationException 예외를 발생시킨다.
+
+
+	5.3 LocaleResolver 등록
+	
+DispatcherServlet은 이름이 "localeResolver"인 빈을 LocaleResolver로 사용한다.
+따라서, 원하는 LocaleResolver를 적용하고 싶다면, 빈 이름을 잘못 입력하지 않도록 주의해야 한다.
+
+	
+	<!-- 이름이 반드시 localeResolver여야 함! -->
+	<bean id="localeResolver"
+			class="org.springframework.web.servlet.i18n.SessionLocaleResolver" />
+			
+			
+	5.4 LocaleResovler를 이용한 Locale 변경
+	
+LocaleResolver를 빈으로 등록했다면, LocaleResovler를 이용해서 Locale을 변경할 수 있게 된다.
+예를 들어, 다음과 같이 LocaleResolver를 설정했다고 하자.
+
+
+	<bean class="madvirus.spring.chap07.controller.LocaleChangeController">
+		<property name="localeResovler" ref="localeResolver" />
+	</bean>
+	
+	<bean id="localeResovler"
+		class="org.springframework.web.servlet.i18n.SessionLocaleResolver" />
+		
+		
+이 경우, 컨트롤러 클래스는 다음과 같이 LocaleResolver의 setLocale() 메소드를 호출해서 클라이언트의 웹 요청을 위한 Locale을 변경할 수 있다.
+
+
+	import org.springframework.web.servlet.LocaleResovler;
+	
+	@Controller
+	public class LocaleChangeController {
+		
+		private LocaleResolver localeResolver;
+		
+		@RequestMapping("/changeLanguage")
+		public String change(@RequestParam("lang") String language,
+				HttpServletRequest request, HttpServletResponse response) {
+			Locale locale = new Locale(language);
+			localeResolver.setLocale(request, response, locale);
+			return "redirect:/index.jsp";		
+		}
+		
+		public void setLocaleResolver(LocaleResolver localeResolver) {
+			this.localeResolver = localeResolver;
+		}
+		
+	}
+	
+	
+LocaleResolver를 이용해서 Locale을 변경하면, 이후 요청에 대해서는 지정한 Locale을 이용해서 메시지 등을 로딩하게 된다.
+
+RequestContextUtils 클래스는 웹 요청과 관련된 LocaleResolver를 구할 수 있는 메소드를 제공하고 있으므로,
+위 코드를 다음과 같이 변경할 수도 있다.
+
+
+	import org.springframework.web.servlet.support.RequestContextUtils
+	
+	@Controller
+	public class LocaleChangeController2 {
+		
+		@RequestMapping("/changeLanguage2")
+		public String change(@RequestParam("lang") String language,
+				HttpServletRequest request, HttpServletResponse response) {
+			Locale locale = new Locale(language);
+			LocaleResolver localeResolver = RequestContextUtils
+				.getLocaleResolver(request);
+			localeResolver.setLocale(request, response, locale);
+			return "redirect:/index.jsp";		
+		}
+		
+		
+	}
+	
+[Locale 변경을 지원하지 않는 LocaleResolver의 setLocale() 메소드를 실행하면 익셉션이 발생한다.
+따라서, Locale 변경 기능을 사용할 때에는 사용하는 LocaleResolver가 Locale 변경을 지원하는지 확인해야 한다.]
+
+
+	5.5 LocaleChangeInterceptor를 이용한 Locale 변경
+	
+Locale을 변경하기 위해 별도의 컨트롤러 클래스를 개발한다는 것은 다소 성가신 일이다.
+이 경우, 스프링이 제공하는 LocaleChangeInterceptor 클래스를 사용하면 웹 요청 파라미터를 이용해서 손쉽게 Locale을 변경할 수 있다.
+
+LocaleChangeInterceptor 클래스는 HandlerInterceptor로서 다음과 같이 설정한다.
+아래 설정에서 paramName 프로퍼티는 Locale 언어를 변경할 때 사용될 요청 파라미터의 이름을 지정한다.
+
+	
+	<mvc:interceptors>
+		<bean class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor">
+			<property name="paramName" value="language" />
+		</bean>
+	</mvc:interceptors>
+	
+	
+위 코드에서는 paramName 프로퍼티의 값으로 language를 설정했는데, 이 경우 language 요청 파라미터를 사용해서 Locale을 변경할 수 있다.
+
+
+	http://localhost:8080/spring4-chap08/auth/login?language=en
+	
+	
+LocaleChangeInterceptor는 paramName 프로퍼티로 설정한 요청 파라미터가 존재할 경우,
+파라미터의 값을 이용해서 Locale을 생성한 뒤 LocaleResolver를 이용해서 Locale을 변경한다. 이후, 요청에서는 변경된 Locale이 적용된다.

@@ -1,0 +1,29 @@
+스프링은 JSP나 몇몇 템플릿 엔진을 위해 메시지나 커맨드 객체의 값을 출력할 수 있는 기능을 제공하고 있다.
+JSP를 뷰 기술로 사용할 경우 다음의 커스터 태그를 이용해서 메시지를 출력할 수 있다.
+
+	
+	<title><spring:message code="login.form.title" /></title>
+	
+	
+만약 <spring:message> 커스텀 태그가 출력하는 값이 '<입력폼>' 이라고 하자. 이때 '<'와 '>'는 HTML에서 특수 문자이기 때문에
+'&lt;'나 '&gt;' 와 같은 엔티티 레퍼런스로 변환해주어야 원하는 형태로 화면에 표시가 된다.
+
+이런 특수 문자를 어떻게 처리할 지의 여부는 defaultHtmlEscape 컨텍스트 파라미터를 통해서 지정할 수 있다.
+아래 코드는 설정 예이다.
+
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<wab-app ...>
+	
+		<context-param>
+			<param-name>defaultHtmlEscape</param-name>
+			<param-value>false</param-value>
+		</context-param>
+		...
+	</web-app>
+	
+	
+defaultHtmlEscape 컨텍스트 파라미터의 값을 true로 지정하면 스프링이 제공하는 커스텀 태그나 Velocity 매크로는 HTML의 '&'나 '<'와 같은 특수 문자를 엔티티 레퍼런스로 치환한다.
+defaultHtmlEscape 컨텍스트 파라미터의 값이 false면, 특수 문자를 그대로 출력한다.
+
+참고로, defaultHtmlEscape 컨텍스트 파라미터의 기본 값은 true이다.

@@ -1,0 +1,234 @@
+객체를 생성할 때 new 키워드를 이용하는 것이 보통이지만, 객체를 생성하기 위해 정적(static) 메소드를 사용해야 할 때가 있다.
+또한, new 키워드로 객체를 생성한 뒤에 다소 복잡한 과정을 거쳐 초기화를 진행하는 경우도 있다.
+지금까지 살펴본 XML 설정으로는 이 두 가지 경우 즉, 정적 메소드를 이용해서 객체를 생성하는 경우와 객체 생성 과정이 다소 복잡한 경우를 처리할 수 없는데, 
+이런 경우를 위해 스프링은 다음과 같은 두 가지 방식의 객체 생성 방식을 제공하고 있다.
+
+	- 객체 생성에 사용되는 static 메소드 지정
+	- FactoryBean 인터페이스를 이용한 객체 생성 처리
+	
+각 방식에 대해 차례대로 살펴보도록 하자.
+
+	
+	4.1 객체 생성을 위한 정적 메소드 설정
+	
+다음의 코드를 보자.
+
+
+	public abstract class ErpClientFactory {
+		public static ErpClientFactory instance() {
+			return new DefaultErpClientFactory();
+		}
+		
+		protected ErpClientFactory() {
+		}
+	
+		public abstract ErpClient create();
+	}
+		
+		
+ErpClientFactory 클래스는 외부 ERP 시스템과의 통신 기능을 제공하는 ErpClient 객체를 생성하는 기능을 제공한다고 가정하자.
+ErpClientFactory의 객체를 구하려면 instance() 메소드를 사용해야 한다. 즉, 생성자를 사용하지 않는다.
+
+
+	// static 메소드인 instance() 메소드를 이용해서 ErpClientFactory의 객체를 구함
+	ErpClientFactory factory = ErpClientFactory.instance();
+	
+	
+스프링은 기본적으로 객체를 생성할 때 생성자를 사용하기 때문에, 위와 같이 static 메소드를 이용해서 객체르 생성해야 할 경우
+<bean> 태그에 factory-method 속성을 추가로 설정해야 한다.
+
+
+	<bean id="factory" class="net.madvirus.spring4.chap02.erp.ErpClientFactory"
+		factory-method="instance">
+	</bean>
+	
+	
+위와 같이 factory-method 속성을 지정하면, 스프링은 ErpClientFactory 클래스의 생성자가 아닌 정적 메소드인 instance() 메소드를 이용해서 빈 객체를 생성한다.
+
+factory-method 속성으로 지정한 메소드가 파라미터를 필요로 할 경우 <constructor-arg> 태그를 이용해서 필요한 값이나 빈 객체를 전달하면 된다.
+예를 들어, 다음과 같이 파라미터를 필요로 하는 instance() 정적 메소드가 있다고 하자.
+
+
+	public abstract class ErpClientFactory {
+		public static ErpClientFactory instance(Properties props) {
+			return new DefaultErpClientFactory(props);
+		}
+		
+		
+이 경우, 스프링 설정은 아래와 같이 <constructor-arg> 태그를 이용해서 필요한 파라미터를 전달한다.
+생성자의 경우와 마찬가지로 파라미터의 순서나 이름 등을 지정할 수 있다.
+
+
+	<bean id="factory" class="net.madvirus.spring4.chap02.erp.ErpClientFactory"
+		factory-method="instance">
+		<constructor-arg>	<!-- static 메소드의 파라미터로 전달 -->
+			<props>
+				<prop key="server">10.50.0.101</prop>
+			</props>
+		</constructor-arg>
+	</bean>
+	
+	
+	4.2 FactoryBean 인터페이스를 이용한 객체 생성 처리
+	
+객체를 생성하고 초기화하는 일반적인 객체 생성 과정과 다를 수 있다. 예를 들어, 아래 코드처럼 일련의 절차에 따라 생성하는 경우가 있다.
+
+
+	SearchClientFactoryBuilder builder = new SearchClientFactoryBuilder();
+	builder.server(10.20.1.100");
+		.port(8181)
+		.contentType(type == null ? "json" : type)
+		.encoding("utf-8");
+	SearchClientFactory serchClientFactory = builder.build();
+	searchClientFactory.init();
+	
+	
+스프링 빈으로 정의하고 싶은 타입이 SearchClientFactory라고 할 경우, XML 설정으로 SearchClientFactory 타입의 빈을 정의하기에는
+SearchClientFactory 객체를 생성하는 과정이 다소 복잡하다. 이럴 때 사용할 수 있는 것이 FactoryBean 인터페이스이다.
+
+FactoryBean 인터페이스는 다음과 같이 정의되어 있다.
+
+
+	package org.springframework.beans.factory;
+	
+	public interface FactoryBean<T> {
+		T getObject() throws Exception;
+		Class<?> getObjectType();
+		boolean isSingleton();
+	}
+	
+	
+세 개의 메소드가 정의되어 있는데, 각 메소드는 다음과 같다.
+
+	- T getObject() : 실제 스프링 빈으로 사용될 객체를 리턴한다.
+	
+	- Class<?> getObjectType() : 스프링 빈으로 사용될 객체의 타입을 리턴한다.
+	
+	- boolean isSingleton() : getObject() 메소드가 매번 동일한 객체를 리턴하면 true, 그렇지 않고 매번 새로운 객체를 리턴하면 false를 리턴한다.
+	
+스프링은 <bean> 태그에서 지정한 클래스나 @Bean 어노테이션이 적용된 메소드가 생성하는 객체가 Factory 인터페이스를 구현한 경우, getObject() 메소드가 리턴하는 객체를 실제 빈 객체로 사용한다.
+즉, FactoryBean 인터페이스를 알맞게 구현하면 생성자나 정적 메소드가 아닌 다른 방법으로 생성되는 객체를 스프링 빈으로 사용할 수 있게 된다.
+다음은 FactoryBean 인터페이스를 구현한 클래스의 예제 코드이다.
+
+
+SearchClientFactoryBean.java		99쪽
+
+
+SeachClientFactoryBean 클래스가 생성할 스프링 빈 객체의 타입은 SearchClientFactory이기 때문에 FactoryBean의 제네릭 타입 파라미터로 SearchClientFactory를 사용하였다.
+
+라인 07-29 까지는 SearchClientFactoryBean이 빈으로 사용될 객체를 생성할 때 필요한 프로퍼티를 정의하고 있다.
+이 프로퍼티들은 XML 설정에서 <property> 태그를 이용해서 값을 설정하게 된다. (물론, 생성자를 이용할 수도 있다.)
+
+라인 30-43은 getObject() 메소드를 구현한 코드로서, 빈 객체로 사용될 SearchClientFactory를 생성하고 이를 리턴한다.
+매번 동일한 객체를 리턴하기 위해 생성한 객체를 searchClientFactory 필드에 보관하고, 이 필드가 null이 아니면 필드를 리턴하도록 구현하였다.
+
+라인 45-48의 getObjectType() 메소드는 스프링이 사용할 빈 객체의 타입을 리턴하는데, 여기서는 SearchClientFactory 타입을 그대로 사용하도록 리턴하였다.
+
+마지막으로 라인 50-53은 isSingleton() 메소드를 구현하고 있는데, getObject() 메소드가 매번 동일한 객체를 리턴하므로 true를 리턴한다.
+
+XML에 SearchClientFactoryBean 클래스를 설정하는 방법은 일반 클래스와 동일하다.
+다음은 설정 예이다.
+
+
+	<bean id="searchClientFactory"
+		class="net.madvirus.spring4.chap02.search.SearchClientFactoryBean">
+		<property name="server" value="10.20.30.40" />
+		<property name="port" value="8888" />
+		<property name="contentType" value="json" />
+	</bean>
+	
+	
+<bean> 태그의 class 속성값으로 SearchClientFactoryBean 클래스를 지정했고, 이 클래스의 프로퍼티를 지정했다.
+SearchClientFactoryBean 클래스는 FactoryBean 인터페이스를 구현하고 있으므로, 스프링은 SearchClientFactoryBean 클래스가 아닌
+SearchClientFactoryBean이 생성하는 객체 즉, SearchClientFactory 객체를 스프링 빈으로 사용한다.
+즉, 위와 같은 설정을 추가하면 SearchClientFactory 타입의 객체를 스프링 빈으로 사용한다.
+
+실제 위 XML 설정의 경로가 "classpath:config-search.xml"이라고 할 경우, 아래 코드처럼 SearchClientFactory 타입을 사용해서"searchClientFactory" 빈을 구할 수 있다.
+
+
+	GenericXmlApplicationContext ctx = 
+		GenericXmlApplicationContext("classpath:config-search.xml");
+	SearchClientFactory factory = ctx.getBean("searchClientFactory", SearchClientFactory.class);
+	
+	
+	(1) 자바 코드 설정에서 FactoryBean 설정하기
+	
+FactoryBean 인터페이스를 구현한 클래스를 자바 설정에서 사용하려면 어떻게 해야 할까?
+먼저 FactoryBean 구현 클래스를 그대로 사용하는 코드를 보자.
+
+	
+	@Configuration
+	public class Config {
+	
+		@Bean
+		public SearchClientFactoryBean orderSearchClientFactory() {
+			SearchClientFactoryBean searchClientFactoryBean = new SearchClientFactoryBean();
+			searchClientFactoryBean.setServer("10.20.30.40");
+			searchClientFactoryBean.setPort(8888);
+			searchClientFactoryBean.setContentType("json");
+			return searchClientFactoryBean;
+		}
+	}
+	
+	
+@Bean 어노테이션이 붙은 orderSearchClientFactory() 메소드의 리턴 타입은 FactoryBean 인터페이스를 구현한 SearchClientFactoryBean 클래스다.
+리턴 타입이 FactoryBean이긴 하지만, getBean() 메소드로 빈 객체를 구할 때에는 다음 코드처럼 
+SearchClientFactoryBean이 생성하는 객체의 타입인 SearchClientFactory 타입을 사용한다.
+
+
+	// 빈 객체를 구할 때에는 FactoryBean 이 생성하는 객체의 타입을 사용
+	SearchClientFactory orderSearchClientFactory = 
+		ctx.getBean("orderSearchClientFactory", SearchClientFactory.class);
+		
+		
+다른 빈 객체를 설정할 때 SearchClientFactory 빈이 필요하면 어떻게 해야 할까?
+이때는 아래 코드처럼 FactoryBean 구현 객체를 리턴하는 메소드를 호출해서 FactoryBean 객체를 구하고, 그 다음에 그 객체의 getObject() 메소드를 호출해서
+필요한 객체를 구하면 된다.
+
+
+	@Bean
+	public SearchClientFactoryBean orderSearchClientFactory() {
+		SearchClientFactoryBean searchClientFactoryBean = new SearchClientFactoryBean();
+		...
+		return searchClientFactoryBean;
+	}
+	
+	@Bean
+	public SearchServiceHealthChecker searchServiceHealthChecker() throws Exception {
+		SearchServiceHealthChecker healthChecker = new SearchServiceHealthChecker();
+		healthChecker.setFactories(Arrays.asList(
+			orderSearchClientFactory().getObject(),
+			productSearchClientFactory().getObject()
+		));
+		return healthChecker;
+	}
+	
+	
+자바 코드 설정에서 FactoryBean이 생성하는 빈 객체를 참조하는 또 다른 방법은 메소드 파라미터로 전달받는 방법이다.
+다음 코드는 그 방법을 보여주고 있다.
+
+
+	@Bean
+	public SearchClientFactoryBean orderSearchClientFactory() {
+		SearchClientFactoryBean searchClientFactoryBean = new SearchClientFactoryBean();
+		...
+		return searchClientFactoryBean;
+	}
+	
+	@Bean
+	public SearchServiceHealthChecker searchServiceHealthChecker(
+			SearchClientFactory orderSearchClientFactory,
+			SearchClientFactory productSearchClientFactory) throws Exception {
+		SearchServiceHealthChecker healthChecker = new SearchServiceHealthChecker();
+		healthChecker.setFactories(Arrays.asList(
+			orderSearchClientFactory, productSearchClientFactory
+		));
+		return healthChecker;
+	}
+	
+	
+스프링은 @Bean 어노테이션이 적용된 메소드에 파라미터가 존재할 경우, 해당 파리미터의 타입과 이름을 사용해서 빈 객체를 전달한다.
+위 코드에서 searchServiceHealthChecker() 메소드의 첫 번째 파라미터는 타입이 SearchClientFactory이고 파라미터 이름이
+orderSearchClientFactory인 빈을 사용하게 된다. 따라서, orderSearchClientFactory() 메소드를 이용해서 생성된 빈 객체가 첫 번째 파라미터에 전달된다.
+
+[파라미터를 이용한 의존 객체 전달 방법은 FactoryBean 구현 객체가 생성하는 빈에만 제한적으로 적용되는 것이 아닌 모든 빈에 적용 가능]

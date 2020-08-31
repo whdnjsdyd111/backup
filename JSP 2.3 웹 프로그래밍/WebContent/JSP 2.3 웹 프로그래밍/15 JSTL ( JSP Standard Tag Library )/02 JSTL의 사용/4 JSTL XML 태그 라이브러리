@@ -1,0 +1,81 @@
+XML 태그 라이브러리는 XML을 처리하기 위한 것으로 XML 출력, 흐름 제어, XML 변환 등의 작업에 사용된다.
+
+	- XML 태그 라이브러리 사용법
+	
+1	JSP 페이지에 다음과 같이 taglib 디렉티브를 작성한다.
+
+<%@ taglib prefix="x" uri="http://java.sum.com/jsp/jstl/xml" %>
+
+-	prefix : XML 태그 라이브러리에서는 "x"
+-	uri : XML 태그 라이브러리에서는 "http://java.sum.com/jsp/jstl/xml"
+
+2	사용할 태그를 필요한 위치에 <x:태그명>과 같이 쓴다. 사용 예시는 다음과 같다.
+
+<x:set var="v1">	<!-- v1 변수 선언 -->
+
+-	<x:set> : x가 prefix 값으로 네임스페이스명이고, set이 태그명이다.
+
+	- XML 태그의 기능별 분류
+	
+-	Core 기능 : <x:out>, <xc:set>, <x:parse>
+-	흐름 제어 기능 : <x:choose>(<x:when>, <x:otherwise>), <x:forEach>, <x:if>
+-	변환 기능 : <x:transform>(<x:param>)
+
+	- JSTL XML 태그 리스트
+	
+		태그 요약 (Tag Summary)
+		
+choose		이 태그는 <c:choose> 태그와 기능이 같다.
+				- <x:choose> 태그의 일반적인 형식
+				
+				<x:choose>
+					<x:when select="XPathExpression">body 내용</x:when>
+					<x:otherwise>body 내용</x:otherwise>
+				</x:choose>
+				
+out			XPath에 지정한 패턴에 따라 xml 내용을 출력한다.
+				- <x:out> 태그의 기본 형식
+				
+				<x:out select="XPathExpression" [escapeXml="{true | false}"/>
+				
+if			조건문에 사용
+				- <x:if> 태그의 기본 형식
+				
+				<x:if select="XPathExpression" var="varName"
+					[scope="{page | request | sessiona | application}"] />
+					
+forEach		이 태그는 XPath에 따라서 해당하는 엘리먼트 수만큼 반복해서 수행된다.
+				- <x:forEach> 태그의 기본 형식
+				
+				<x:forEach [var="varName"] select="XPathExpression">
+					body 내용
+				</x:forEach>
+
+otherwise	<x:otherwise>은 조건이 false일 때 수행한다. <c:otherwise>와 같다.
+
+param		<x:param> 태그는 파라미터의 사용 시에 필요하다.
+				- <x:param /> 태그의 기본 형식
+			
+				<x:param name="name" />
+
+parse		xml 문서를 읽어서 파싱한다.
+				- <x:parse> 태그의 기본 형식
+				
+				<x:param xml="XMLDocument" {var="var"
+					[scope="scopeName"] | varDom="var" [scopeDom="scopeName"]}
+					[systemId="systemId"] [filter="filter"] />
+	
+set			XPath에 따라 선택된 내용을 변수에 저장한다.
+				- <x:set> 태그의 기본 형식
+				
+				Syntax <x:set select="XPathExpression" var="varName"
+					[scope="{page | request | session | application}"] />
+
+transform	xml과 xslt 파일을 결합해서 새로운 형식의 문서를 생성한다.
+				- <x:transform> 태그의 기본 형식
+				
+				<x:transform xml="XMLDocument" xslt="XSLTStylesheet"
+					[xmlSystemId="XMLSystemId"][xsltSystemId="XSLTSysteId"]
+					[{var="varName" [scope="scopeName"] | result="resultObject"}] />
+
+when		<x:when>은 조건이 true일 떼 수행한다. <c:when>와 같다.

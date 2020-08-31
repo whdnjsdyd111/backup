@@ -1,0 +1,184 @@
+일단 간단한 코드부터 만들고 실행해보자. 이것만 해도 스프링 데이터 JPA를 사용하기 위해 필요한 기본은 익혔다고 할 수 있다.
+이 예제를 따라 하면서 스프링 데이터 JPA에 대한 감을 잡도록 하자.
+
+
+	1.1 스프링 데이터 JPA 의존 추가
+	
+먼저 스프링 데이터 JPA를 사용하기 위해 spring-data-jta 모듈 의존을 추가한다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-jpa</artifactId>
+			<version>1.6.0.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>4.3.4.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.7.4</version>
+		</dependency>
+		...
+	</dependencies>
+	
+	
+스프링 데이터 JPA는 JPA를 위한 모듈이므로 JPA 프로바이더도 함께 의존 추가를 해주어야 한다.
+위 코드에서는 하이버네이트 4.3을 프로바이더로 추가했다.
+
+
+	1.2 DB 테이블 및 초기 데이터 생성
+	
+예제를 실행할 때 필요한 DB 테이블과 초기 데이터를 만들어야 한다. 이를 위해 사용한 쿼리는 다음과 같다. (MySQL 기준 쿼리이다.)
+
+
+	create user 'spring4'@'localhost' identified by 'spring4';
+	create database hrdb character set=utf8;
+	grant all privileges on hrdb.* to 'spring4'@'localhost';
+	
+	-- hrdb DB에 아래 테이블 생성
+	create table hrdb.EMPLOYEE (
+		EMPLOYEE_ID int auto_increment primary key,
+		EMPLOYEE_NUM varchar(10),
+		NAME varchar(100),
+		HOME_ADDR1 varchar(200),
+		HOME_ADDR2 varchar(200),
+		HOME_ZIPCODE varchar(10),
+		BIRTH_YEAR int,
+		TEAM_ID int,
+		JOINED_DATE date
+	) engine=InnoDB character set = utf8;
+	
+	create table hrdb.TEAM (
+		TEAM_ID int auto_increment primary key,
+		NAME varchar(100)
+	) engine=InnoDB character set = utf8;
+	
+	-- 테스트 목록 초기 데이터
+	insert into hrdb.TEAM values (1, 'SW팀');
+	
+	insert into hrdb.EMPLOYEE (EMPLOYEE_NUM, NAME, HOME_ADDR1, HOME_ADDR2, HOME_ZIPCODE, BIRTH_YEAR, TEAM_ID, JOINED_DATE)
+	values ('1234567890', '최범균', '서울시 관악구', '신사동', '151872', 1977, 1, '2011-07-01');
+	
+	... 알맞게 초기 데이터 생성
+	
+	insert into hrdb.EMPLOYEE (EMPLOYEE_NUM, NAME, HOME_ADDR1, HOME_ADDR2, HOME_ZIPCODE, BIRTH_YEAR, TEAM_ID, JOINED_DATE)
+	values ('1234567895', '제임스고슬링', '캐나다', '어딘가', 'XXXYYY', 1955, 1, '2014-06-01');
+	
+	
+	1.3 ORM에서 사용할 도메인 클래스
+	
+ORM 프로그래밍을 하는데 필요한 도메인 클래스를 작성할 차례이다.
+작성할 클래스들의 관계는 다음과 같다. Employee 클래스와 Team 클래스는 엔티티 타입이며 Address 클래스는 값(Value, JPA에서는 @Embeddable로 정의) 타입이다.
+
+
+	<< Entity >>		<──────────────	<< Entity >>	
+		Team			Team			Employee
+		
+	- id : Long							- id : Long
+	- name : String						- name : String
+										- address : Address
+										- birthday : int
+										- team : Team
+										- joinedDate : Date
+										
+										+ setAddress(address : Address)
+										+ changeTeam(newTeam : Team)
+										
+												│ address
+												V
+											<< Embeddable >>
+												Address
+												
+											- address1 : String
+											- address2 : String
+											- zipcode : String
+											
+											
+실제 Team, Address, Employee 클래스의 소스 코드는 각각 다음의 세 코드와 같다.
+
+
+	domain/Team.java		581쪽
+	domain/Address.java		582쪽
+	domain/Employee.java	583쪽
+	
+	
+	1.4 리파지터리 인터페이스 작성하기
+
+스프링 데이터 JPA를 사용할 때의 핵심은 바로 인터페이스를 알맞게 작성하는 것이다. 스프링 데이터 JPA를 이용한다는 것은 스프링 데이터가 제공하는 Repository 인터페이스를 상속받은 인터페이스를 만든다는 것을 뜻한다.
+다음은 Employee 엔티티 타입을 위한 리파지터리 인터페이스를 작성한 예인데, 이 인터페이스를 보면 Repository 인터페이스를 상속받고 있다는 것을 알 수 있다.
+
+
+	domain/EmployeeRepository.java		585쪽
+	
+	
+스프링 데이터 JPA 모듈은 Repository 인터페이스를 상속받은 인터페이스를 검색해서 리파지터리 구현 객체를 생성한다.
+Repository 인터페이스는 제네릭 타입으로서 첫 번째 타입 파라미터는 리파지터리가 다룰 엔티티 타입을 지정하고, 두 번째 타입 파라미터에는 엔티티의 식별값 타입을 지정한다.
+위 코드에서는 리파지터리가 관리할 엔티티의 타입과 식별값 타입을 각각 Employee와 Long 으로 지정하였다.
+여기서 엔티티 타입은 JPA의 @Entity 어노테이션이 적용된 클래스에 해당하며, 식별값 타입은 @Id 어노테이션이 적용된 프로퍼티의 타입이다.
+
+리파지터리 인터페이스는 스프링 데이터가 정한 규칙에 따라 메소드를 정의한다.
+EmployeeRepository.java는 두 개의 메소드를 정의하고 있는데 각각 다음과 같은 의미를 갖는다.
+
+	- save() : 엔티티를 저장하는 메소드이다. 파라미터로 저장할 엔티티 객체를 전달한다.
+		(EntityManager의 persist() 또는 merge() 메소드를 이용해서 엔티티를 저장한다.)
+	- findOne() : 특정 식별값을 갖는 엔티티를 구한다. (EntityManager의 find() 메소드를 이용해서 엔티티를 구한다.)
+	
+이외에도 리파지터리 인터페이스의 메소드를 정의하는 다양한 규칙이 있는데, 이 규칙에 대한 내용은 뒤에서 설명할 것이다.
+
+	
+	1.5 스프링 설정하기
+	
+리파지터리 인터페이스만 작성하면 나머지는 스프링 데이터 JPA가 알아서 처리한다. 스프링 데이터 모듈은 Repository 인터페이스를 상속 받은 인터페이스를 검색한 뒤에,
+그 인터페이스에 정의된 메소드 목록을 찾는다. 그리고, 런타임에 그 메소드를 알맞게 구현한 리파지터리 객체를 생성해서 스프링 빈으로 등록한다.
+
+스프링 데이터 JPA 모듈이 리파지터리 인터페이스를 찾아서 알맞은 스프링 빈 객체를 생성하도록 하려면 다음처럼 <jpa:repositeries> 태그를 추가해주면 된다.
+
+
+	resources/springconf.xml		586쪽
+	
+	
+jpa 네임스페이스에 대한 스키마를 설정하고, <jpa:repositories> 태그를 이용해서 리파지터리 인터페이스를 검색할 패키지를 지정해주기만 하면 된다.
+위 설정에서 라인 22의 경우 net.madvirus.spring4.chap14.domain 및 그 하위 패키지에서 Repository 인터페이스를 상속받은 인터페이스를 찾아서
+리파지터리 구현 빈 객체를 생성한다.
+
+앞서 net.madvirus.spring4.chap14.domain 패키지에 EmployeeRepository 인터페이스를 작성했는데,
+이 경우 스프링 데이터 JPA는 EmployeeRepository 인터페이스로부터 알맞은 리파지터로 구현 객체를 생성한 뒤에, 이름이 'employeeRepository' 인 스프링 빈으로 등록한다.
+이때 생성된 빈 객체는 라인 45-50에서 정의한 'entityManagerFactory'를 EntityManagerFactory로 사용하게 된다.
+
+리파지터리를 사용할 빈은 @Autowired나 @Resource와 같은 어노테이션을 이용해서 의존 자동 주입을 사용하면 된다.
+이런 이유로 springconf.xml 에서는 <context:annotation-config> 태그를 사용했다.
+라인 25-27의 UpdateEmployeeServiceImpl 클래스의 경우 다음처럼 @Autowired 어노테이션을 이용해서 EmployeeRepository를 주입 받도록 구현했다.
+
+
+	application/UpdateEmployeeServiceImpl.java		588쪽
+	
+	
+	1.6 예제 실행
+	
+예제를 실행하기 위해 다음과 같은 간단한 메인 프로그램을 작성했다.
+
+
+	main/MainForUpdate.java		589쪽
+	
+	
+위 코드를 실행한 뒤 앞서 생성했던 EMPLOYEE 테이블의 HOME_ADDR1, HOME_ADDR2, HOME_ZIPCODE 컬럼의 값을 확인해보면 값이 변경된 것을 확인할 수 있을 것이다.

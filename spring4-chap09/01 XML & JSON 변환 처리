@@ -1,0 +1,418 @@
+서비스나 데이터를 HTTP 기반 API 형태로 제공하는 곳이 많다. 예를 들어, 트위터는 타임라인이나 멘션 목록, 팔로워 목록 등을 제공하는 HTTP 기반의 API를 제공하고 있고,
+네이버 또한 단축 URL을 제공하는 HTTP 기반의 API를 제공하고 있다. 이들 API들의 특징 중 하나는 응답으로 XML이나 JSON 형식을 사용한다는 점이다.
+
+스프링 MVC를 사용할 때, XML/JSON 응답 생성을 위한 뷰 클래스를 사용하거나 HttpServletResponse를 이용해서 직접 원하는 응답을 생성할 수 있을 것이다.
+하지만, 스프링 MVC는 좀 더 쉽게 XML과 JSON 형식을 처리하는 방법을 제공하고 있는데, 그것은 바로 @RequestBody 어노테이션과 @ResponseBody 어노테이션을 사용하는 것이다.
+이 절에서는 이 두 어노테이션을 이용해서 XML과 JSON 형식의 요청/응답 데이터를 처리하는 방법에 대해 살펴보도록 하겠다.
+
+	
+	1.1 @RuestBody/@ResponseBody와 HttpMessageConverter
+	
+웹 브라우저가 웹 서버 간에 데이터를 주고 받을 때 사용되는 HTTP 프로토콜은 다음과 같이 헤더와 몸체로 구성되어 있다.
+
+	POST /spring4-chap09/mc/simple HTTP/1.1		┐
+	Host: localhost:8080						│
+	Connection: keep-alive						│	요청 헤더
+	Content-Length: 30							│
+	...											│
+	Accept-Language:ko,en-US;q=0.8,en;q=0.6		┘
+	
+	name=%EA%B5...80&age=20						─	요청 몸체
+	
+	HTTP/1.1 200 OK								┐
+	Content-Type: text/html						│	응답 헤더
+	Content-Length: 30							│
+	Server: Jetty(9.1.1.v20140108)				┘
+	
+	name=%EA%B5...80&age=20						─	응답 몸체
+
+요청 몸체에는 웹 브라우저에 전송할 데이터가 담기는데, 이 데이터의 형식은 Content-Type 헤더 값으로 지정한다. 위의 경우 요청 몸체의 형식이
+application/x-www-form-urlencoded이라고 저장되어 있다. (참고로 이 형식은 웹 브라우저가 POST 방식으로 폼 데이터를 전송할 때 사용하는 형식이다.)
+응답도 동일하게 헤더와 몸체로 구성되며, Content-Type 헤더를 이용해서 몸체의 데이터 형식을 지정한다.
+
+스프링이 제공하는 @RequestBody 어노테이션과 @ResponseBody 어노테이션은 각각 요청 몸체와 응답 몸체와 관련되어 있다.
+먼저 @RequestBody 어노테이션은 요청 몸체를 자바 객체로 변환할 때 사용된다. 예를 들어, 요청 파라미터 문자열을 String 자바 객체로 변환하거나,
+JSON 형식의 요청 몸체를 자바 객체로 변환할 때 @RequestBody 어노테이션을 사용한다. 비슷하게 @ResponseBody 어노테이션은 자바 객체를 응답 몸체로 변환하기 위해 사용된다.
+보통 자바 객체를 JSON 형식이나 XML 형식의 문자열로 변환할 때 @ResponseBody를 사용한다.
+
+두 어노테이션을 사용하는 간단한 예제를 작성해보자. 이 예제는 POST로 전송한 요청 몸체를 String 타입으로 받고, 그 데이터를 그대로 응답 몸체로 전송할 것이다.
+예제 코드는 다음과 같다.
+
+	
+	mc/SimpleConverterController.java		428쪽
+	
+	
+라인 20을 보면 @RequestBody 어노테이션은 String 타입의 body 파라미터에 적용되어 있는데, 이 경우 스프링 MVC는 POST 방식으로 전송된 HTTP 요청 데이터를 String 타입의 body 파라미터로 전달한다.
+그리고 메소드에 @ResponseBody 어노테이션이 붙으면, 스프링 MVC는 메소드의 리턴 값을 HTTP 응답 데이터로 사용한다. 위의 경우 simple() 메소드의 리턴 값이 String 타입이므로
+String 데이터를 HTTP 응답 데이터로 전송한다.
+
+위의 SimpleConverterController에 GET 방식으로 요청이 전달되면 simple 뷰가 사용되는데, 이 뷰가 아래와 같은 폼을 생성한다고 해보자.
+
+
+	<form method="POST">
+		이름: <input type="text" name="name" /> <br/>
+		나이: <input type="text" name="age" />
+		<input type="submit" />
+	</form>
+	
+	
+위 폼을 전송하면, HTTP 몸체로 전송되는 데이터는 다음과 같은 형식을 취한다.
+
+
+	name=%EA%B5%AC...%80&age=20
+	
+	
+SimpleConverterController 컨트롤러의 POST 요청을 처리하는 simple() 메소드는 다음과 같이 동작한다.
+
+	- @RequestBody 어노테이션을 이용해서 HTTP 요청 몸체 데이터를 body 파라미터로 전달받으며, 그 데이터를 그대로 결과 값으로 리턴한다.
+	- simple() 메소드에는 @ResponseBody 어노테이션이 적용되어 있기 때문에, 결과적으로 HTTP 요청 몸체 데이터가 HTTP 응답 데이터로 그대로 전송된다.
+	
+실제로 실행결과를 보면 HTTP 응답 결과가 다음과 같은 것을 확인할 수 있다.
+
+
+	http://localhost:8001/spring4-chap09/mc/simple
+	
+	
+	1.2	HttpMessageConverter를 이용한 변환 처리
+	
+스프링 MVC는 @RequestBody 어노테이션이나 @ResponseBody 어노테이션이 있으면, HttpMessageConverter를 이용해서 자바 객체와 HTTP 요청/응답 몸체 사이의
+변환을 처리한다. 스프링은 다양한 타입을 위한 HttpMessageConverter 구현체를 제공하고 있다. 예를 들어, 아래 코드에서 요청 몸체를 @RequestBody가 적용된 body로 변환할 때에는
+HttpMessageConverter 인터페이스를 구현한 클래스인 StringHttpMessageConverter를 이용한다.
+동일하게 String 타입의 리턴 객체를 응답 몸체로 변환할 때에도 StringHttpMessageConverter를 사용한다.
+
+
+	@RequestMapping(method = RequestMethod.POST)
+	@ResponseBody
+	public String simple(@RequestBody String body) {
+		return body;
+	}
+	
+	
+<mvc:annotation-driven> 태그나 @EnableWebMvc 어노테이션을 사용하면, StringHttpMessageConverter를 포함해
+다수의 HttpMessageConverter 구현 클래스를 등록한다. 이들 HttpMessageConverter를 다음에 정리했다.
+
+
+	클래스									설명
+	
+	StringHttpMessageConverter				요청 몸체를 문자열로 변환하거나 문자열을 응답 몸체로 변환한다.
+	
+	Jaxb2RootElementHttpMessageConverter	XML 요청 몸체를 자바 객체로 변환하거나 자바 객체를 XML 응답 몸체로 변환한다.
+											JAXB2가 존재하는 경우에 사용된다.
+											
+											요청 컨텐트 타입으로 다음을 지원한다.
+												- text/xml
+												- application/xml
+												- application/*+xml
+												
+											생성하는 응답 컨텐트 타입은 application/xml 이다.
+	
+	MappingJackson2HttpMessageConverter		JSON 요청 몸체를 자바 객체로 변환하거나 자바 객체를 JSON 응답 몸체로 변환한다.
+											Jackson2가 존재하는 경우에 사용된다.
+											
+											지원하는 요청 컨텐트 타입은 다음과 같다.
+												- application/json
+												- application/*+json
+	
+	MappingJacksonHttpMessageConverter		JON 요청 몸체를 자바 객체로 변환하거나 자바 객체를 JSON 응답 몸체로 변환한다.
+											Jackson이 존재하는 경우에 사용된다.
+											
+											지원하는 요청 컨텐트 타입과 응답 컨텐트 타입은 Jackson2를 사용하는 경우와 동일하다.
+	
+	ByteArrayHttpMessageConverter			요청 몸체를 byte 배열로 변환하거나 byte 배열을 응답 몸체로 변환한다.
+	
+	ResourceHttpMessageConverter			요청 몸체를 스프링의 Resource로 변환하거나 Resource를 응답 몸체로 변환한다.
+	
+	SourceHttpMessageConverter				XML 요청 몸체를 XML Source로 변환하거나 XML Source를 XML 응답으로 변환한다.
+	
+	AllEncompassingFormHttpMessageConverter	폼 전송 형식의 요청 몸체를 MultiValueMap으로 변환하거나, MultiValueMap을 응답 몸체로 변환할 때 사용된다.
+											지원하는 요청 컨텐트 타입은 다음과 같다.
+											
+												- application/x-www-form-urlencoded
+												- multipart/form-data
+												
+											multipart/form-data 형식의 요청 몸체의 각 부분을 변환할 때에는 이 표의 나머지 HttpMessageConverter를 사용한다.
+											
+											
+	1.3 JAXB2를 이용한 XML 처리
+	
+JAXB2 API는 자바 객체와 XML 사이의 변환을 처리해주는 API다. Jaxb2RootElementHttpMessageConverter는 JAXB2 API를 이용해서
+자바 객체를 XML 응답으로 변환하거나 XML 요청 몸체를 자바 객체로 변환한다.
+
+JAXB2 API는 자바 6 이후 버전에 기본으로 포함되어 있으므로 메이븐 의존에 따로 추가할 필요가 없다.
+
+Jaxb2RootElementHttpMessageConverter는 다음의 변환 처리를 지원한다.
+	
+	- XML -> @XmlRootElement 객체 또는 @XmlType 객체로 읽기
+	- @XmlRootElement 적용 객체 -> XML로 쓰기
+	
+따라서 XML 요청 몸체를 @RequestBody 어노테이션을 이용해서 JAXB2 기반의 자바 객체로 변환하거나 JAXB2 기반의 @ResponseBody 어노테이션을 이용해서 XML 응답으로 변환하려면,
+Jaxb2RootElementHttpMessageConverter를 사용하면 된다. 앞서 MVC 설정을 사용하면 Jaxb2RootElementHttpMessageConverter는 기본으로 등록되므로, 추가로 설정할 필요는 없다.
+
+JAXB2를 이용한 간단한 예를 만들어보자. 다음과 같이 JAXB2의 어노테이션이 적용된 두 개의 자바 클래스가 있다고 하자.
+
+
+	// GuestMessageList.java
+	import javax.xml.bind.annotation.XmlAccessType;
+	import javax.xml.bind.annotation.XmlAccessorType;
+	import javax.xml.bind.annotation.XmlElement;
+	import javax.xml.bind.annotation.XmlRootElement;
+	
+	@XmlAccessorType(XmlAccessType.FIELD)
+	@XmlRootElement(name = "message-list")
+	public class GuestMessageList {
+	
+		@XmlElement(name = "message")
+		private List<GuestMessage> messages;
+	
+		public GuestMessageList() {
+		}
+	
+		public GuestMessageList(List<GuestMessage> messages) {
+			this.messages = messages;
+		}
+	
+		public List<GuestMessage> getMessages() {
+			return messages;
+		}
+	}
+	
+	
+	// GuestMessage.java
+	import java.util.Date;
+	import javax.xml.bind.annotation.XmlAccessType;
+	import javax.xml.bind.annotation.XmlAccessorType;
+	import javax.xml.bind.annotation.XmlType;
+	
+	@XmlAccessorType(XmlAccessType.FIELD)
+	@XmlType(name = "", propOrder = { "id", "message", "creationTime" })
+	public class GuestMessage {
+	
+		private Integer id;
+		private String message;
+		private Date creationTime;
+	
+		public GuestMessage(Integer id, String message, Date creationTime) {
+			this.id = id;
+			this.message = message;
+			this.creationTime = creationTime;
+		}
+	
+		public Integer getId() {
+			return id;
+		}
+	
+		public String getMessage() {
+			return message;
+		}
+	
+		public Date getCreationTime() {
+			return creationTime;
+		}
+	}
+	
+	
+GuestMessageList 클래스는 값이 "message-list"인 @XmlRootElement 어노테이션이 적용되어 있다.
+따라서, JAXB2를 이용해서 GuestMessageList 객체를 XML로 변환하면 루트 태그가 <message-list>인 XML이 생성된다.
+컨트롤러 메소드는 다음과 같이 함으로써 GuestMessageList 객체를 XML 응답으로 변환할 수 있다.
+
+	- 메소드에 @ResponseBody 어노테이션을 적용한다.
+	- GuestMessageList 객체를 리턴한다.
+	
+실제 컨트롤러 코드는 다음과 같다.
+
+
+	import org.springframework.stereotype.Controller;
+	import org.springframework.web.bind.annotation.RequestMapping;
+	import org.springframework.web.bind.annotation.ResponseBody;
+	
+	@Controller
+	public class GuestMessageController {
+	
+		@RequestMapping(value = "/guestmessage/list.xml")
+		@ResponseBody
+		public GuestMessageList listXml() {
+			return getMessageList();
+		}
+	
+		private GuestMessageList getMessageList() {
+			List<GuestMessage> messages = Arrays.asList(
+					new GuestMessage(1, "메시지", new Date()),
+					new GuestMessage(2, "메시지2", new Date())
+					);
+	
+			return new GuestMessageList(messages);
+		}
+	}
+	
+	
+스프링은 @ResponseBody 어노테이션이 적용된 메소드의 리턴 타입을 확인한다. 리턴 타입이 JAXB2가 적용된 클래스이므로, 
+등록된 HttpMessageConverter 중에서 JAXB2를 이용해서 자바 객체를 XML로 변환해주는 Jaxb2RootElementHttpMessageConverter를 사용한다.
+
+실제로 GuestMessageController를 스프링 빈으로 등록하고, 웹 브라우저에 해당 경로를 입력해보자.
+그러면 다음과 같이 XML 응답이 출력되는 것을 확인할 수 있을 것이다.
+
+
+	http://localhost:8001/spring4-chap09/guestmessage/list.xml
+	
+	
+XML로 전송된 요청 몸체 데이터를 JAXB2가 적용된 자바 객체로 변환하고 싶다면 다음과 같이 컨트롤러 메소드의 파라미터에 @RequestBody 어노테이션을 적용하면 된다.
+
+
+	import org.springframework.web.bind.annotation.RequestBody;
+	
+	@Controller
+	public class GuestMessageController {
+	
+		@RequestMapping(value = "/guestmessage/post.xml", method = RequestMethod.POST)
+		@ResponseBody
+		public GuestMessageList postXml(@RequestBody GuestMessageList messageList) {
+			...
+		}
+		
+		
+앞에서 봤듯이 GuestMessageList 클래스는 JAXB2 어노테이션이 적용되어 있는 클래스다. 스프링 MVC는 messageList 파라미터에 @RequestBody 어노테이션이
+적용되어 있으므로, HTTP 요청 몸체를 GuestMessageList로 변환할 때 사용할 HttpMessageConverter를 찾는다.
+
+HTTP 요청의 컨텐트 타입이 "application/xml" 이고 GuestMessageList가 JAXB2 어노테이션이 적용된 클래스면,
+스프링은 Jaxb2RootElementHttpMessageConverter를 이용해서 요청 몸체를 자바 객체로 변환한다.
+
+웹 브라우저에서는 요청 몸체에 XML을 담아서 보내려면 자바 스크립트를 이용해서 Ajax로 요청 몸체를 전송하는 식으로 별도 코드를 작성해야 한다.
+아래 코드는 jQuery를 사용한 경우 XML 컨텐트 타입을 이용해서 XML을 요청 몸체로 전송하는 예이다.
+
+
+	<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+	<script>
+		function postXml() {
+			var xmlBody = 
+			'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+			'<message-list>'+
+			...
+			'</message-list>';
+			
+			$.ajax({
+				type: "post",
+				url: "guestmessage/post.xml",
+				contentType: "text/xml",
+				data: xmlBody,
+				processData: false,
+				success: function(response) {
+					alert(response);
+				},
+				error: function() {
+					alert("ERROR", arguments);
+				}
+			});
+		}
+	</script>
+	
+
+위와 같은 방법으로 XML을 서버에 전송하면, JAXB2를 이용해서 XML을 자바 객체로 변환한 뒤에 그 객체를 @RequestBody 어노테이션이 적용된 파라미터로 전달받게 된다.
+
+[웹 브라우저별로 XML이나 JSON 형식의 데이터를 서버에 전송하기 위한 플러그인이 존재한다.
+예를 들어, 크롬의 경우 Advanced Rest Client 확장 프로그램을 사용하면 자바 스크립트 코드를 작성할 필요 없이 서버에 XML이나 JSON 형식의 데이터를 전송할 수 있다.]
+
+
+	1.4	Jackson2를 이용한 JSON 처리
+	
+Jackson2는 자바 객체를 JSON으로  변환하거나 JSON을 자바 객체로 변환할 때 주로 사용하는 라이브러리로, 스프링 MVC의 MappingJackson2HttpMessageConverter는
+Jackson2를 이용해서 자바 객체와 JSON 간의 변환을 처리한다.
+
+Jackson2를 사용하려면 먼저 메이븐 의존 설정에 Jackson2를 의존을 추가해주어야 한다.
+
+
+	<dependency>
+		<groupId>com.fasterxml.jackson.core</groupId>
+		<artifactId>jackson-databind</artifactId>
+		<version>2.3.3</version>
+	</dependency>
+	
+	
+Jackson2 의존ㄴ을 추가하면 필요한 설정은 끝이다. 자바 객체를 JSON 응답으로 변환하는 것은 매우 간단하다.
+다음과 같이 컨트롤러 메소드의 리턴 타입으로 자바 객체를 리턴해주기만 하면 된다.
+
+
+	@RequestMapping(value = "/guestmessage/list.json")
+	@ResponseBody
+	public GuestMessageList2 listJson() {
+		return getMessageList2()
+	}
+	
+	
+	private GuestMessageList2 getMessageList2() {
+		List<GuestMessage> messages = Arrays.asList(
+				new GuestMessage(1, "메시지", new Date()),
+				new GuestMessage(2, "메시지2", new Date())
+				);
+				
+		return new GuestMessageList2(messages);
+	}
+	
+	
+MappingJackson2HttpMessageConverter는 임의의 객체를 JSON으로 변환해준다.
+실제 웹 브라우저에서 listJson() 메소드와 매핑된 경로를 입력해보자.
+그러면 다음과 같이 JSON 형식으로 응답이 생성되는 것을 확인할 수 있다.
+
+
+	http://localhost:8001/spring4-chap09/guestmessage/list.json
+	
+	
+[Jackson2가 어떤 규칙으로 JSON과 자바 객체 사이의 변환을 처리하는지 궁금하면 
+htt://wiki.fasterxml.com/JacksonDacumentation	사이트를 참고하자.]
+
+[	커스텀 HttpMessageConverter 등록하기
+
+스프링은 이미 널리 사용되는 요청/응답 형식을 위한 HttpMessageConverter를 제공하고 있기 때문에,
+직접 HttpMessageConverter를 구현해야 하는 경우 극히 드물다. 만약 직접 구현한 HttpMessageConverter를 추가하고 싶다면 다음과 같이
+<mvc:message-converters> 태그에 사용할 HttpMessageConverter 빈을 등록해주면 된다.
+
+
+	<mvc:annotation-driven>
+		<mvc:message-converters>
+			<bean class="x.y.CustomMessageConverter" />
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+
+위 설정을 사용하면 스프링 MVC는 CustomMessageConverter를 등록하고, 기본으로 사용하는 HttpMessageConverter를 등록한다.
+
+만약 기본으로 추가되는 HttpMessageConverter를 등록하고 싶지 않다면, 다음과 같이 register-defaults 속성 값을 false로 지정하면 된다.
+
+
+	<mvc:annotation-driven>
+		<mvc:message-converters register-defaults="false">
+			<bean class="x.y.CustomMessageConverter" />
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+	
+	
+@EnableWebMvc 어노테이션을 이용하는 경우, 다음과 같이 WebMvcConfigurerAdapter 클래스를 상속받아 configureMessageConverters() 메소드를 재정의하면 된다.
+
+
+	@Configuration
+	@EnableWebMvc
+	public class SampleConfig extends WebMvcConfigurerAdapter {
+	
+		@Override
+		public void configureMessageConverters(
+				List<HttpMessageConverter<?>> converters) {
+			converters.add(new CustomMessageConverter());		
+		}
+		
+		
+위와 같이 커스텀 HttpMessageConverter를 등록할 때 주의할 점은, <mvc:annotation-driven> 태그를 사용할 때와 달리 위와 같이 커스텀 HttpMessageConverter를 등록하면
+기본으로 등록했던 HttpMessageConverter를 등록하지 않는다는 점이다. 따라서, 위와 같이 커스텀 HttpMessageConverter를 등록하고,
+더불어 XML이나 JSON 변환 처리를 하고 싶다면 다음과 같이 나머지 HttpMessageConverter도 함께 등록해주어야 한다.
+
+
+	@Configuration
+	@EnableWebMvc
+	public class SampleConfig extends WebMvcConfigurerAdapter {
+	
+		@Override
+		public void configureMessageConverters(
+				List<HttpMessageConverter<?>> converters) {
+			converters.add(new StringHttpMessageConverter());
+			converters.add(new Jaxb2RootElementHttpMessageConverters());
+			converters.add(new MappingJackson2HttpMessageConverter());
+		}
+]

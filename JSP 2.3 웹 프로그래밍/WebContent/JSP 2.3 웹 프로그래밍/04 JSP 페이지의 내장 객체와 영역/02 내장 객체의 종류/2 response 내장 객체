@@ -1,0 +1,70 @@
+response 객체는 웹 브라우저로 응답할 응답 정보를 가지고 있다. 웹 브라우저에 보내는 응답 정보는 HttpServletResponse 객체에 있으며, JSP에서는 response 객체를 사용해 접근한다.
+response 객체는 응답 정보와 관련하여 주로 헤더 정보 입력, 리다이렉트 등의 기능을 제공한다.
+다음의 표는 response 객체에서 자주 사용되는 헤더 정보 입력과 리다이렉트에 관련된 메소드들이다.
+
+
+메소드							설명
+
+void setHeader(name, value)		헤더 정보의 값을 수정하는 메소드로, name에 해당하는 헤더 정보를 value 값으로 설정한다.
+
+void setContentType(type)		웹 브라우저의 요청 결과로 보일 페이지의 contentType을 설정한다.
+
+void sendRedirect(url)			페이지를 이동시키는 메소드로, url로 주어진 페이지로 제어가 이동한다.
+
+
+	setHeader(name, value) 메소드
+	
+웹 브라우저로 응답될 Header 정보를 새로 설정하기 위한 메소드로, 이것은 헤더 설정 정보를 새로 설정하는 작업에서 주로 사용된다.
+
+	setContentType(type) 메소드
+	
+page 디렉티브의 contentType 속성과 같은 역할을 하는 것이며, sendRedirect(url) 메소드는 해당 페이지로 리다이렉트할 때 사용된다.
+
+	sendRedirect(url) 메소드
+	
+자주 사용하는 메소드로 게시판에 글을 쓰고 DB에 저장한 후 게시판의 글 목록을 보여주는 시스템에서와 같이 중간의 로직 처리를 보여줄 필요가 없을 때 사용한다.
+사용 방법을 잘 알아두는 것이 좋으며, 아래의 예시를 갖고 처리되는 방법을 살펴본다.
+
+
+// 여기서는 a.jsp
+// 사용자가 a.jsp 페이지를 요청했으나 sendRedirect() 메소드를 만나면
+// 프로그램 제어가 b.jsp로 이동되어 b.jsp 페이지가 응답됨
+response.sendRedirect("b.jsp");
+
+							┌───────────────────────────────┐
+				a.jsp		│			a.jsp				│
+			1 요청(request)	│		  	│	2 a.jsp의 내용 수행	│
+┌───────────┐ ──────────>	│		  	V					│
+│ 웹 브라우저	│				│response.sendRedirect("a.jsp")	│
+└───────────┘				└───────────────────────────────┘
+			^							│	3 출력 버퍼의 내용을 비운 후, b.jsp로 프로그램 제어 이동
+			│							V
+			│				┌───────────────────────────────┐
+			│				│			b.jsp				│
+			└───────────────│			 │	4 b.jsp의 내용 수행	│
+			5 응답(response)	│			 V					│
+		b.jsp의 내용이 응답됨		└───────────────────────────────┘
+		
+		
+1 	웹 브라우저가 a.jsp 페이지를 요청
+
+2 	a.jsp 페이지의 내용을 수행
+
+3 	response.sendRedirect("b.jsp"); 문장을 만나면 프로그램의 제어가 b.jsp 페이지로 이동.
+	이때 response.sendRedirect("b.jsp"); 문장을 만나기 전까지 실행된 코드 중 출력 결과에 포함된 내용이 있는 출력 버퍼를 비움. 즉, 이전까지 실행한 내용 중 출력될 값을 모두 버린 후에 b.jsp 페이지로 이동
+	
+4	b.jsp 페이지를 수행
+
+5	b.jsp 페이지를 수행한 결과를 요청한 웹 브라우저로 응답. 이때 b.jsp 페이지의 내용만 처리 결과로서 화면에 표시
+
+
+sendRedirect(url) 메소드와 유사한 것으로 <jsp:forward> 액션 태그가 있는데, 하는 작업은 비슷해 보이지만 내부적으로 처리되는 요청의 개수와 세부적으로 적용되는 작업이 다르다.
+<jsp:forward> 액션 태그는 Chapter 5 에서 학습한다.
+
+
+이 예제는 response 객체의 sendRedirect() 메소드를 사용해 요청 페이지가 리다이렉트되는 것을 확인하는 것이다.
+이때 요청된 페이지는 responseRedirect.jsp이고, 리다이렉트에 의해 응답되는 페이지는 responseRedirected.jsp이다.
+
+responseRedirect.jsp		152쪽
+
+responseRedirected.jsp		153쪽

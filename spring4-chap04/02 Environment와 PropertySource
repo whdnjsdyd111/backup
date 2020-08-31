@@ -1,0 +1,151 @@
+Environment에서 살펴 볼 첫 번째 기능은 프로퍼티 값을 제공하는 기능이다.
+스프링 컨테이너가 기본적으로 사용하는 Environment의 구현체는 다수의 PropertySource로부터 프로퍼티 값을 읽어온다.
+실제 Environment로부터 프로퍼티를 읽어오는 과정은 다음과 같다.
+
+	
+					↓	1. 프로퍼티 값 요청
+			ConfigurableEnvironment
+					↓	2. 프로퍼티 값 요청
+			MutablePropertySources
+					│	3. 정해준 순서대로 프로퍼티 값 요청
+		┌───────────┴───┬───────────────┬───────────────┐
+	시스템 프로퍼티			환경 변수		자바 Properties		JNID
+	PropertySource	PropertySource	PropertySource	PropertySource
+	
+	
+o.s.core.env.MutablePropertySource에 두 개 이상의 PropertySource가 등록되어 있을 경우, 프로퍼티 값을 구할 때까지 등록된 순서에 따라 차례대로 확인한다.
+예를 들어, 이름이 JAVA_HONE인 환경변수가 존재하고, 위 그림에서 PropertySource의 우선 순위가 왼쪽이 높고 오른쪽이 낮다고 가정해보자.
+이 때 Environment로부터 "JAVA_HOME" 프로퍼티의 값을 구하면, 먼저 시스템 프로퍼티 PropertySource로부터 프로퍼티 값을 찾는다.
+시스템 프로퍼테에서는 "JAVA_HOME" 프로퍼티가 존재하지 않으므로, 두 번째 PropertySource를 확인한다.
+두 번째 PropertySource는 환경 변수로부터 값을 읽어오므로 환경 변수인 JAVA_HOME에 담긴 값을 "JAVA_HOME" 프로퍼티의 값으로 리턴하며, Environment는 이 값을 사용하게 된다.
+
+스프링은 시스템 프로퍼티와 환경 변수를 사용하는 두 개의 PropertySource를 기본적으로 사용하며, 이 중 우선순위는 시스템 프로퍼티를 사용하는 PropertySource가 높다.
+즉, Environment의 설정을 변경하지 않는 이상, 시스템 프로퍼티로부터 먼저 값을 찾고 그 다음에 환경 변수로부터 값을 찾는다.
+
+[자바의 시스템 프로퍼티는 크게 두 가지로 설정할 수 있다.
+첫 번째 방법은 java 명령어를 실행할 때 -D 옵션을 지정하는 것이다. -D 옵션에서 '=' 이전의 값이 프로퍼티 이름이고 '=' 이후의 값이 프로퍼티 값이다.
+예를 들어, 다음 코드는 -D 옵션을 이용해서 jdbc.user 시스템 프로퍼티의 값으로 dbuser1로 지정하는 방법을 보여주고 있다.
+
+	$ java -Djdbc.user=dbuser1 ....
+	
+시스템 프로퍼티를 설정하는 두 번째 방법은 System.setProperty() 메소드를 사용하는 것이다.
+예를 들어, 다음은 이름이 "jdbc.user"인 시스템 프로퍼티의 값을 "dbuser1"로 설정하는 코드를 보여주고 있다.
+
+	System.setProperty("jdbc.user", "dbuser1");]
+	
+	
+	2.1 Environment에서 프로퍼티 읽기
+	
+Environment로부터 프로퍼티를 읽어오는 방법은 간단하다. Environment를 구한 뒤에 Environment가 제공하는 프로퍼티 관련 메소드를 이용하면 된다.
+예를 들어, 다음은 이름이 "java.version"인 프로퍼티 값을 구하는 코드를 보여주고 있다.
+
+
+	ConfigurableApplicationContext context = new GenericXmlApplicationContext();
+	ConfigurableEnvironment env = context.getEnvironment();
+	String javaVersion = env.getProperty("java.version");
+	System.out.printf("java version is %s\n", javaVersion);
+	
+	
+"java.version"은 시스템 프로퍼티로서 사용중인 자바 버전 값을 갖는다. 앞서 설명했듯이 Environment는 시스템 프로퍼티에서 값을 가져오기 때문에,
+자바 1.8.0_261 버전에서 위 코드를 실행하면 다음과 같은 결과가 출력된다.
+
+
+	java version is 1.8.0_261
+	
+	
+Environment가 제공하는 프로퍼티 관련 주요 메소드는 다음과 같다.
+
+	- boolean containsProperty(String key) : 지정한 key에 해당하는 프로퍼티가 존재하는지 확인한다.
+	
+	- String getProperty(String key) : 지정한 key에 해당하는 프로퍼티 값을 구한다. 존재하지 않으면 null을 리턴한다.
+	
+	- String getProperty(String key, String defaultValue) : 지정한 key에 해당하는 프로퍼티 값을 구한다. 존재하지 않으면 defaultValue를 리턴한다.
+	
+	- String getRequiredProperty(String key) throws IllegalStateException
+		: 지정한 key에 해당하는 프로퍼티 값을 구한다. 존재하지 않으면 익셉션을 발생시킨다.
+	
+	- <T> T getProperty(String key, Class<T> targetType)
+		: 지정한 key에 해당하는 프로퍼티의 값을 targetType으로 변환해서 구한다. 존재하지 않을 경우 null을 리턴한다.
+	
+	- <T> T getProperty(String key, Class<T> targetType, T defaultValue)
+		: 지정한 key에 해당하는 프로퍼티 값을 targetType으로 변환해서 구한다. 존재하지 않을 경우 defaultValue를 리턴한다.
+	
+	- <T> T getRequiredProperty(String key, Class<T> targetType) throws IllegalStateException
+		: 지정한 key에 해당하는 프로퍼티의 값을 targetType으로 변환해서 구한다. 존재하지 않을 경우 익셉션을 발생시킨다.
+		
+
+	2.2 Environment에 새로운 PropertySource 추가하기
+	
+클래스패스에 위치한 db.properties 파일을 다음과 같이 작성했다고 하자.
+
+
+	db.driver=com.mysql.Driver
+	db.jdbcUrl=jdbc:mysql://host/test
+	db.user=madvirus
+	db.password=bkchoi
+	
+	
+위 파일에 포함된 프로퍼티를 스프링 Environment의 프로퍼티로 사용하고 싶지만, 스프링은 기본적으로 환경 변수와 시스템 프로퍼티만 Environment의 프로퍼티로 사용한다.
+따라서, 프로퍼티 파일을 Environment의 프로퍼티로 추가해주고 싶다면, 그에 맞는 PropertySource를 추가해야 한다.
+
+다음은 특정 프로퍼티 파일을 사용하는 PropertySource를 Environment에 추가하는 예제 코드이다.
+
+
+	ConfigurableEnvironment env = ctx.getEnvironment();
+	MutablePropertySources propSources = env.getPropertySources();
+	propSources.addLast(new ResourcePropertySource("classpath:/db.properties"));
+	String dbUser = env.getProperty("db.user");	// madvirus 리턴
+	
+	
+MutablePropertySource는 새로운 PropertySource를 추가해주는 메소드를 제공하고 있는데, 위 코드에서는 addList() 메소드를 사용했다.
+addList() 메소드를 사용하면, 파라미터로 전달한 PropertySource를 마지막 PropertySource로 등록한다.
+즉, 프로퍼티 탐색 과정에서 우선순위가 제일 낮다. 반대로 addFirst() 메소드를 사용하면 첫 번째 PropertySource가 되어 우선순위가 제일 높아진다.
+
+o.s.core.io.support.ResourcePropertySource 클래스는 자바 프로퍼티 파일로부터 값을 읽어오는 PropertySource 구현 클래스이며,
+이 외에도 스프링은 자바의 Properties 객체로부터 프로퍼티 값을 읽어오는 PropertiesPropertySource,
+디렉토리 서버에서 프로퍼티 값을 읽어오는 JndiPropertySource 등을 제공하고 있다.
+
+@Configuration 어노테이션 기반 자바 설정을 사용하고 있다면, 다음과 같이
+@PropertySource 아노테이션을 이용해서 간단하게 프로퍼티 파일의 내용을 PropertySource에 추가할 수 있다.
+
+
+	@Configuration
+	@PropertySource("classpath:/db.properties")
+	public class ConfigByEnv {
+	
+		@Autowired
+		private Environment env;
+		
+		
+두 개 이상의 프로퍼티 파일을 사용하고 싶다면, @PropertySource의 값을 배열로 지정하면 된다.
+자원이 없는 경우 익셉션을 발생하지 않고 무시하고 싶다면 ignoreResourceNotFound 속성을 true로 지정한다. (ignoreResourceNotFound 속성의 기본값은 false이다.)
+
+
+	@PropertySource(
+		value={"classpath:/db.properties", "classpath:/app.properties"},
+		ignoreResourceNotFound=true
+	)
+	public class ConfigByEnv {
+		...
+		
+		
+@PropertySource 자체를 두 개 이상 설정할 때에는 @PropertySources 어노테이션을 사용하면 된다.
+
+
+	@Configuration
+	@PropertySources({
+		@PropertySource("classpath:/db.properties")
+		@PropertySource(value="classpath:/app.properties", ignoreResourceNotFound=true)
+	})
+	public class ConfigByEnv {
+		...
+		
+		
+@PropertySource 어노테이션은 자바 8의 @Repeatable을 적용하고 있으므로, 
+자바 8을 사용하면 다음과 같이 @PropertySource 어노테이션을 여러 번 사용해도 된다.
+
+	
+	@PropertySource("classpath:/db.properties"),
+	@PropertySource(value="classpath:/app.properties", ignoreResourceNotFount=true)
+	public class ConfigByEnv{
+		...

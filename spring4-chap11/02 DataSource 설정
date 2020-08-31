@@ -1,0 +1,148 @@
+데이터베이스 연동을 하려면 데이터베이스에 연결해야 한다. 자바에서 데이터베이스에 연결하는 방법에는 몇 가지가 있는데, 그중에서 스프링은 DataSource 방식을 사용하고 있다.
+앞서 잠시 언급했던 JdbcTemplate이나 JPA/하이버네이트/MyBatis 지원 기능을 사용할 경우, 데이터베이스 연결을 위해 DataSource를 설정해주어야 한다.
+
+스프링은 다음과 같이 세 가지 방식의 DataSource 설정을 지원하고 있다.
+
+	- 커넥션 풀을 이용한 DataSource 설정
+	- JNDI를 이용한 DataSource 설정
+	- DriverManager를 이용한 DataSource 설정(테스트 목적)
+	
+각 설정 방식에 대해서 차례대로 살펴보도록 하자.
+
+
+	2.1 커넥션 풀을 이용한 DataSource 설정
+	
+스프링은 커넥션 풀 구현 클래스를 직접 제공하고 있진 않다. 대신 c3p0와 같은 커넥션 풀 라이브러리를 이용해서 커넥션 풀을 지원하는 DataSource를 설정할 수 있다.
+이를 위해 먼저 해야 할 일은 메이븐 의존에 c3p0 라이브러리를 추가하는 것이다.
+
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>com.mchange</groupId>
+			<artifactId>c3p0</artifactId>
+			<version>0.9.2.1</version>
+		</dependency>
+		
+		
+[위 의존 설정을 보면 c3p0 외에 드라이버 의존도 함께 추가한 것을 알 수 있다. MySQL과 달리 오라클이나 MS SQL과 같은 상용 DBMS의 JDBC 드라이버는 라이선스 문제로 메이븐
+중앙 리파지터리에 존재하지 않는 경우가 있다. 이런 경우 메이븐 명령어를 이용해서 직접 로컬 리파지터리에 등록해야 하는데,
+이에 대한 방법을 알고 싶다면 http://goo.gl/o6uDGL	글을 참조하기 바란다.]
+
+메이븐 의존을 설정했다면, c3p0가 제공하는 ComboPooledDataSource 클래스를 이용해서 DataSource를 설정할 수 있다.
+다음은 설정 코드 예를 보여주고 있다.
+
+
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="com.mysql.jdbc.Driver" />
+		<property name="jdbcUrl"
+			value="jdbc:mysql://localhost/guestbook?characterEncoding=utf8" />
+		<property name="user" value="spring4" />
+		<property name="password" value="spring4" />
+	</bean>
+	
+	
+ComboPooledDataSource 클래스는 커넥션 풀을 관리하기 다양한 프로퍼티를 제공하는데, 이들 프로퍼티는 다음과 같다.
+
+
+	프로퍼티						설명
+	
+	acquiredIncrement			풀에 커넥션이 없을 때 증가시킬 커넥션의 개수. 기본값은 3이다.
+		
+	initialPoolSize				초기의 커넥션 풀의 크기. 기본값은 3이다.
+	
+	maxPoolSize					커넥션 풀의 최대 크기. 기본값은 15이다.
+	
+	minPoolSize					커넥션 풀의 최소 크기. 기본값은 3이다.
+	
+	maxConnectionAge			커넥션의 유효 시간. 단위는 초. 지정한 시간이 지나면 자동으로 풀에서 제거된다. 값이 0일 경우 제거되지 않는다. 기본값은 0이다.
+	
+	maxIdleTime					지정한 시간 동안 사용되지 않는 커넥션을 제거한다. 단위는 초이다. 값이 0일 경우 제거하지 않는다. 기본값은 0이다.
+	
+	checkoutTimeout				풀에서 커넥션을 가져올 때 대기 시간. 1/1000초. 0은 무한히 기다리는 것을 의미한다. 지정한 시간 동안 풀에서 커넥션을 가져오지 못할 경우
+								SQLException을 발생시킨다. 기본값은 0이다.
+	
+	automaticTestTable			값이 존재할 경우 지정한 이름의 테이블을 생성한 뒤, 해당 테이블을 이용해서 커넥션이 유효한 지의 여부를 검사한다.
+								기본값은 null이다. 이 값을 제공하면 preferredTestQuery는 무시된다.
+	
+	idleConnectionTestPeriod	풀 속에 있는 커넥션의 테스트 주기. 단위는 초이며, 0인 경우 검사하지 않는다. 기본값은 0이다.
+	
+	preferredTestQuery			커넥션을 테스트 할 때 사용할 쿼리. 기본값은 null이다.
+	
+	testConnectionOnCheckin		true인 경우 커넥션을 풀에 반환할 때 커넥션이 유효한지의 여부를 비동기로 검사한다. 기본값은 false이다.
+	
+	testConnectionOnCheckout	true인 경우 커넥션을 풀에서 가져올 때 유효한지의 여부를 검사한다. 기본값은 false이다.
+								추가적인 검사로 인한 성능 저하가 발생할 수 있기 때문에, 이 값을 true로 하기보다는 idleConnectionTestPeriod를 이용해서
+								주기적으로 검사하는 방법이 더 나은 선택이다.
+								
+								
+[c3p0의 ComboPooledDataSource에서 사용되는 전체 프로퍼티에 대해 알고 싶다면,
+http://www.mchange.com/projects/c3p0/	사이트를 참고하자.]
+
+
+	2.2 JNDI를 이용한 DataSource 설정
+	
+웹 로직이나 JBoss와 같은 JEE 어플리케이션 서버를 사용할 경우, JNDI를 이용해서 DataSource를 설정헐 때가 많다. 톰캣이나 제티(Jetty) 등의 웹 콘테이너를 사용하는 경우에도
+JNDI로부터 DataSource를 구하도록 설정 가능하다.
+
+JNDI로부터 DataSource를 가져오고 싶다면, 다음과 같이 <jee:jndi-lookup> 태그를 이용해서 JNDI에 등록된 객체의 이름을 명시하면 된다.
+
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans   
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/jee
+	       http://www.springframework.org/schema/jee/spring-jee.xsd">
+	
+		<jee:jndi-lookup id="dataSource"
+				jndi-name="jdbc/guestbook" resource-ref="true" />
+		
+		<bean id="jdbcMessageDao" class="net.madvirus.spring4.chap11.guest.jdbc.JdbcMessageDao">
+			<property name="dataSource" ref="dataSource" />
+		</bean>
+		
+	</beans>
+
+	
+<jee-jndi-lookup> 태그를 사용하기 위해서는 jee 네임스페이스 및 관련 XML 스키마를 등록해야 한다.
+
+<jee-jndi-lookup> 태그의 jndi-name 속성은 JNDI에서 객체를 검색할 때 사용할 이름을 입력한다. resource-ref 속성의 값이 true일 경우 검색할 이름 앞에
+"java:comp/env"가 붙는다. 따라서, 위 설정은 "java:comp/env/jdbc/guestbook"을 사용해서 JNDI에서 객체를 검색하면 된다.
+
+<jee-jndi-lookup> 태그를 사용하지 않고 다음과 같이 JndiObjectFactoryBean 클래스를 이용해서 JNDI로부터 DataSource를 구하도록 설정할 수 있다.
+
+
+	<bean id="dataSource"
+		class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName" value="jdbc/guestbook" />
+		<property name="resourceRef" value="true" />
+	</bean>
+	
+	
+<jee-jndi-lookup> 태그는 내부적으로 JndiObjectFactoryBean 클래스를 사용한다.
+
+
+	2.3 DriverManager를 이용한 DataSource 설정
+	
+로컬 테스트 목적으로 DataSource가 필요한 경우, DriverManager를 이용해서 커넥션을 제공하는 DriverManagerDataSource 클래스를 사용할 수 있다.
+설정 방법은 다음과 같다.
+
+
+	<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost/test?characterEncoding=euckr" />
+		<property name="username" value="root" />
+		<property name="password" value="root" />
+	</bean>
+	
+	
+[DriverManagerDataSource는 커넥션 풀이 아니기 때문에, 실제 운영 환경에서 사용할 경우 성능에 심각한 문제가 발생할 수 있다.
+따라서, 테스트 목적으로만 사용할 것을 권한다.]

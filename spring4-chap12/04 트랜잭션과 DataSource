@@ -1,0 +1,109 @@
+선언적 트랜잭션에 대해 알아보기 전에 스프링의 트랜잭션과 DataSource의 관계에 대해서 살펴보도록 하자.
+앞서 TransactionTemplate의 사용법을 설명할 때 사용한 DAO는 11장에서 살펴봤던 JDBC를 위한 템플릿 클래스를 이용해서 구현했다.
+예를 들어, ItemDao 구현과 PaymentInfoDao 구현은 다음과 같이 각각 JdbcTemplate과 SimpleJdbcInsert를 이용했다.
+
+
+	public class JdbcItemDao implements ItemDao {
+		private JdbcTemplate jdbcTemplate;
+		...
+		@Override
+		public Item findById(Integer itemId) {
+			return jdbcTemplate.queryForObject("select * from ITEM where ITEM_ID = ?",
+				new Object[] {itemId}, new RowMapper<Item>() {...} );
+		}
+	}
+	
+	public class JdbcPaymentInfoDao implements PaymentInfoDao {
+		private SimpleJdbcInsert insert;
+		...
+		@Override
+		public void insert(PaymentInfoDao paymentInfo) {
+			Map<String, Object> paramValueMap = new HashMap<String, Object>();
+			paramValueMap.put("PRICE", paymentInfo.getPrice());
+			Number genId = insert.executeAndResultKey(paramValueMap);
+			paymentInfo.setId(genId.intValue());
+		}
+	}
+	
+	
+여기서 궁금한 점은 어떻게 다음 코드에서 각 DAO의 메소드가 한 트랜잭션으로 묶여서 실행되느냐 하는것이다. (JTA를 사용하지 않는 이상) JDBC의 경우 동일한 Connection을 사용해야 한
+트랜잭션으로 묶을 수 있기 때문이다.
+
+
+	return transactionTemplate.execute(new TransactionCallback<PurchaseOrderResult>() {
+			@Override
+			public PurchaseOrderResult doInTransaction(TransactionStatus status) {
+				Item item = itemDao.findById(orderRequest.getItemId());
+				...
+				paymentInfoDao.insert(paymentInfo);
+				...
+				purchaseOrderDao.insert(order);
+				return new PurchaseOrderResult(item, paymentInfo, order);
+			}
+		}
+	);
+	
+	
+여기서 비밀은 JdbcTemplate에 있다. JdbcTemplate의 쿼리 실행 메소드는 내부적으로 다음의 코드를 이용해서 Connection을 구한다.
+
+
+	// JdbcTemplate이 내부적으로 Connection을 구할 때 사용하는 코드
+	Connection con = DataSourceUtils.getConnection(getDataSource());
+	
+	
+위 코드에서 DataSourceUtils.getConnection() 메소드는 현재 코드가 트랜잭션 범위에서 실행되고 있으며, 트랜잭션과 엮여 있는 Connection을 리턴한다.
+트랜잭션 범위에 있지 않을 경우 새로운 Connection을 리턴한다. SimpleJdbcInsert을 포함한 다른 템플릿 클래스도 내부적으로 JdbcTemplate을 사용하기 때문에
+결과적으로 현재 트랜잭션이 진행 중일 경우 같은 Connection을 이용하게 된다.
+
+그렇다면 DataSourceUtils.getConnection() 메소드는 트랜잭션 범위 내에 있는지를 어떻게 알 수 있을까?
+이는 DataSourceTransactionManager가 처리한다. DataSourceTransactionManager는 트랜잭션을 시작할 때 DataSourceUtils에 트랜잭션이 시작되었음을 알리며,
+이후 DataSourceUtils.getConnection() 메소드는 DataSourceTransactionManager가 시작한 트랜잭션과 연결된 Connection 객체를 리턴한다.
+
+이런 동작 방식 때문에, 다음 코드처럼 DAO 코드에서 DataSource를 직접 사용해서 Connection 객체를 가져와 사용할 경우 그 코드는
+스프링이 제공하는 트랜잭션 범위 내에서 실행되지 않는다.
+
+
+	public class JdbcItemDao implements ItemDao {
+		private JdbcTemplate jdbcTemplate;
+		...
+		@Override
+		public Item findById(Integer itemId) {
+			Connection conn = null;
+			PreparedStatement pstmt = null;
+			
+			try {
+				// 스프링의 트랜잭션 범위에 묶인 Connection이 아님!
+				conn = dataSource.getConnection();
+				pstmt = conn.preparedStatement(...);
+				...
+			} catch (SQLException ex) {
+				...
+			}
+		}
+	}
+	
+	
+만약 DataSource를 직접 사용하면서 스프링의 트랜잭션 지원 기능을 사용하고 싶다면, Connection 객체를 구할 때 다음과 같이
+DataSourceUtils 클래스를 사용해야 한다.
+
+
+	import org.springframework.jdbc.datasource.DataSourceUtils;
+
+	public class JdbcItemDao implements ItemDao {
+		private JdbcTemplate jdbcTemplate;
+		...
+		@Override
+		public Item findById(Integer itemId) {
+			Connection conn = null;
+			PreparedStatement pstmt = null;
+			
+			try {
+				// 스프링의 트랜잭션 범위에 묶인 Connection이 아님!
+				conn = DataSourceUtils.getConnection(dataSource);
+				pstmt = conn.preparedStatement(...);
+				...
+			} catch (SQLException ex) {
+				...
+			}
+		}
+	}

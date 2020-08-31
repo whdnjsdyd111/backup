@@ -1,0 +1,22 @@
+LogonDataBean은 회원 관리 시스템에서 발생한 데이터를 객체로 생성해 관리하는 데이터 저장빈이다.
+이 데이터 저장빈은 회원 관리 시스템에 필요한 정보를 저장하는 프로퍼티 및 프로퍼티 값을 저장하고 얻어내는 setter/getter 메소드로 이루어져 있다.
+
+프로퍼티 명				해당 메소드
+
+id		아이디		setId(int id) : id 값 저장
+					getId() : 저장된 id 값 가져옴
+					
+passwd	비밀번호		setPasswd(String passwd) : passwd 값 저장
+					getPasswd() : 저장된 passwd 값 가져옴
+					
+name	이름			setName(String name) : name 값 저장
+					getName() : 저장된 name 값 가져옴
+
+reg_date	가입날짜	setReg_date(Timestamp reg_date) : reg_date 값 저장
+					getReg_date() : 저장된 reg_date 값 가져옴
+
+address	주소			setAddress(int address) : address 값 저장
+					getAddress() : 저장된 address 값 가져옴
+
+tel		전화번호		setTel(String tel) : tel 값 저장
+					getTel() : 저장된 tel 값 가져옴

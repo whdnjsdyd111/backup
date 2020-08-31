@@ -1,0 +1,36 @@
+각 상품에 대한 질문과 답변(Q&A)을 저장 및 관리하는 qna 테이블을 작성한다.
+
+CREATE TABLE qna(
+	qna_id NUMBER CONSTRAINT qna_id_pk PRIMARY KEY,
+	book_id NUMBER CONSTRAINT qna_book_id_fk REFERENCES book(book_id),
+	book_title VARCHAR2(100) CONSTRAINT qna_book_title_nn NOT NULL,
+	qna_writer VARCHAR2(50) CONSTRAINT qna_writer_fk REFERENCES member(id),
+	qna_content CLOB CONSTRAINT qna_content_nn NOT NULL,
+	group_id NUMBER CONSTRAINT qna_groud_id_nn NOT NULL,
+	qora NUMBER CONSTRAINT qna_qora_nn NOT NULL,
+	reply NUMBER CONSTRAINT qna_reply_nn NOT NULL,
+	reg_date TIMESTAMP CONSTRAINT qna_date_nn NOT NULL
+);
+
+다음은 qna 테이블의 각 필드에 대한 설명이다.
+
+필드명			설명
+
+qna_id			QnA의 아이디를 저장하는 필드, 기본 키
+
+bookd_id		상품별로 질의를 그룹하기 위한 값을 저장하는 필드
+
+book_title		QnA 상품명을 저장하는 필드
+
+qna_writer		작성자를 저장하는 필드
+
+qna_content		질문 내용을 저장하는 필드
+
+group_id		질문과 답변을 그룹화하기 위한 값을 저장하는 필드
+
+qora			질문과 답변의 순서를 결정할 값을 저장하는 필드
+
+reply			답변을 했는지 여부를 저장하는 필드
+
+reg_date		질문 등록일을 저장하는 필드
+

@@ -1,0 +1,34 @@
+스프링 프레임워크는 JCL(Java Commons Logging)을 이용해서 로그를 남긴다. 스프링이 JCL을 이용해서 생성하는 로그 메시지를 Log4j를 이용해서 남기고 싶다면,
+pom.xml 파일에 다음과 같이 log4j 모듈을 추가해주면 된다.
+
+
+	<?xml version="1.0" encoding="UTF-8">
+	
+	<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+	
+	<log4j:configuration xmls:log4j="http://jakarta.apache.org/log4j/">
+		
+		<appender name="console" class="org.apache.log4j.ConsoleAppender">
+			<layout class="org.apache.log4j.PatternLayout">
+				<param name="ConversionPattern" value="[%t] %-5p %c:%M - %m%n" />
+			</layout>
+		</appender>
+		
+		<root>
+			<priority value="DEBUG" />
+			<appender-ref ref="console" />
+		</root>
+		
+	</log4j:configuration>
+	
+
+위 log4j 설정 파일은 DEBUG 레벨 이상의 모든 로그를 기록하도록 설정했는데, 실제 스프링 컨테이너를 생성해서 실행해보면 다음과 같이 스프링이 생성하는 로그가 출력되는 것을 확인할 수 있다.
+
+
+	[main] DEBUG org.springframework.core.env.StandardEnviroment:addLast - Adding
+	[systemProperties] PropertySource with lowest search precedence
+	[main] DEBUG org.springframework.core.env.StandardEnviroment:addLast - Adding
+	[systemEnviroment] PropertySource with lowest search precedence
+	...
+	
+

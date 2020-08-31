@@ -1,0 +1,454 @@
+HTML5의 주요 API 중 하나인 웹소켓(WebSocket)은 HTTP 프로토콜을 기반으로 웹 브라우저와 웹 서버 간 양방향 통신을 지원하기 위한 표준이다.
+웹소켓을 사용하면 마치 소켓을 사용하는 것처럼 클라이언트와 서버가 메시지를 자유롭게 주고 받을 수 있다.
+이런 이유로 실시간 알림, 채팅, 웹 기반의 실시간 협업 도구와 같이 클라이언트와 서버 간에 메시지를 빈번하게 주고 받는 웹 어플리케이션을 개발할 때 웹소켓을 적용하는 사례가 증가하고 있다.
+
+[웹소켓 자체를 잘 모르는 독자는 웹소켓 관련 도서나 글을 읽어보자. 이 절에서는 스프링의 웹 소켓 지원 부분에 초점을 맞춰서 내용을 진행하며,
+웹 소켓 자체에 대한 설명은 하지 않는다.]
+
+자바의 웹소켓 표준인 JSR-356 표준에 맞춰 웹소켓 서버 기능을 구현할 경우 스프링의 DispatcherServlet의 연동이나 스프링 빈 객체를 사용하기가 매우 번거롭다.
+스프링은 이런 번거로움을 줄여주기 위한 기반 클래스를 제공하고 있으며, 이를 통해 컨트롤러르 구현하는 것과 비슷한 방식으로 서버를 구현할 수 있게 된다.
+이 절에서는 웹소켓 서버를 구현하는데 필요한 기반 클래스인 WebSocketHandler 지원에 대해 살펴보고,
+웹소켓을 지원하지 않는 브라우저를 위한 SocketJS 연동에 대해 살펴본다.
+
+[웹소켓 관련 예제 코드는 spring-chap09 폴더가 아닌 spring-chap09-ws 폴더에 포함되어 있다.]
+
+
+	3.1 메이븐 의존 설정
+	
+스프링 4의 웹소켓 기능을 사용하려면, 메이븐 의존에 웹소켓 모듈 설정을 추가한다. 또한, 스프링 4의 웹소켓 모듈은 서블릿 3의 웹소켓 기능에 의존하고 있으므로,
+서블릿 3을 지원하는 컨테이너에서만 이 기능을 사용할 수 있다.
+
+
+	<dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.0.1</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-websocket</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		...
+	</dependency>
+	
+	
+	3.2 WebSocketHandler를 이용한 웹소켓 서버 구현
+	
+스프링 웹소켓 기능은 스프링 MVC를 지원하기 때문에, 스프링 MVC 환경에서 간단한 설정만으로 웹소켓 서버 프로그램을 구현할 수 있다.
+스프링 웹소켓을 이용해서 웹소켓 서버를 구현하려면 다음의 두 가지만 하면된다.
+
+	- WebSocketHandler 인터페이스를 구현한다.
+	- <websocket:handler> 또는 @EnableWebSocket 어노테이션을 이용해서 앞서 구현한 WebSocketHandler 구현 객체를 웹소켓 엔드포인트로 등록한다.
+	
+먼저할 작업은 WebSocketHandler 인터페이스를 구현하는 것이다. 사실 스프링 웹소켓을 이용해서 웹소켓 서버를 구현할 때 개발자가 직접 구현하는 부분은 이것 뿐이다.
+스프링 웹소켓 모듈은 웹소켓 클라이언트가 연결되거나 데이터를 보내거나 연결을 끊는 경우 WebSocketHandler에 관련 데이터를 전달한다.
+예를 들어, 웹소켓 클라이언트가 특정 엔드포인트로 연결하면, 웹소켓 모듈은 엔드포인트에 매핑된 WebSocketHandler의 afterConnectionEstablished() 메소드를 호출한다.
+비슷하게 윕소켓 클라이언트가 데이터를 전송하면 WebSocketHandler의 handleMessage()를 호출해서 클라이언트 전송한 데이터를 전달한다.
+실제 스프링 웹소켓 모듈은 복잡한 과정을 거쳐서 WebSocketHandler의 메소드를 실행하지만, 개발자 입장에서는
+WebSocketHandler만 알맞게 구현하면 웹소켓 서버를 만들 수 있다.
+
+WebSocketHandler 인터페이스 및 관련 구성요소에 대해 알아보기 전에 간단한 웹소켓 서버를 만들어보자.
+여기서 만들 웹소켓 서버는 웹소켓 클라이언트가 보낸 메시지를 그대로 다시 웹 클라이언트에 전송하는 EchoHandler이다.
+EchoHandler 클래스는 다음과 같다.
+
+	
+	ws/EchoHandler.java		449쪽
+	
+	
+웹소켓 서버를 구현할 때 WebSocketHandler 인터페이스를 직접 상속받기 보다는 기본 구현을 일부 제공하는 AbstractWebSocketHandler나 TextWebSocketHandler 클래스를
+상속받아 구현하게 된다. EchoHandler 클래스는 TextWebSocketHandler 클래스를 상속받았는데, TextWebSocketHandler 클래스는 텍스트 데이터를 주고 받을 때
+상속받아 사용할 수 있는 기반 클래스이다.
+
+라인 11과 라인 25의 두 메소드 -afterConnectionEstablished와 afterConnectionClosed- 는 각각 웹소켓 클라이언트와 연결되거나 연결이 종료될 때 호출된다.
+두 메소드의 첫 번째 파라미터인 WebSocketSession은 클라이언트와의 세션을 관리하는 객체이다.
+
+라인 17의 handleTextMessage() 메소드는 웹소켓 클라이언트가 텍스트 메시지를 전송할 때 호출되는 메소드이다.
+TextMessage 타입의 두 번째 파라미터인 message는 클라이언트가 전송한 텍스트 데이터를 담고 있으며, 라인 20과 같이 message.getPayload()를 이용해서 텍스트 데이터를 구할 수 있다.
+
+라인 21을 보면 session.sendMessage()를 호출하고 있는데, sendMessage()를 실행하면 웹소켓 클라이언트에 데이터를 전송한다.
+위 코드에서는 TextMessage() 객체를 이용해서 텍스트 데이터를 전송하였다.
+
+웹소켓 서버를 위한 WebSocketHandler 구현 클래스를 만들었다면, 스프링 설정을 이용해서 웹소켓 기능을 활성화하면 된다.
+XML을 사용하는 경우 다음과 같이 websocket 네임스페이스를 이용해서 웹소켓 서버를 설정하면 된다.
+
+
+	WEB-INF/ws-config.xml		450쪽
+	
+
+<websocket:mapping>은 웹소켓 클라이언트가 연결할 때 사용할 엔드포인트(path 속성)와 WebSocketHandler 객체를 연결해준다.
+위 설정의 경우, 웹소켓 클라이언트가 "/echo-ws"로 접속하면 echoHandler 빈을 이용해서 처리한다고 설정하고 있다.
+
+<websocket:handlers>는 내부적으로 스프링 MVC의 SimpleUrlHandlerMapping을 포함해 몇 개의 빈을 등록해준다.
+따라서, 이를 사용하려면 web.xml에 DispatcherServlet 설정을 추가해주어야 한다. 다음은 설정 예이다.
+
+
+		<?xml version="1.0" encoding="UTF-8"?>
+		<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xmlns="http://java.sun.com/xml/ns/javaee"
+			xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+				http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+			id="spring4-chap09-ws" version="3.0">
+			<display-name>spring4-chap09-ws</display-name>
+		
+			<servlet>
+				<servlet-name>dispatcher</servlet-name>
+				<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+					<init-param>
+						<param-name>contextConfigLocation</param-name>
+						<param-value>
+							/WEB-INF/ws-config.xml
+						</param-value>
+					</init-param>
+				<load-on-startup>1</load-on-startup>
+			</servlet>
+			
+			<servlet-mapping>
+				<servlet-name>dispatcher</servlet-name>
+				<url-pattern>/</url-pattern>
+			</servlet-mapping>
+			
+			... 생략
+		</web-app>
+		
+		
+웹소켓 서버를 위한 구현과 설정은 끝났다. 이제 이를 테스트하기 위한 간단한 웹소켓 클라이언트 코드를 만들어보자.
+다음의 echo-ws.html은 WebSocket을 이용해서 웹소켓 서버에 데이터를 보내고 응답으로 받은 데이터를 출력하는 자바스크립트 코드를 포함하고 있다.
+(코드의 간결함을 위해 이벤트 처리 등에 jQuery를 사용했다.)
+
+
+	webapp/echo-ws.html		452쪽
+	
+	
+라인 14를 보면 엔드포인트로 "ws://localhost:8080/spring4-chap09-ws/echo-ws"	를 사용했는데, 이 엔드포인트 경로는 앞서 스프링 설정의 경로와 매핑되는 것을 알 수 있다.
+
+
+	<!-- ws://호스트:포트/컨텍스트경로/echo-ws	에 매핑 -->
+	<websocket:handler>
+		<websocket:mapping handler="echoHandler" path="/echo-ws" />
+	</websocket:handler>
+	
+	
+실제 테스트를 해보자. 먼저 서버를 실행한다. 책에서 제공하는 소스 코드를 이클립스 프로젝트로 임포트했다면 이클립스의 톰캣 서버를 이용해서 실행하면 되고 또는 메이븐 명령어를 이용해서
+Jetty 서버를 실행하면 된다. (서문에 있는 소스 코드 사용법을 참고.)
+
+서버를 실행한 뒤, 웹 브라우저에서 echo-ws.html을 실행해보자. 참고로, 웹소켓을 지원하는 브라우저에서 실행해야 정상 동작한다.
+IE9처럼 웹소켓을 지원하지 않는 브라우저에서는 실행해볼 수 없으니, IE9 이하 버전을 사용 중이라면 크롬이나 파이어폭스 같은 브라우저를 이용해서 테스트 해보자.
+다음은 실해화면에서 '안녕' 이라는 단어를 입력한 뒤 [전송] 버튼을 클릭해보자.
+
+
+	http://localhost:8001/spring4-chap09-ws/echo-ws.html	[서버에서 데이터 받은 후 연결 끊킴을 알림 (크롬에선 작동이 안됨)]
+	
+	
+[전송] 버튼을 클릭하면, sendMessage() 함수가 실행되어 웹소켓 서버에 연결한다. 연결이 되면, WebSocket의 send() 함수를 이용해서 웹소켓 서버에 데이터를 전송한다.
+앞서 웹소켓 서버 구현을 보면 아래 코드처럼 클라이언트가 전송한 데이터에 "echo:"를 붙여서 다시 클라이언트에 보냈었다.
+
+
+	@Override
+	protected void handleTextMessage(
+			WebSocketSession session, TextMessage message) throws Exception {
+		System.out.printf("%s로부터 [%s] 받음\n", 
+				session.getId(), message.getPayload());
+		session.sendMessage(new TextMessage("echo: " + message.getPayload()));
+	}
+	
+	
+따라서 브라우저에서 웹소켓을 통해 데이터를 전송하면 서버에서 다시 데이터를 클라이언트로 보내고, 브라우저는 onMessage() 함수를 통해서 서버가 전송한 데이터를 받게된다.
+onMessage() 함수는 echo-ws 페이지에서 [서버에서 데이터 받음: echo], 웹소켓을 종료한다. 웹소켓이 종료되면, onClose() 함수가 호출되며,
+[연결끊김] 팝업 창이 뜨게 된다.
+
+웹 브라우저에서 웹소켓을 이용해서 서버와 연결하고 데이터를 주고 받고 종료를 하는 동안, 서버 콘솔에는 다음과 같은 메시지가 출력된다.
+EchoHandler.java의 afterConnectionEstablished() 메소드, handleMessage() 메소드, afterConnectionClosed() 메소드 코드를 보면
+System.out 을 이용해서 콘솔에 관련 내용을 출력하고 있는데, 아래 메시지는 그 내용이 출력된 것이다. 숫자 0은 세션 ID로서 이 값은 소켓 클라이언트가 새로 연결할 때마다 바뀐다.
+
+
+	0 연결 됨
+	0 로부터 [안녕] 받음
+	0 연결 끊김
+	
+	
+[웹 브라우저의 WebSocket API에 대한 내용은 HTML5 관련 서적이나 웹소켓 표준 문서인
+http://www.w3.org/TR/websockets/	등을 참고하기 바란다.]
+
+	(1) WebSocketHandler 인터페이스, WebSocketMessage 클래스와 관련 클래스
+	
+o.s.web.socket.WebSocketHandler 인터페이스에 정의된 메소드는 다음과 같다.
+
+	- void afterConnectionEstablished(WebSocketSession session) throws Exception : 웹소켓 클라이언트가 연결되면 호출된다.
+	- void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception
+		: 웹소켓 클라이언트가 데이터를 전송하면 호출된다. message는 클라이언트가 전송한 데이터를 담고 있다.
+	- void handleTransportError(WebSocketSession session, Throwable exception) throws Exception
+		: 웹소켓 클라이언트와의 연결에 문제가 발생하면 호출된다.
+	- void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception
+		: 웹소켓 클라이언트가 연결을 직접 끊거나 서버에서 타임아웃이 발생해서 연결을 끊을 때 호출된다.
+	- boolean supportsParitialMessages() : 큰 데이터를 나눠서 받을 수 있는지 여부를 지정한다.
+		이 값이 true고 웹소켓 컨테이너(톰캣이나 Jetty 등)가 부분 메시지를 지원할 경우, 데이터가 크거나 미리 데이터의 크기를 알 수 없을 때 handleMessage()를 여러 번 호출해서 데이터를 부분적으로 전달한다.
+		
+앞서 EchoHandler 예에서 봤듯이 WebSocketHandler 인터페이스를 상속받아 모든 메소드를 구현하기 보다는 AbstractWebSocketHandler 클래스를 상속받아 필요한 메소드만
+구현하는 것이 보통이다. AbstractWebSocketHandler 클래스를 포함해 WebSocketHandler 인터페이스를 상속받고 있는 클래스는 다음과 같다.
+
+
+					<< Interface >>
+					WebSocketHandler
+							↑
+				AbstractWebSocketHandler
+							│
+			┌───────────────┴───────────┐
+	BinaryWebSocketHandler		TextWebSocketHandler
+	
+	
+AbstractWebSocketHandler 클래스의 handleMessage() 메소드는 WebSocketMessage의 타입에 따라 다음의 세 메소드 중 하나를 호출한다.
+(모두 protected void 이며, throws Exception을 생략하였다.)
+
+	- handleTextMessage(WebSocketSession session, TextMessage message)
+	- handleBinaryMessage(WebSocketSession session, BinaryMessage message)
+	- handlePongMessage(WebSocketSession session, PongMessage message)
+	
+AbstractWebSocketHandler를 상속받은 하위 클래스는 처리하려는 메시지 타입에 따라 알맞은 메소드를 재정의하면 된다.
+앞서 EchoHandler 예의 경우 handleTextMessage() 메소드를 재정의해서 텍스트 메시지를 처리했었다.
+
+TextWebSocketHandler 클래스는 handleBinaryMessage() 메소드가 익셉션을 발생하도록 재정의하고 있으며,
+이를 통해 텍스트 메시지만을 처리하도록 제한하고 있다. BinaryWebSocketHandler 클래스는 유사한 방법으로 바이너리 메시지만 처리하도록 제한하고 있다.
+
+스프링 웹소켓은 주고 받는 데이터를 담기 위해 o.s.web.socket.WebSockeMessage 인터페이스를 사용한다.
+WebSocketMessage 인터페이스는 다음과 같이 정의되어 있다.
+
+
+	package org.springframework.web.socket;
+	
+	public interface WebSocketMessage<T> {
+		T getPayload();
+		boolean isLast();
+	}
+	
+	
+WebSocketMessage의 하위 타입은 다음과 같이 두 개가 존재한다.
+
+	- TextMessage : 텍스트를 담는 메시지로 String 타입 데이터를 담는다.
+	- BinaryMessage : 바이트를 담는 메시지로 java.nio.ByteBuffer 타입 데이터를 담는다.
+	
+앞서 EchoServer 에서는 TextMessage 객체를 생성해서 텍스트 메시지를 클라이언트에 전송했었다.
+
+
+	session.sendMessage(new TextMessage("echo: " + message.getPayload()));
+	
+	
+BinaryMessage도 비슷하게 ByteBuffer를 이용해서 객체를 생성할 수 있다. 또는 byte 배열을 이용해서 생성해도 된다.
+
+[WebSocketMessage의 하위 타입에는 PingMessage와 PongMessage도 존재한다.
+이 두 클래슨느 서버와 클라이언트 간 연결을 유지하거나 확인하기 위해 사용되는 메시지로서, 이 글을 쓰는 시점에서
+Ping/Pong은 아직 API로 명확하게 정의되어 있지 않다.]
+
+o.s.web.socket.WebSocketSession 인터페이스는 웹소켓 클라이언트의 세션을 표현한다.
+WebSocketSession 인터페이스는 sendMessage() 메소드와 같이 웹소켓 클라이언트와 통신을 하는데 필요한 기능을 제공하고 있으며, 주요 메소드는 다음과 같다.
+
+	- String getId() : 세션 ID를 리턴한다.
+	- URI getUri() : 엔드포인트 경로를 리턴한다.
+	- InetSocketAddress getLocalAddress() : 로컬 서버 주소를 리턴한다.
+	- InetSocketAddress getRemoteAddress() : 클라이언트 주소를 리턴한다.
+	- boolean isOpen() : 소켓이 열려 있는지 여부를 리턴한다.
+	- sendMessage(WebSocketMessage<?> message) throws IOException : 메시지를 전송한다.
+	- void close() throws IOException : 소켓을 종료한다.
+	
+	(2) WebSocketHandler를 이용한 간단한 채팅 구현
+	
+EchoHandler보다 조금 더 흥미로운 채팅 예제를 만들어보자. 인증과 같은 부분은 생략한 간단한 채팅 예제이긴 하지만, 스프링에서 웹소켓을 사용하는데
+조금 더 익숙해질 것이다. 여기서 구현할 채팅에서 웹소켓 클라이언트는 다음과 같이 동작한다.
+
+	- 입장 버튼을 클릭하면 웹소켓을 이용해서 웹소켓 서버에 연결한다.
+	- 연결된 상태에서 [전송] 버튼을 클릭하면 웹소켓을 이용해서 입력한 메시지를 서버에 전송한다. 전송하는 데이터는 "msg:메시지" 형식을 갖는다.
+	- 웹소켓 서버에서 메시지를 받으면, 채팅 메시지 영역에 메시지를 출력한다.
+	- [나가기] 버튼을 클릭하면 웹소켓 연결을 종료한다. 종료가 되면, 채팅 메시지 영역에 "연결을 끊었습니다." 메시지를 출력한다.
+	
+웹소켓 서버는 다음과 같이 동작한다.
+
+	- 웹소켓 클라이언트가 연결하면, 클라이언트 목록에 보관한다.
+	- 웹소켓 클라이언트가 메시지를 전송하면, 클라이언트 목록에 보관된 모든 클라이언트에 메시지를 전달한다.
+	- 웹소켓 클라이언트가 연결을 끊으면, 클라이언트 목록에서 제거한다.
+	 
+먼저 웹소켓 서버를 만들어보자. 웹소켓 서버는 다음과 같이 구현한다.
+
+	
+	ws/ChatWebSocketHandler.java		457쪽
+	
+	
+라인 17-21에서 afterConnectionEstablished() 메소드는 클라이언트가 연결되면, 클라이언트와 관련된 WebSocketSession을 users 맵에 저장한다.
+이 users 맵은 채팅 메시지를 연결된 전체 클라이언트에 전달할 때 사용된다.
+
+라인 24-28에서 afterConnectionClosed() 메소드는 클라이언트와의 연결이 종료되면, 클라이언트에 해당하는 WebSocketSession을 users 맵에서 제거한다.
+
+라인 31-38에서 handleTextMessage() 메소드는 클라이언트가 전송한 메시지를 users 맵에 보관한 전체 WebSocketSession에 다시 전달한다.
+클라이언트는 메시지를 수신하면 채팅 영역에 보여주도록 구현할 예정이므로, 특정 클라이언트가 채팅 메시지를 서버에 보내면 전체 클라이언트는
+다시 그 메시지를 받아서 화면에 보여주게 된다.
+
+ChatWebSocketHandler 클래스를 스프링 설정에 추가한다.
+
+	
+	<websoket:handlers>
+		<websocket:mapping handler="echoHandler" path="/echo-ws" />
+		<websocket:mapping handler="chatHandler" path="/chat-ws" />
+	</websocket:handlers>
+	
+	<bean id="echoHandler" class="net.madvirus.spring4.chap09.ws.EchoHandler" />
+	<bean id="chatHandler"
+		class="net.madvirus.spring4.chap09.ws.ChatWebSocketHandler" />
+		
+		
+이제 남은 영역은 클라이언트를 만드는 것이다. 여기서는 자바스크립트 이벤트 처리 등을 위해 jQuery를 사용할 것이다.
+클라이언트 코드는 다음처럼 다소 긴데, 중요한 부분은 앞쪽의 자바스크립트 코드에 위치해 있으며, 뒤쪽은 사용자에게 보여질 HTML 코드가 위치해 있다.
+
+
+	webapp/chat-ws.jsp		459쪽
+	
+	
+라인 69의 enterBtn 버튼을 클릭하면 라인 57에 의해 connect() 함수가 실행된다.
+connect() 함수는 라인 11-17에 정의되어 있는데, 라인 12-13에서 WebSocket을 이용해서 웹소켓 서버에 연결하고, onopen, onmessage, onclose에 대한 콜백 함수를 지정한다.
+
+라인 75의 message 입력 폼에서 엔터키를 누르거나 라인 76의 sendBtn 버튼을 클릭하면 라인 34의 send() 함수가 실행된다.
+send() 함수는 "msg:nickname값:message값"을 서버에 전송한다. send() 함수를 통해 서버에 메시지가 전송되면, 다음과 같이 ChatWebSocketHandler는 연결된 클라이언트에 메시지를 그대로 전송한다.
+(서버에서 클라이언트에 메시지를 전송하는 코드는 앞서 ChatWebSocketHandler.java의 handleTextMessage() 메소드에 포함되어 있었다.)
+
+
+				1. "msg:닉1:안녕하세요" 전송
+	웹소켓		───────────────────────>┌───────────────────────┐
+	클라이언트1		<───────────────────────│						│
+				2. "msg:닉1:안녕하세요" 전송	│ 웹소켓 서버				│
+	웹소켓								│ChatwebSocketHandler	│
+	클라이언트2		<───────────────────────└───────────────────────┘
+				2: "msg:닉1:안녕하세요" 전송
+				
+				
+서버로부터 메시지를 받은 클라이언트는 wsocket.onmessage 콜백 함수로 지정된 onMessage() 함수를 실행한다.
+라인 24-29의 onMessage() 함수는 수신한 메시지가 "msg:"로 시작하면, "msg:"를 제외한 나머지 부분을 appendMessage() 함수에 전달하는데,
+appendMessage() 함수(라인 41-46)는 chatArea 영역(라인 73)에 메시지를 추가해서 사용자가 수신한 메시지를 볼 수 있도록 한다.
+
+실제 두 개 이상의 브라우저를 이용해서 chat-ws.jsp를 실행해보자. [입장] 버튼을 클릭한 뒤에 채팅 메시지를 입력해보면 다음처럼
+각 클라이언트가 메시지를 주고 받는 것을 확인할 수 있다.
+
+	http://localhost:8001/spring4-chap09-ws/chat-ws.jsp
+	http://localhost:8001/spring4-chap09-ws/chat-ws.jsp
+	
+[웹소켓 서버를 지원하는 컨테이너에 따라 서버의 동작 방식이 일부 다를 수 있다. 예를 들어, 이글을 쓰는 시점에서 Tomcat 7.0.52 버전은
+웹소켓 클라이언트가 연결되면, 직접 연결을 종료하기 전까지 연결을 유지한다. 반면에 Jetty 9 버전의 경우 Ping/Pong 메시지를 이용해서 클라이언트가 연결을 유지하고 있는지 확인한다.
+따라서, Jetty를 서버로 사용할 때 웹 브라우저가 Ping에 대한 응답으로 Pong을 전송하지 않으면 Jetty는 연결이 정상이 아닌 것으로 간주하고
+마지막 메시지 송수신 이후 일정 시간(기본 300초)이 지나면 연결을 끊는다. 문제는 웹 브라우저마다 Ping/Pong을 지원할지 여부가 다르고,
+Ping/Pong을 지원하더라도 스프링에서 제대로 처리하지 못하는 경우가 있다는 점이다. 따라서, 이를 고려해서 웹컨테이너를 선택하고 선택하고, 클라이언트 코드는 연결이 끊기면
+재연결을 하는 등의 처리가 필요하다.
+
+웹소켓을 사용할 때 또 하나 고려할 점은 웹소켓 서버와 클라이언트 사이에 위치한 다양한 네트워크 장비들(프록시, L4 등)이 아직 웹소켓 프로토콜을 완벽하게 지원하는 것은 아니라는 점이다.
+예를 들어 프록시는 길게 연결된 HTTP 연결을 끊거나 중간에 데이터를 일부 버퍼링할 수도 있는데, 이는 연결된 상태에서 즉각적인 응답을 주고 받아야 하는 웹소켓 프로그래밍에서
+문제가 된다. 이에 대한 좀 더 자세한 내용은		http://www.infoq.com/articles/Web-Sockets-Proxxy-Servers	페이지에서 확인할 수 있다.]
+
+
+	3.3	SockJS 지원
+	
+웹소켓이 웹 브라우저에 적용되기 이전에 클라이언트와 서버 간에 데이터를 주고 받기 위한 다양한 기법이 존재했는데, 이런 기법들 역시 브라우저 종류와 버전마다 다르게 적용해야 했다.
+예를 들어, iframe을 사용하기도 하고 Long-Polling을 사용하기도 했다. 또한 웹소켓을 지원하면 직접 웹소켓을 쓰기도 한다.
+문제는 각 방식에 따라 자바스크립트 코드와 서버 코드를 작성해야 했는데, 이런 불편함을 해소하기 위해 만들어진 것이 바로 SockJS이다.
+
+[http://caniuse.com/websockets	페이지에 브라우저 버전별로 웹소켓 지원 여부가 정리되어 있다.]
+
+[	SockJS란?
+
+SockJS는 이런 다양한 우회 기법들을 추상화해서 웹소켓과 유사한 API로 웹 서버와 웹 브라우저가 통신할 수 있도록 해준다.
+실제로 SockJS가 제공하는 클라이언트 API를 이용해서 작성한 코드는 웹소켓 API를 이용해서 작성한 코드와 거의 동일하다.
+
+SockJS는 다양한 환경을 위한 서버 모듈과 클라이언트 모듈을 제공하고 있다. 예를 들어, sockjs-client는 웹 브라우저를 위한 자바스크립트 모듈로서 브라우저 환경에 상관없이
+SockJS API를 이용해서 서버와 클라이언트가 양방향 통신을 할 수 있도록 만들어준다. 실제 SockJS가 내부적으로 웹소켓, Long-Polling 등을 사용할지 여부는 몰라도 된다.
+
+SockJS 클라이언트와 통신할 수 있는 SockJS 서버는 웹소켓, Long-Polling 등 SockJS 클라이언트가 사용하는 다양한 방식을 지원한다.
+현재 SockJS를 지원하는 서버로는 Node.js, 파이썬, 자바 Vert.x 서버 등이 있으며, 이들 서버를 사용하면 단일 서버 API를 이용해서
+SockJS 클라이언트와 양방향 통신하는  서버를 만들 수 있다.]
+
+스프링 웹소켓 모듈을 사용하면 SockJS 서버를 만들 수 있다. 톰캣 6 버전처럼 웹소켓을 지원하지 않는 서버에서 양방향 통신을 처리하고 싶을 때에는 스프링의 SockJS 서버 지원을 이용해서
+SockJS 클라이언트와의 연결을 처리할 수 있게 된다. SockJS 지원을 위해 별도의 코드를 작성할 필요 없이, 앞서 살펴봤던 웹소켓 서버 코드를 그대로 SockJS 서버 코드로 사용할 수 있다.
+단지, 설정에서 SockJS 관련 내용을 아래 코드처럼 추가해주기만 하면 된다.
+
+
+	<bean id="echoHandler" class="net.madvirus.spring4.chap09.ws.EchoHandler" />
+	<bean id="chatHandler" class="net.madvirus.spring4.chap09.ws.ChatWebSocketHandler" />
+
+	<websocket:handlers>
+		<websocket:mapping handler="echoHandler" path="/echo.sockjs" />
+		<websocket:mapping handler="chatHandler" path="/chat.sockjs" />
+		<websocket:sockjs />	<!-- SockJS 서버 지원 -->
+	</websocket:handlers>
+	
+	
+자바 코드 설정을 사용한다면, 다음과 같이 withSockJS() 메소드를 이용해서 SockJS 서버로 만들 수 있다.
+
+
+	@Configuration
+	@EnableWebSocket
+	public class WsConfig implements WebSocketConfigurer {
+	
+		@Override
+		public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+			registry.addHandler(echoHandler(), "/echo.sockjs").withSockJS();
+			registry.addHandler(chatHandler(), "/chat.sockjs").withSockJS();
+		}
+		
+		@Bean
+		public EchoHandler echoHandler() {
+			return new EchoHandler();
+		}
+		
+		@Bean
+		public ChatWebSocketHandler chatHandler() {
+			return new ChatWebSocketHandler();
+		}
+	}
+	
+	
+SockJS를 사용하는 자바스크립트 코드는 다음과 같이 SockJS 자바스크립트 클라이언트 코드를 이용해서 서버에 접속하면 된다.
+앞서 웹소켓을 사용했던 코드와 비교해보면 차이점은 WebSocket 대신에 SockJS를 사용하고 ws가 아니라 http를 사용한다는 점이다.
+
+
+	<!DOCTYPE html>
+	<html>
+	<head>
+	<meta charset="utf-8">
+	<title>에코</title>
+	<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+	<script type="text/javascript" src="js/sockjs-0.3.min.js"></script>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			$('#sendBtn').click(function() { sendMessage(); });
+		});
+		
+		var sock;
+		function sendMessage() {
+			sock = new SockJS("http://localhost:8001/spring4-chap09-ws/echo.sockjs");
+			sock.onmessage = onMessage;
+			sock.onclose = onClose;
+			sock.onopen = function() {
+				sock.send( $("#message").val() );
+			};
+		}
+		function onMessage(evt) {
+			var data = evt.data;
+			alert("서버에서 데이터 받음: " + data);
+			sock.close();
+		}
+		function onClose(evt) {
+			alert("연결 끊김");
+		}
+	</script>
+	</head>
+	<body>
+	    <input type="text" id="message">
+	    <input type="button" id="sendBtn" value="전송">
+	</body>
+	</html>
+	
+	
+[현재의 다양한 환경 -브라우저, 웹서버의 지원 여부, 네트워크 장비의 웹소켓 지원- 을 고려하면, 웹 브라우저에서 웹소켓 API를 직접 사용하는 것보다는 SockJS를 사용하는 것이
+안정적으로 양방향 통신을 지원하는 방법이다. 브라우저와 네트워크 구성을 마음대로 결정할 수 있는 환경이 아니라면 뭽소켓 API를 직접 사용하지 말고
+SockJS를 사용하는 것이 바람직하다. SockJS에 대한 내용은 	http://github.com/sockjs/sockjs-client	를 참고하자.]

@@ -1,0 +1,257 @@
+태그 파일은 JSP와 동일한 문법을 사용해서 JSP와 같은 방식으로 작성하며, jspContext(pageContext), request, response, session application, out 등의 내장 객체를 사용할 수 있다.
+태그 파일에서도 JSP 페이지에서 제공하는 디렉티브(page, include, taglib)와 같은 몇 가지 디렉티브를 제공한다. 태그 파일에서 제공하는 디렉티브는 다음과 같다.
+(태그 파일에 대한 상세 설명은 오라클에서)
+
+
+디렉티브		설명
+
+taglib		JSP 페이지의 taglib 디렉티브와 동일하다.
+
+include		JSP 페이지의 include 디렉티브와 동일하다. 다만 태그 파일에 포함되는 파일은 태그 파일에 맞는 문법을 사용해야 한다.
+
+tag			JSP 페이지의 page 디렉티브와 유사하나 page 디렉티브가 JSP 페이지의 설정을 지원하듯 tag 디렉티브는 태그 파일의 설정을 지원한다.
+
+attribute	태그 파일에서 커스텀 태그의 속성을 선언한다.
+
+variable	표현 언어(EL) 변수를 선언한다.
+
+
+(1) tag 디렉티브(<%@ tag %>)
+
+tag 디렉티브는 태그 파일의 설정 정보를 기술하는 데 사용되며, 이 디렉티브가 제공하는 속성은 다음과 같다.
+
+
+속성						설명
+
+display-name		태그 파일이 툴에 의해 표시될 때의 이름을 지정한다. 확장자가 없는 (.tag) 태그 파일명이 기본값이다.(옵션 항목)
+
+body-content		태그의 body의 내용에 대한 정보를 제공한다.
+					empty, tagdependent, scriptless 중 하나의 값을 설정하며 이외의 값을 사용하면 에러가 발생한다. 기본값은 scriptless이다.(옵션 항목)
+
+dynamic-attribute	해당 태그의 동적인 속성을 지원하는 것으로, 이름과 값의 쌍으로 Map으로 저장된다.(옵션 항목)
+
+small-icon			태그 파일이 툴에 의해 사용될 때 small icon으로 연결될 수 있는 이미지 파일의 태그 소스 파일로부터 상대적인 경로를 기술한다.
+					기본값은 small icon을 설정하지 않는다.(옵션 항목)
+
+large-icon			태그 파일이 툴에 의해 사용될 때 large icon으로 연결될 수 있는 이미지 파일의 태그 소스 파일로부터 상대적인 경로를 기술한다.
+					기본값은 large icon을 설정하지 않는다.(옵션 항목)
+
+description			태그의 설명을 임의의 문자열로 정의할 수 있는데, 기본값은 설명(description)을 기술하지 않는다(옵션 항목)
+
+example				해당 액션이 사용될 때의 예시에 대한 비형식적인 설명을 나타내는 임의의 문자열을 정의할 수 있는데, 
+					기본값은 예시(example)를 기술하지 않는다.(옵션 항목)
+					
+language			JSP의 페이지 디렉티브의 language 속성과 동일하다.(옵션 항목)
+					
+import				JSP의 페이지 디렉티브의 import 속성과 동일하다.(옵션 항목)
+					
+pageEncoding		JSP의 페이지 디렉티브의 pageEncoding 속성과 동일하다.(옵션 항목)
+					
+isELIgnored			JSP의 페이지 디렉티브의 isELIgnored 속성과 동일하다.(옵션 항목)
+
+
+예제를 통해서 tag 디렉티브의 사용을 확인해보자. 먼저 내용이 없는 경우의 태그 파일 사용법을 살펴본다.
+먼저 태그 파일을 저장하는 [tags] 폴더를 작성한다.
+
+
+이 예제는 간단한 문자열을 그냥 출력하는 message라는 태그를 생성해서 JSP 페이지에서 사용하는 것이다.
+이때 message 태그는 태그 파일을 사용해서 작성한다.
+
+message.tag		670쪽
+
+messageTagUse.jsp		670쪽
+
+
+지금까지 태그 파일에 body가 없는 경우를 보인다. 그렇다면 태그 파일에 body가 있는 경우는 어떻게 처리해야 할까?
+
+	- 태그 파일에 body가 있는 경우 처리할 2가지
+	
+1	먼저 tag 디렉티브의 body-content 속성값을 tagdependent나 scriptless로 지정해야 한다. 속성값이 tagdependent의 경우 커스텀 태그의 내용을 처리하지 않고 그래도 사용하고,
+	scriptless일 경우 표현 언어(EL) 요소나 액션 태그의 처리 결과를 사용할 수 있다.
+	
+2	태그 파일에서 <jsp:doBody> 태그를 사용해서 태그 내용을 처리해야 한다. <jsp:doBody> 태그는 액션 태그로 <jsp:invoke> 속성과 거의 동일하나 차이점은 fragment 속성을 지원하지 않는다는 것이다.
+	<jsp:doBody> 태그는 두 가지 사용법이 있는데, 하나는 <jsp:doBody />를 사용해서 body의 내용을 출력하는 것과 다른 하나는 <jsp:doBody var="varName" scope="page" /> 를
+	사용해서 body의 내용을 영역의 속성에 저장하는 방법이다.
+	
+이번에는 태그에 내용이 있는 경우의 태그 파일 사용법을 살펴본다.
+
+
+이 예제는 태그 파일에서 태그의 내용을 처리하는 예제로 tagBody라는 태그를 생성해서 JPS 페이지에서 사용하는 것이다. tagBody 태그는 오늘 날짜(현재 시간 포함)와 태그의 내용을 화면에 출력한다.
+
+tagBody.tag		672쪽
+
+tagBodyUse.jsp		673쪽
+
+
+(2) attribute 디렉티브 (<%@ tag %>)
+
+attribute 디렉티브는 태그 파일에서 커스텀 태그의 속성을 선언하는 데 사용되며, 속성은 다음과 같다.
+
+
+속성				설명
+
+description		속성에 대한 설명으로 기본값은 설명(description)을 기술하지 않는다.(옵션 항목)
+
+name			속성 이름으로, 유일한 이름(unique name)으로 선언된다. 같은 속성 이름이 하나 이상 선언되면 에러가 발생한다.
+				마찬가지로 tag 디렉티브의 dynamic-attributes의 속성값과 같거나 variable 디렉티브의 name-given 속성값과 같은 경우 에러가 발생한다.
+				(필수 항목으로 반드시 기술해야 함)
+
+required		속성의 필수 여부를 설정하는 부분으로 "true" 또는 "false" 값이 오는데 속성을 필수로 설정하려면 "true",
+				속성을 선택으로 설정하려면 "false"를 기술한다. 기본값은 "false"이다.(옵션 항목)
+
+rtexprvalue		속성의 값으로 표현식을 사용할 수 있는지 여부를 지정한다. 기본값은 "true"이다.(옵션 항목)
+
+type			속성값의 타입을 기술한다. 기본값은 java.lang.String이다.(옵션 항목)
+
+fragment		속성값을 전달할 때 사용한다. 이 속성값이 "true"이면 rtexpvalue 속성값은 false가 되고 타입의 속성값은 javax.servlet.jsp.tagext.JspFragment가 된다.
+				기본값은 "false"이다.(옵션 항목)
+				
+				
+attribute 디렉티브를 사용한 예시는 다음과 같다.
+
+			attributeEx.tag
+			
+<%@ attribute name="name" required="true" %>
+<%@ attribute name="welcome" required="true" %>
+<h2>${name}님, ${welcome}</h2>
+
+
+			attributeExUse.jsp
+			
+<%@ taglib prefix="tagFile" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="c" tagdir="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="uri" tagdir="http://java.sun.com/jsp/jtrl/functions" %>
+
+<c:set var="welcome" value="환영합니다." />
+<form method="post" action="#">
+	<input type="text" name="name">
+	<input type="submit" value="Submit">
+</form>
+
+<c:if test="${fn:length(param.name) > 0}"
+	<tagFile:attribute name="${param.name}" welcome="${welcome}" />
+<c:if>
+
+
+			attributeExUse.jsp	실행 결과
+			
+Kingdora 입력시 Kingdora님, 환영합니다.
+
+
+이 예제는 태그 파일에서 속성을 처리하는 예제로 attribute라는 태그를 생성해서 JSP 페이지에서 사용하는 것이다.
+attribute 태그는 attribute 디렉티브를 사용해서 입력한 이름에 환영 메시지를 표시한다.
+
+attribute.tag		675쪽
+
+attributeTagUse.jsp		676쪽
+
+
+(3) variable 디렉티브 (<%@ tag %>)
+
+variable 디렉티브는 표현 언어(EL)변수를 선언하는 데 사용되며, 속성은 다음과 같다.
+
+속성							설명
+
+description					속성에 대한 설명으로 기본값은 설명(description)을 기술하지 않는다.(옵션 항목)
+	
+name-given 또는				태그 파일을 사용할 페이지에서 사용되어질 표현 언어(EL) 변수의 이름을 선언한다.
+name-form-attribute			name-given과 name-form-attribute 둘 중 하나는 반드시 기술해야 하며, 둘 다 기술하면 에러가 발생한다.
+							둘 이상의 variable 디렉티브를 가지고 있을 때 같은 name-given 속성값을 갖는 경우 에러가 발생한다.
+							variable 디렉티브의 name-given 속성의 값, attribute 디렉티브의 name 속성의 값,
+							tag directive의 dynamic-attribute의 값이 같으면 에러가 발생한다.(필수 항목)
+							
+alias						name-form-attribute 속성을 사용하면 반드시 기술해 주어야 하는 속성으로 커스텀 태그의 body에서 사용될 변수를 정의하는 것으로 이 변수는 같은 값을 가지는
+							표현 언어(EL) 변수의 이름을 명시한다.(필수 항목)
+
+variable-class				변수의 타입을 명시하는 것으로 기본값은 is java.lang.String이다.(필수 항목)
+
+declare						변수의 선언 유무와 관계없이 기본값은 True이다.(옵션 항목)
+
+scope						변수의 범위를 설정하는 것으로 범위 값으로 NESTED, AT_BEGIN, AT_END 중 한가지가 기술된다. 기본값은 NESTED이다.(옵션 항목)
+
+
+scope 속성값에 따른 지정된 변수값의 차이는 다음과 같다.
+
+
+scope 속성값			설명
+
+					이 속성값을 사용하면 커스텀 태그의 내용 안에서만 커스텀 태그로 정의한 변수값이 적용된다.
+
+									variable.tag
+									
+					<%@ variable name-give"x" scope="NESTED" %>
+					<c:set var="x" value="2" />
+					<jsp:doBody />
+					<c:set var="x" value="4" />
+									
+NESTED								variableTagUse.jsp
+									
+					<c:set var="x" value="1 />
+					<p>variable 태그 전 : x = ${x}
+					<tagFile:variable>
+						<p>variable 태그 안 : x = ${x}
+					</tagFile:variable>
+					<p>variable 태그 밖 : x = ${x}
+									
+									실행 결과
+									
+					variable 태그 전 : x = 1
+					
+					variable 태그 안 : x = 2
+					
+					variable 태그 밖 : x = 1
+					
+					
+					이 속성값을 사용하면 커스텀 태그의 내용 안과 닫는 태그에서 커스텀 태그로 정의한 변수값이 적용된다.
+					
+									variable2.tag
+									
+					<%@ variable name-give"x" scope="AT_BEGIN" %>
+					<c:set var="x" value="2" />
+					<jsp:doBody />
+					<c:set var="x" value="4" />
+									
+AT_BEGIN							variable2TagUse.jsp
+									
+					<c:set var="x" value="1 />
+					<p>variable 태그 전 : x = ${x}
+					<tagFile:variable2>
+						<p>variable 태그 안 : x = ${x}
+					</tagFile:variable2>
+					<p>variable 태그 밖 : x = ${x}
+									
+									실행 결과
+									
+					variable 태그 전 : x = 1
+					
+					variable 태그 안 : x = 2
+					
+					variable 태그 밖 : x = 4
+					
+					
+					이 속성값을 사용하면 커스텀 태그의 내용 안에서만 커스텀 태그로 정의한 변수값이 적용되지 않는다.
+					커스텀 태그의 내용 안에서는 이 태그를 사용하는 페이지에서 지정한 값이 사용된다.
+					
+									variable2.tag
+									
+					<%@ variable name-give"x" scope="AT_END" %>
+					<c:set var="x" value="2" />
+					<jsp:doBody />
+					<c:set var="x" value="4" />
+									
+AT_END								variable2TagUse.jsp
+									
+					<c:set var="x" value="1 />
+					<p>variable 태그 전 : x = ${x}
+					<tagFile:variable2>
+						<p>variable 태그 안 : x = ${x}
+					</tagFile:variable2>
+					<p>variable 태그 밖 : x = ${x}
+									
+									실행 결과
+									
+					variable 태그 전 : x = 1
+					
+					variable 태그 안 : x = 1
+					
+					variable 태그 밖 : x = 4

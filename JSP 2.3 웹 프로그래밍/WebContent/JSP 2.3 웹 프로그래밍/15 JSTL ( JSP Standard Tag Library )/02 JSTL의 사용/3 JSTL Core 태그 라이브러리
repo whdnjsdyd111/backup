@@ -1,0 +1,291 @@
+Core(코어) 태그 라이브러리는 변수의 선언이나 삭제와 같이 변수와 관련된 작업, if. for문 등과 같은 제어문, URL 처리와 그 밖에 예외 처리 및 화면 출력 등에 사용된다.
+
+	- Core 태그 라이브러리 사용법
+	
+1	JSP 페이지에서 다음과 같이 taglib 디렉티브를 작성한다.
+
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+-	prefix : 여기서 값은 "c"로, 이 값은 네임스페이스명으로도 불린다.
+-	uri : 값은 "http://java.sun.com/jsp/jstl/core"
+
+2	사용할 태그를 필요한 위치에 <c:태그명>과 같이 쓴다. 사용 예시는 다음과 같다.
+
+<c:set var="v1" value="10"> <!-- v1변수 선언, 변수값은 10 -->
+
+-	<c:set> : c가 prefix 값으로 네임스페이스명이고, set이 태그명이다.
+
+	- Core 태그의 기능별 분류
+	
+-	변수 지원 기능 : <c:remove>, <c:set>
+-	흐름 제어 기능 : <c:choose>(<c:when>, <c:otherwise>), <c:forEach>, <c:forTokens>, <c:if>
+-	URL 관리 기능 : <c:import>(<c:param>), <c:redirect>(<c:param>), <c:url>(<c:param>) 
+-	예외 처리 및 화면 출력 기능 : <c:catch>, <c:out>
+
+	- JSTL Core 태그 리스트
+	
+		태그 요약(Tag Summary)
+		
+catch		body 위치에서 실행되는 코드의 예외를 잡아내는 역할을 담당한다. <c:catch> 태그로 사용된다.
+
+choose		자바의 switch문과 같지만, 조건에 문자열 비교도 가능하고 쓰임의 범위가 넓다. 하나 이상의 <when>과 하나 이하의 <otherwise> 서브 태그를 가지고 있다.
+			<c:choose> 태그로 사용된다.
+
+if			조건문을 사용할 때 쓴다. <c:if> 태그로 사용한다.
+
+import		웹 애플리케이션 내부의 자원 접근은 물론이고, http나 ftp와 같이 외부에 있는 자원도 가져온다. 자원을 자유롭게 가공 및  편집할 수 있다.
+			<c:import> 태그로 사용한다.
+			
+forEach		객체 전체에 걸쳐 반복 실행을 할 때 사용한다. <c:forEach> 태그로 사용된다.
+
+forTokens	자바의 StringTokenizer 클래스를 사용하는 것과 같다. <c:forToken> 태그로 사용된다.
+
+out			JSP의 표현식을 대체하는 것으로 가장 많이 사용된다. <c:out> 태그로 사용된다.
+
+otherwise	<c:choose>의 서브 태그로 <when> 태그 다음에 표시되는 것으로 조건을 만족하지 못한 경우에 사용한다.
+			switch문의 default 역할을 하며 <c:otherwise> 태그로 사용된다.
+
+param		<import> 태그의 URL 뒤에 파라미터로 붙여서 사용할 수 있다. <c:param> 태그로 사용된다.
+
+redirect	response.sendRedirect()를 대체하는 태그로 지정한 다른 페이지로 이동한다. <c:redirect> 태그로 사용된다.
+
+remove		JSP의 removeAttribute()와 같은 역할을 한다. (page | request | session | application) 범위의 변수(속성)을 제거한다.
+			<c:remove> 태그로 사용한다.
+	
+set			JSP의 setAttribute()와 같은 역할을 한다. (page | request | session | application) 범위의 변수(속성)을 설정한다.
+			<c:set> 태그로 사용한다.
+
+url			쿼리 파라미터로부터 URL을 생성한다. <c:url> 태그로 사용한다.
+
+when		<choose>의 서브 태그로 조건을 비교하여 만족한 경우에 사용한다. switch문의 case 역할을 하며 <c:when> 태그로 사용한다.
+
+(1) <c:set> 태그 - 변수 선언
+
+이 태그는 JSP의 setAttribute()와 같은 역할을 하며 (page | request | session | application) 범위의 변수(속성)을 설정한다.
+<c:set> 태그의 기본형은 다음과 같다. 선택 속성은 []로 표시한다.
+
+<c:set [var="varName"][value="value" target="targetObjectName"]
+	[property="propertyName"][scope="{page | request | session | application}"] />
+	
+	
+-	var : 속성값으로 변수명을 갖는다.
+-	value : var 속성값으로 지정한 변수의 값으로 가진다.
+-	target : 속성값으로 자바빈 객체명이나 Map 객체명이 온다.
+-	property : target 속성은 값으로 자바빈 객체나 Map 객체의 값을 설정할 프로퍼티명이 온다.
+-	scope : 변수(속성)의 공유 범위(유효 기간)로 같은 page, request, session, application 중 하나가 오는데 생략 시 기본값으로 page가 설정된다.
+
+아래의 예시는 varName 변수값으로 20을 설정했고, varName 변수의 공유 범위는 현재 페이지 내에서만이다.
+
+<c:set var="varName" value="${20}" />
+
+아래의 예시는 varName 변수값으로 value를 설정했고, varName 변수의 공유 범위는 같은 request 내에서만이다.
+
+<c:set var="varName" value="value" scope="request" />
+
+아래의 예시는 targetObjectName 객체의 propertyName 프로퍼티의 값을 value로 설정했다.
+
+<c:set value="value" target="targetObjectName" property="propertyName" />
+
+
+(2) <c:out> 태그 - 화면 출력
+
+<c:out> 태그는 JSP의 표현식(<%= %>)을 대체하는 것으로 화면에 해당 변수값을 출력한다.
+<c:out> 태그의 기본형은 다음과 같다.
+
+<c:out var="varName" [default="defaultValue"][escapeXml="{true | false}"]>
+
+-	var : 속성값으로 변수명을 갖는다
+-	default : 기본값을 설정하는 부분이다.
+-	escapeXml : 속성값으로 true 또는 false 값을 가진다. 생략 시 기본 값은 true이다.
+				true로 설정 시 escapeXml 속성은 값 중에 포함된 <, >, &, ', " 문자들을 각각 
+				&lt;, &gt;, &amp;, &#039;, &#034;로 출력한다.
+				
+아래의 예시는 browser라는 변수가 가진 값을 화면에 표시한다. browser 값이 null 일 경우 공백으로 출력된다.
+
+<c:out value="${browser}" />
+
+
+(3) <c:remove> 태그 - 변수 제거
+
+JSP의 removeAttribute()와 같은 역할을 하며, (page | request | session | application) 범위의 변수(속성)를 제거한다.
+<c:remove> 태그의 기본형은 다음과 같다.
+
+<c:remove var="varName" [scope="{page | request | session | application}"] />
+
+-	var : 속성값으로 변수명을 갖는다.
+-	scope : 변수(속성)의 공유 범위(유효 기간)로 속성값은 page, request, session, application 중 하나가 오는데 생략 시 기본 값으로 page가 설정된다.
+			변수를 제거할 때 scope가 맞지 않으면 제거되지 않는다.
+			
+아래의 예시는 scope가 page인 browser 변수를 제거한다.
+
+<c:remove var="browser" />
+
+
+이 예제는 <c:set>, <c:out>, <c:remove> 태그를 사용해 변수를 하나 설정하고, 화면에 출력 후 다시 해당 변수를 제거하는 예제이다.
+
+jstlEx01.jsp		598쪽
+
+
+(4) <c:catch> - 예외 처리
+
+코드의 예외를 처리한다.
+<c:catch> 태그의 기본형은 다음과 같다.
+
+<c:catch [var="errMag"] />
+
+- 	var : 속성값으로 변수명을 갖는다. 이때 에러가 발생하면 속성값으로 지정한 변수에 에러 메시지가 들어간다.
+
+
+(5) <c:if> - if문
+
+JSP 제어문의 if문과 같은 역할을 하며, 조건에 따른 처리를 한다.
+<c:if> 태그의 기본형은 다음과 같다.
+
+<c:if test="condition" [var="varName"][scope="{page | request | session | application}"] />
+
+-	test : 속성값에는 조건식이 들어간다.
+-	var : 속성값으로 변수명을 가지며 if문의 결과값이 이 속성의 값으로 들어간다.
+-	scope : var 속성에서 지정한 변수의 공유 범위를 나타내는 것으로 생략 시 page가 기본값이다.
+
+아래의 예시는 조건식에서 country 변수의 값이 Korea이면 문장을 출력한다.
+
+<c:if test="${country == 'Korea'}" >
+	This is customer is based in Korea.
+</c:if>
+
+
+(6) <c:choose> ( <c:when>, <c:otherwise> ) - 여러 경우에 따른 분기
+
+<c:choose> 태그는 자바의 switch 문과 같지만 조건에 문자열의 비교도 가능하고 쓰임의 범위가 넓다. 하나 이상의 <when>과 하나 이하의 <otherwise> 서브 태그를 가지고 있다.
+즉, <c:when>은 switch문에서 case에 해당하고, <c:otherwise>는 default의 역할을 한다.
+<c:choose> 태그의 기본형은 특별히 정해진 것이 없으나, 대체적으로 아래와 같은 형식으로 사용한다.
+
+<c:choose>
+	<c:when test="조건"> body의 내용 </c:when>	<!-- 조건을 만족 시 -->
+	<c:otherwise> body의 내용 </c:otherwise>	<!-- 조건 미만족 시 -->
+</c:choose>
+
+<c:when> 태그의 기본형은 다음과 같다.
+
+<c:when test="condition" />
+
+- 	test : 속성 값에는 조건식이 들어간다.
+
+
+이 예제는 <c:set> 태그를 사용해 변수를 하나 설정하고, 생성한 변수를 <c:if>와 <c:choose> 태그에서 조건 판별식으로 사용하는 것이다.
+
+jstlEx02.jsp		601쪽
+
+
+(7) <c:forEach> - for문
+
+단순 반복문 및 컬렉션 내의 객체를 걸쳐 반복 실행할 때 사용한다.
+<c:forEach> 태그의 기본형은 다음과 같다.
+
+<c:forEach [items="condition"][begin="begin"][end="end"][step="step"][var="varName"][varStatus="varStatus"] />
+
+-	items : 속성값에는 반복할 객체명 또는 카운터 변수가 들어간다.
+-	begin : 반복 시작값이 들어간다.
+-	end : 반복 마지막값이 들어간다.
+-	step : 증가값이 들어간다.
+-	var : 속성값으로 변수명을 갖는다. 컬렉션 내의 객체를 반복 처리할 경우 반복 처리 대상이 되는 1개의 객체가 이 속성에 값으로 저장된다.
+-	varStatus : 별도의 변수를 줄 때 사용한다.
+
+아래의 예시는 <c:forEach>문을 사용해서 1부터 100까지의 숫자 중에서 짝수만 출력한다.
+
+<c:forEach var="i" begin="1" end="100">
+	<c:out value="${i % 2 == 0}" />
+</c:forEach>
+
+아래의 예시는 customers 컬렉션으로부터 반복해서 객체를 추출하여 customer 변수에 저장한다.
+이렇게 사용하면 customer 객체에 저장된 값을 화면에 표시하거나 다른 식에서 참조할 수 있다.
+
+<c:forEach var="customer" items="${customers}">
+	Customer : <c:out value="${customer}">
+</c:forEach>
+
+
+이 예제는 <c:forEach> 태그를 사용해서 header로부터 파라미터명과 값을 출력하는 것이다.
+
+jstlEx03.jsp		603쪽
+
+
+(8) <c:forTokens> - 문자열 분할
+
+자바의 StringTokenizer 클래스를 사용하는 것과 같으며, 문자열을 주어진 구분자(delimiter)로 분할한다.
+<c:forTokens> 태그의 기본형은 다음과 같다.
+
+<c:forTokens [items="condition"][delims="delimiter"][begin="begin"][end="end"][step="step"][var="varName"][varStatus="varStatus"] />
+
+-	items : 분할할 문자열 및 컬렉션
+-	delims : 문자열을 분할할 구분자
+-	begin : 시작값
+-	end : 마지막값
+-	step : 증가값
+-	var : 속성값으로 변수명을 가지며, 이 변수에 분할된 문자열이 1개씩 들어감
+-	varStatus : 별도의 변수를 줄 때 사용
+
+이 예시는 "red,yellow,black" 문자열을 "," 로 구분해서 하나씩 출력한다. 쉼표(,)를 중심으로 분할된 문자열을 1개씩 color 변수에 저장해서 반복 처리한다.
+
+<c:forTokens var="color" items="red,yellow,black" delims=",">
+	<c:out value="${color}" />
+</c:forTokens>
+
+
+이 예제는 <c:forTokens> 태그를 사용해서 주어진 문자열을 분할해 화면에 출력하는 것이다.
+
+jstlEx04.jsp		605쪽
+
+
+(9) <c:import> - 페이지 가져오기
+
+이 태그는 웹 애플리케이션 내부의 자원(html, servlet, jsp 등)인 웹 페이지를 가져와서 표시한다.
+뿐만 아니라 http나 ftp 등을 사용한 외부의 페이지들도 import 할 수 있다. <c:import> 태그의 기본형은 다음과 같다.
+
+<c:import url="url" [var="varName"][scope="{page | request | session | application}"]
+	[varReader="varReader"][charEncoding="charEncoding"] />
+	
+-	url : 속성값에는 가져올 페이지의 URL
+-	var : 읽어온 데이터(페이지)를 저장할 변수명
+-	scope : var 속성에서 지정한 변수의 공유 범위. 생략 시 page가 기본값
+-	varReader : 리소스의 내용을 Reader 객체로 읽어올 때 사용
+-	charEncoding : 읽어온 데이터의 문자 인코딩을 지정
+
+
+이 예제는 <c:import> 태그를 사용해서 외부의 페이지를 출력하는 것이다.
+
+jstlEx05.jsp		607쪽
+
+
+(10) <c:redirect> - 리다이렉트
+
+response.sendRedirect()를 대체하는 태그로 지정한 다른 페이지로 이동한다.
+<c:redirect> 태그의 기본형은 다음과 같다.
+
+<c:redirect url="url" [context="context"] />
+
+이 예시는 url 속성값에 기술된 jstlEx01.jsp 페이지로 이동한다.
+
+<c:redirect url="jstlEx01.jsp" />
+
+
+(11) <c:url> - URL 생성
+
+쿼리 파리미터로부터 URL을 생성한다.
+<c:url> 태그의 기본형은 다음과 같다.
+
+<c:url value="value" [var="varName"][scope="{page | request | session | application}"][context="context"] />
+
+-	value : 속성값에는 생성할 URL이 들어감
+-	var : 생성한 URL이 저장될 변수명
+-	scope : var 속성에서 지정한 변수의 공유 범위. 생략 시 page가 기본값
+-	context : 웹 애플리케이션 루트에서 슬래시(/) 다음에 나오는 웹 애플리케이션 이름. 행략 시 현재 페이지의 웹 애플리케이션 이름이 지정
+
+아래의 예시는 /customers/register를  URL로 생성해서 registerationURL 변수에 넣는다.
+이때 파라미터로 name과 country의 값이 들어간다. registerationURL 변수에 저장된 URL 값은 
+/customers/register?name=xxx&country=xxx 이다.
+
+<c:url value="/customers/register" var="registerationURL">
+	<c:param name="name" value="${param.name}" />
+	<c:param name="country" value="${param.country}" />
+</c:url>

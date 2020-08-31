@@ -1,0 +1,91 @@
+하나의 JoinPoint에 한 개 이상의 Advice가 적용될 경우, 순서를 명시적으로 지정할 수 있다.
+Advice의 적용 순서를 명시적으로 지정하는 첫 번째 방법은 Advice 구현 클래스에 다음과 같이 @Order 어노테이션을 적용하거나 Ordered 인터페이스를 구현하는 것이다.
+
+	- o.s.core.annotation.Order 어노테이션을 적용한다.
+	- o.s.core.Ordered 인터페이스를 구현한다.
+	
+아래 코드는 Ordered 인터페이스의 구현 예제 코드를 보여 주고 있다. Ordered 인터페이스의 getOrder() 메소드를 구현해서 Advice 적용 순서 값을 리턴하면 된다.
+
+
+	import org.aspectj.lang.ProceedingJoinPoint;
+	import org.aspectj.lang.annotation.Around;
+	import org.aspectj.lang.annotation.Aspect;
+	import org.springframework.core.Ordered;
+
+	@Aspect
+	public class ArticleCacheAspect {
+	
+		@Around("execution(public * *..ReadArticleService.*(..))")
+		public Article cache(ProceedingJoinPoint joinPoint) throws Throwable {
+			...
+		}
+		
+		@Override
+		public int getOrder() {
+			return 2;
+		}
+	}
+	
+	
+@Order 어노테이션을 사용할 경우 다음과 같이 @Order 어노테이션의 값으로 적용 순서 값을 지정해주면 된다.
+
+
+	import org.aspectj.lang.annotation.Aspect;
+	import org.springframework.core.annotation.Order;
+	
+	@Aspect
+	@Order(3)
+	public class ProfilingAspect {
+		...
+	}
+	
+	
+XML 스키마를 사용할 경우 <aop:apsect> 태그의 order 속성을 사용해서  Advice 순서를 지정할 수 있다.
+
+
+	<aop:aspect id="cacheAspect" ref="cacheAdvice" order="2" >
+		<aop:around
+			pointcut="execution(public * *..ReadArticleService.*(..))"
+			method="cache" />
+	</aop:aspect>
+	
+	
+order 값이 낮은 Advice의 우선 순위가 더 높다. 즉, 순서 값이 1인 Advice가 순서값이 2인 Advice보다 우선순위가 높다.
+하나의 메소드 호출에 대해 두 개 이상의 Advice가 적용될 경우, 우선순위가 높은(즉, order 값이 작은) Advice가 먼저 적용된다.
+예를 들어, 아래와 같은 우선순위를 갖는 설정이 있다고 하자.
+
+
+	<aop:aspect id="aspect1" ref="advice1" order="1" >
+		<aop:around
+			pointcut="execution(public * *..ReadArticleService.*(..))"
+			method="cache" />
+	</aop:aspect>
+	
+	<aop:aspect id="aspect2" ref="advice2" order="2" >
+		<aop:around
+			pointcut="execution(public * *..ReadArticleService.*(..))"
+			method="cache" />
+	</aop:aspect>
+	
+	<aop:aspect id="aspect3" ref="advice3" order="3" >
+		<aop:around
+			pointcut="execution(public * *..ReadArticleService.*(..))"
+			method="cache" />
+	</aop:aspect>
+	
+	<bean id="readArticleService"
+		class="net.madvirus.spring4.chap06.board.ReadArticleServiceImpl" >
+		<property name="articleDao" ref="articleDao" />
+	</bean>
+	
+	
+위 설정에서 "aspect1", "aspect2", "aspect3" 은 모두 같은 Pointcut에 적용되며, 각각 우선순위 값으로 1, 2, 3을 지정하였다.
+이 경우 ReadArticleService의 메소드를 호출하면, 다음과 같이 우선순위 값이 낮은 AOP 프록시가 먼저 호출되고, 우선순위 값이 큰 AOP 프록시가 뒤에 호출된다.
+
+
+	→	aspect1	→	aspect2	→	aspect3	→	대상 빈 객체
+		프록시 객체		프록시 객체		프록시 객체
+		
+		
+이 순서에 따라 Before Advice는 aspect1 → aspect2 → aspect3의 순서로 실행되고,
+After 류의 Advice는 aspect3 → aspect2 → aspect1의 순서로 실행된다.

@@ -1,0 +1,14 @@
+이클립스의 [Project Explorer] 뷰에서 [Servers] - [Tomcat v9.0 Server~]에 있는 server.xml 파일에 한글 인코딩을 지정한다.
+
+01 	[Project Explorer] 뷰에서 [Servers] - [Tomcat v9.0 Server]에 있는 server.xml 파일을 더블클릭한다.
+
+02 	다음과 같은 화면이 표시되면 [Source] 탭을 선택한다.
+
+03	server.xml의 코드가 표시되면 port 번호가 8080인 <Connector>에 URIEncoding="EUC-KR"을 추가한 후 저장한다.
+	필자가 사용하는 버전엔 64라인에 있다.
+	
+<Connector connectionTimeout="20000" port="8080"
+		protocol="HTTP/1.1" redirectPort="8443"
+		URIEncoding="EUC-KR" />
+	
+04	톰캣 서버를 내렸다가 다시 올리면 한글이 제대로 표기되는 것을 볼 수 있다.

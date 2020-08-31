@@ -1,0 +1,13 @@
+실제 서비스 환경인 [톰캣홈] - [conf] 폴더에 있는 server.xml 파일에 한글 인코딩을 지정한다.
+
+01	탐색기에서 [톰캣홈] - [conf] 폴더에 있는 server.xml 파일을 연다.
+
+02	port 번호가 8080인 <Connector>에 URIEncoding="EUC-KR"을 추가한 후 저장한다. 추가 위치는 apache-tomcat-8.0.9 의 경우
+	[apache-tomcat-8.0.9] - [conf] 폴더에 있는 server.xml 파일의 70라인(메모장 또는 에디트플러스에서 수정 시)에 아래와 같이 추가한 후 저장
+
+<Connector port="8080" protocol="HTTP/1.1"
+		connectionTimeout="20000"
+		redirectPort="8443"
+		URIEncoding="EUC-KR" />
+		
+한글이 안정적으로 표시되게 하려면 이클립스의 server.xml과 [apache-tomcat-8.0.9] - [conf] 폴더에 있는 server.xml 파일 모두에 URIEncoding="EUC-KR"을 추가한다.

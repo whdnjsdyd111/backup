@@ -1,0 +1,26 @@
+게시판 시스템에서 DB와 연동해서 쿼리문을 수행하는 DB 처리빈은 BoardDBBean이다. 커넥션 풀로부터 커넥션 객체를 가져오는 메소드 및 JSP 페이지에서 발생한 데이터를 저장하거나
+DB 테이블의 레코드를 얻어내는 등의 쿼리를 수행하는 메소들로 이루어져 있다.
+
+
+메소드명									작업 내용
+
+getInstance()							전역 BoardDBBean 객체의 레퍼런스를 리턴한다.
+
+getConnection()							쿼리 작업에 사용할 Connection 객체를 커넥션 풀로부터 얻어내서 리턴한다.
+
+insertArticle(BoardDataBean article)	새로운 글을 board 테이블에 추가한다. 글 입력 처리에 사용한다.
+
+getArticleCount()						board 테이블의 전체 레코드의 수를 받아온다. 글 목록에서 글번호 및 전체 레코드 수를 표시할 때 사용한다.
+
+getArticles(int start, int end)			start부터 end 개수만큼의 레코드를 board 테이블에서 검색한다. 글목록 보기에서 사용된다.
+
+updateGetArticle(int num)				id에 해당하는 레코드를 board 테이블에서 검색한다. 글수정 폼에서 사용한다.
+
+updateArticle(BoardDataBean article)	수정된 글의 내용을 갱신할 때 사용된다. 글 수정 처리에서 사용한다.
+
+deleteArticle(int num, String passwd)	id에 해당하는 레코드를 board 테이블에서 삭제한다. 글삭제 처리에서 사용한다.
+
+
+게시판 시스템의 DB 처리빈인 BoardDBBean.java를 작성하는 예제이다.
+
+BoardDBBean.java		481쪽

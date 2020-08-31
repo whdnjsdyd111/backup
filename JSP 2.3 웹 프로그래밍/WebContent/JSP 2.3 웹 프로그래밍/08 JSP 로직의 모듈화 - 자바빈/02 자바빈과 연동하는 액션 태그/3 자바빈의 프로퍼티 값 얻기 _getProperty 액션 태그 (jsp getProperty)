@@ -1,0 +1,27 @@
+자바빈 객체에서 저장된 프로퍼티 값을 얻어내서 사용할 목적으로 쓰이는 <jsp:getProperty> 액션 태그의 사용 방법은 다음과 같다.
+
+<jsp:getProperty name="빈 이름" property="프로퍼티 이름" />
+
+name 속성 : 자바빈 객체의 이름을 지정한다. 필수 속성이므로 생략할 수 없다.
+
+property 속성 : 프로퍼티명을 기술하는 곳이다. 필수 속성이므로 생략할 수 없다.
+
+<jsp:getProperty> 액션 태그의 사용 예는 다음과 같다.
+
+<jsp:useBean id="testBean" class="ch08.bean.TestBean" scope="page" />
+<jsp:getProperty name="testBean" property="id" />
+
+위의 <jsp:getProperty name="testBean" property="id" /> 액션 태그는 자바빈 클래스의 getId() 메소드와 자동 연동된다.
+즉 property 속성값 "id"는 자바빈 클래스의 프로퍼티 id를 의미한다. 이때 사용된 액션 태그가 getProperty이므로 getId() 메소드와 연동하게 되는 것이다.
+
+public String getId() {
+	return id;
+}
+
+
+이 예제는 앞에서 작성한 TestBean 자바빈을 JSP 페이지에서 사용하기 위한 것이다.
+beanTestForm.jsp 페이지는 이름을 입력받는 폼을 제공하고, beanTestPro.jsp 페이지는 <jsp:useBean> 액션 태그를 사용해서 자바빈을 JSP 페이지에서 사용할 수 있게 해준다.
+
+beanTestForm.jsp	269쪽
+
+beanTestPro.jsp		

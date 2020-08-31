@@ -1,0 +1,42 @@
+자바빈 객체를 생성하는 <jsp:useBean id = "빈 이름" class = "자바빈 클래스 이름" scope = "범위" />
+
+	- id 속성 : 생성될 자바빈 객체(인스턴스)의 이름을 쓰는 곳이다. 필수 속성이므로 생략할 수 없다.
+	
+	- class 속성 : 객체가 생성될 자바빈 클래스명을 기술하는 곳으로, 패키지명을 포함한 자바 클래스의 풀네임을 기술한다. 필수 속성이므로 생략할 수 없다.
+	
+	- scope 속성 : 자바빈 객체의 유효 범위로 자바빈 객체가 공유되는 범위를 지정한다.
+		scope 속성값으로 page, request, session, application을 가지며 scope 속성 생략시 기본값은 page이다.
+		
+ch08.bean 패키지에 있는 TestBean 자바빈 클래스의 객체를 생성하는 <jsp:useBean> 액션 태그의 사용 예는 다음과 같다.
+
+<jsp:useBean id="testBean" class="ch08.bean.TestBean" scope="page" />
+
+id 속성값인 testBean은 생성되는 객체명(인스턴스명, 레퍼런스명)이다. 향후 TestBean 클래스의 멤버 변수(프로퍼티)나 메소드에 접근하려면 testBean 레퍼런스를 사용해야 한다.
+또한 scope 속성의 값이 "page"이기 때문에 이 객체는 현재의 JSP 내에서 공유될 수 있다.
+위의  <jsp:useBean> 액션 태그를 사용하는 것은 자바에서 객체를 생성하는 다음의 문장과 같다.
+
+TestBean testBean = new TestBean();
+
+만일 <jsp:useBean> 액션 태그에서 id 속성값에 지정한 객체의 레퍼런스명이 이미 존재하는 경우, 자바빈 객체를 새로 생성하는 것이 아니라 기존에 생성된 객체를 그대로 사용한다.
+이때 id 속성값, class 속성값, scope 속성값이 모두 같아야 같은 객체가 된다.
+
+
+<jsp:useBean id="testBean" class="ch10.bean.TestBean" scope="page" />
+...					│
+...					│
+중략				같은 객체
+...					│
+...					│
+<jsp:useBean id="testBean" class="ch10.bean.TestBean" scope="page" />
+
+
+┌───────────┐		┌───────────┐
+│ testBean	│	┌─>	│	500		│
+├───────────┤	│	├───────────┤
+│	500		│───┘	│  TestBean	│
+└───────────┘	│	│	객체		│
+┌───────────┐	│	└───────────┘
+│ testBean	│	│
+├───────────┤	│
+│	500		│───┘
+└───────────┘

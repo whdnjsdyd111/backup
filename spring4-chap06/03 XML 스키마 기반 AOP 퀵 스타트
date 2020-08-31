@@ -1,0 +1,173 @@
+XML 스키마를 이용해서 AOP를 구현하는 과정은 다음과 같다.
+
+	- 1. 스프링 AOP를 사용하기 위한 의존을 추가한다.
+	- 2. 공통 기능을 제공할 클래스를 구현한다.
+	- 3. XML 설정 파일에 <aop:config>를 이용해서 Aspect를 설정한다. Advice를 어떤 Pointcut에 적용할 지를 지정하게 된다.
+	
+스프링 AOP를 사용하려면, AOP를 구현하는데 필요한 의존을 추가해주어야 한다.
+아래 코드와 같이 두 개의 의존을 추가해주면 된다.
+
+	
+	<dependency>
+		<groupId>org.springframework</groupId>
+		<artifactId>spring-aop</artifactId>
+		<version>4.0.4.RELEASE</version>
+	</dependency>
+	<dependency>
+		<groupId>org.aspectj</groupId>
+		<artifactId>aspectjweaver</artifactId>
+		<version>1.7.4</version>
+	</dependency>
+	
+	
+의존을 추가했으면, 이제 Advice 구현 클래스를 구현할 수 있다. 먼저 해야 할 작업은 공통 기능을 제공할 Advice 구현 클래스를 작성하는 것이다.
+다음은 Around Advice를 위한 클래스의 작성 예이다.
+
+
+	package net.madvirus.spring4.chap06.aop;
+	
+	import org.aspectj.lang.ProceedingJoinPoint;
+	
+	public class Profiler {
+	
+		public Object trace(ProceedingJoinPoint joinPoint) throws Throwable {
+			String signatureString = joinPoint.getSignature().toShortString();
+			System.out.println(signatureString + " 시작");
+			long start = System.currentTimeMillis();
+			try {
+				Object result = joinPoint.proceed();
+				return result;
+			} finally {
+				long finish = System.currentTimeMillis();
+				System.out.println(signatureString + " 종료");
+				System.out.println(signatureString + " 실행 시간 : " +
+						(finish - start) + "ms");
+			}
+		}
+	
+	}
+	
+
+위 코드를 보면 이 클래스가 Around Advice를 위한 것인지 Before Advice를 위한 것인지의 여부가 명시되어 있지 않다. 단지, 특정 Joinpoint에서 실행될 공통 기능인
+trace() 메소드만 구현하고 있다. trace() 메소드는 ProceedingJoinPoint 타입의 joinPoint 파라미터를 전달받는데, 
+이 파라미터를 이용해서 Around Advice에 맞는 공통 기능을 구현할 수 있게 된다.
+
+위 코드의 Profiler 클래스는 Around Advice를 구현한 클래스로서, trace() 메소드는 Advice가 적용될 대상 객체를 호출(라인12)하기 전과 후에 시간을 구해서
+대상 객체의 메소드 호출 실행 시간을 출력(라인 17)한다. 일단 지금은 이 정도만 이해하고 넘어가도록 하고, 뒤에서 Advice 클래스의 자세한 구현 방법을 살펴볼 것이다.
+
+공통 기능을 제공할 클래스를 작성했다면 그 다음으로 해야 할 작업은 XML 파일에 Aspect를 설정하는 것이다.
+다음은 설정 예제 파일이다.
+
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:aop="http://www.springframework.org/schema/aop" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/aop
+	       http://www.springframework.org/schema/aop/spring-aop.xsd">
+	
+		<!-- 공통 기능을 제공할 클래스를 빈으로 등록 -->
+		<bean id="profiler" class="net.madvirus.spring4.chap06.aop.Profiler" />
+		<bean id="memberUpdateTraceAdvice"
+			class="net.madvirus.spring4.chap06.aop.UpdateMemberInfoTraceAdvice" />
+	
+		<!-- Aspect 설정: Advice를 어떤 Pointcut에 적용할 지 설정 -->
+		<aop:config>
+			<aop:aspect id="traceAspect" ref="profiler">
+				<aop:pointcut id="publicMethod"
+					expression="execution(public * net.madvirus.spring4.chap06..*(..))" />
+				<aop:around pointcut-ref="publicMethod" method="trace" />
+			</aop:aspect>
+			<aop:aspect id="memberUpdateTraceAspect" ref="memberUpdateTraceAdvice">
+				<aop:after-returning pointcut="args(memberId,info)"
+					method="traceReturn" />
+			</aop:aspect>
+		</aop:config>
+	
+		<bean id="writeArticleService"
+			class="net.madvirus.spring4.chap06.board.WriteArticleServiceImpl">
+			<constructor-arg>
+				<ref bean="articleDao" />
+			</constructor-arg>
+		</bean>
+	
+		<bean id="articleDao" class="net.madvirus.spring4.chap06.board.MemoryArticleDao" />
+
+	</beans>
+	
+	
+공통 기능을 적용하려면 먼저 라인 11처럼 XML 설정 파일에 Advice 구현 클래스를 빈으로 등록해주어야 한다.
+또한, XML 스키마를 이용해서 AOP를 구현하려면 라인 04 그리고 라인 08-09와 같이 aop 네임스페이스를 추가해주어야 한다.
+aop 네임 스페이스를 추가했다면, 라인 15-22와 같이 <aop:config>, <aop:aspect>, <aop:pointcut>, <aop:around> 태그를 이용해서 AOP 설정을 할 수 있다.
+
+위의 코드는 AOP 설정 내용을 간단히 설명하면 다음과 같다.
+
+	- net.madvirus.spring4.chap06 패키지 및 그 하위 패키지에 있는 모든 public 메소드를 Pointcut으로 설정(라인18-20)
+	- 이들 Pointcut에 Around Advice로 profiler 빈 객체의 trace() 메소드를 적용(라인 21)한다.
+	
+따라서, writeArticleService 빈의 public 메소드나 articleDao의 public 메소드가 호출되면 Profiler 클래스의 trace() 메소드가 Around Advice로 적용된다.
+참고, 라인 19의 Pointcut 표현식(expression 속성)에서 execution 명시자(designator)는 Advice를 적용할 패키지, 클래스 그리고 메소드를 표현할 때 사용된다.
+이외에 다양한 명시자가 존재하는데 이에 대한 내용은 이 장의 'AspectJ의 Pointcut 표현식'에서 살펴보도록 하겠다.
+
+실제로 Advice가 Pointcut으로 지정한 메소드에 적용되는지 여부를 확인하기 위해 다음과 같은 클래스를 작성해보자.
+
+
+	package net.madvirus.spring4.chap06;
+	
+	import net.madvirus.spring4.chap06.board.NewArticleRequest;
+	import net.madvirus.spring4.chap06.board.WriteArticleService;
+	import net.madvirus.spring4.chap06.member.MemberRegRequest;
+	import net.madvirus.spring4.chap06.member.MemberService;
+	
+	import org.springframework.context.support.GenericXmlApplicationContext;
+	
+	public class MainQuickStart {
+	
+		public static void main(String[] args) {
+			GenericXmlApplicationContext ctx =
+					new GenericXmlApplicationContext("classpath:acQuickStart.xml");
+	
+			WriteArticleService writeArticleService =
+					ctx.getBean("writeArticleService", WriteArticleService.class);
+			writeArticleService.write(new NewArticleRequest("writer", "title", "content"));
+	
+			MemberService memberService = ctx.getBean(MemberService.class);
+			MemberRegRequest memberRegReq =
+					new MemberRegRequest("id", "name", "pw");
+			memberService.regist(memberRegReq);
+
+			ctx.close();
+		}
+	}
+	
+	
+MainQuickStart 클래스는 acQuickStart.xml 파일을 이용해서 ApplicationContext를 생성한 뒤, writeArticleService 빈의 write() 메소드를 호출하고(라인 20),
+memberService 빈의 regist() 메소드를 호출하고(라인 29) 있다. 앞서 acQuickStart.xml 설정 파일을 설명할 때 net.madvirus.spring4.chap06 패키지 및 그 하위 패키지에 있는
+빈 객체의 public 메소드를 호출하면 Profiler 클래스의 trace() 메소드가 Around Advice로 사용된다고 했는데, 실행해보면 다음과 같은 결과가 출력된다.
+
+
+	WriteArticleService.write(..) 시작
+	WriteArticleServiceImpl.write() 호출됨
+	ArticleDao.insert(..) 시작
+	MemoryArticleDao.insert() 호출됨
+	ArticleDao.insert(..) 종료
+	ArticleDao.insert(..) 실행 시간 : 0ms
+	WriteArticleService.write(..) 종료
+	WriteArticleService.write(..) 실행 시간 : 1ms
+	
+	MemberService.regist(..) 시작
+	MemberServiceImpl.regist() 호출됨
+	MemberService.regist(..) 종료
+	MemberService.regist(..) 실행 시간 : 0ms
+	
+	
+실행 결과를 보면 실제 빈 객체의 메소드가 호출되기 전/후로 trace() 메소드에서 실행한 내용이 출력되는 것을 확인할 수 있다.
+
+위 실행 결과를 통해서 눈여겨볼 부분은 아래와 같다.
+
+	- WriteArticleServiceImpl, MySQLArticleDao, MemberServiceImpl 클래스를 변경하지 않음(즉, 핵심 로직 코드를 변경하지 않음)
+	- 메소드 실행 시간을 출력해주는 기능을 추가함(즉, 공통 기능을 추가함)
+	
+이는 설정 파일만 변경하면 기존 코드의 변경 없이 공통 기능을 추가하거나 변경할 수 있는 AOP의 장점을 잘 보여주고 있다.

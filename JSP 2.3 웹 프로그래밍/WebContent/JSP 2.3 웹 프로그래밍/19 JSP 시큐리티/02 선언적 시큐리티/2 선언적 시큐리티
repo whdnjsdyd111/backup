@@ -1,0 +1,253 @@
+	02 선언적 시큐리티
+	
+선언적 시큐리티(declarative security)는 웹 어플리케이션 설명자 web.xml 파일에 보안 구성을 작성하여 수행하는 방식
+즉, 웹 어플리케이션의 보안을 달성하기 위해 별도의 코드를 작성할 필요 없이 web.xml 파일에 보안 구성을 작성하여 사용자가 웹 페이지에 접근할 수 있게 한다.
+web.xml 파일에는 보안 역할, 보안 제약 사항, 인증 처리 등을 설정하여 보안을 구성
+
+	
+	2.1 시큐리티 역할 설정
+	
+<security-role>은 웹 어플리케이션에 사용하는 역할을 나열하는 요소로 형식은 다음과 같다.
+<security-role> 요소는 web.xml 파일에 구성한다.
+
+
+    <security-role>
+    	<role-name>역할 이름</role-name>
+    </security-role>
+
+    
+여기서 <role-name> 요소에 설정하는 역할 이름은 반드시 tomcat-users.xml 에 등록된 역할과 사용자여야 한다.
+다음은 웹 어플리케이션에서 사용되는 역할 manager과 employee를 설정하는 예이다.
+
+
+	<security-role>
+		<role-name>manager</role-name>
+	</security-role>
+	<security-role>
+		<role-name>employee</role-name>
+	</security-role>
+
+	
+	2.2 시큐리티 제약 사항 설정
+	
+시큐리티 제약 사항(security constraint)은 사용자의 요청 URL에 대한 접근 권한을 정의하는데 사용하며 형식은 다음과 같다.
+시큐리티 제약 사항은 web.xml 파일에 접근 권한 내용에 구성한다.
+
+
+    <security-constraint>
+    	<web-resource-collection>...</web-resource-collection>
+      	<auth-constraint>...</auth-constraint>
+    	<user-data-constraint>...</user-data-constraint>       
+    </security-constraint>
+
+    
+<security-constraint>를 구헝하는 하위 요소
+
+
+	요소							설명
+	
+	<web-resource-collection>	웹 자원에 대한 접근을 설정한다.
+	
+	<auth-constraint>			웹 자원에 접근할 수 있는 인증된 사용자를 설정
+	
+	<user-data-constraint>		데이터 전송 시 데이터 보호를 설정
+	
+	
+	<web-resource-collection> 요소
+	
+<web-resource-collection>은 웹 자원에 대한 접근을 설정하는 요소로 형식은 다음과 같다.
+<web-resource-collection> 요소는 <url-pattern>, <http-method>, <web-resource-name> 등의 하위 요소로 구성된다.
+
+	
+	요소										설명
+	
+	<web-resource-name>						웹 자원의 이름을 설정하며 생략할 수 있다.
+	
+	<url-pattern>							접근 제한을 요청할 URL 목록을 설정한다. 자원에 대한 접근을 제한하지 않는 경우 생략할 수 있다.
+	
+	<http-method>또는 <http-method-omission>	http 메소드를 설정한다.(GET 또는 POST)
+	
+	
+다음은 웹 어플리케이션에서 /cart/ 폴더의 하위 경로에 보안을 설정하는 예이다.
+예를 들어 사용자가 http://localhost:8080/WebMarket/index.jsp와 같이 보안 경로 /cart/ 에 위치하지 않은 index.jsp 페이지를 요청하면 누구든 접근이 가능하다.
+그러나 htt://localhost:8080/WebMarket/cart/index.jsp 와 같이 보안 경로 /cart/에 위치한 index.jsp 페이지를 요청하면 권한이 있는 사용자만 접근할 수 있다.
+
+
+	<security-constraint>
+	   <web-resource-collection>
+	      <web-resource-name>OnswayMarket</web-resource-name>
+	      <url-pattern>cart/*</url-pattern>
+	   </web-resource-collection>
+	</security-constraint>
+
+
+	<auth-constraint> 요소
+	
+권한이 부여된 사용자만이 웹 자원에 접근할 수 있도록 이름을 설정하는 요소로 형식은 다음과 같다.
+<auth-constraint> 요소에는 <web-resource-collection> 요소의 <url-pattern>과 <http-method>에 설정된 경로에 접근할 수 있는 권한이 부여된 사용자의 이름을 지정한다.
+<auth-constraint> 요소를 생략하면 웹 서버는 사용자 인증을 요구하지 않고 사용자의 요청을 승인한다.
+
+<auth-constraint> 요소는 <role-name>, <description> 등의 하위 요소로 구성된다.
+이때 <role-name> 요소는 필요한 만큼 설정할 수 있다.
+
+
+	<auth-constraint>
+	  <description>설명</description>
+	  <role-name>역할 이름</role-name>
+	</auth-constraint>
+	
+	
+<auth-constraint>를 구성하는 하위 요소
+
+
+	요소				설명
+	
+	<description>	권한 부여 제약 사항에 대한 설명을 기술한다.
+	
+	<role-name>		권한이 부여된 사용자의 이름을 대문자와 소문자를 구분하여 설정한다. 이때 반드시 tomcat-users.xml에 등록된 역할과 사용자여야 한다.
+					만약 모든 사용자에게 권한을 부여하려면 * 로 표시한다. <role-name> 요소를 생략하면 <url-pattern> 요소에 설정된 접근 제한 URL에 대한 사용자의 요청을 허용하지 않는다.
+					
+					
+요소 사용 예
+
+
+	<security-constraint>
+	   <auth-constraint>
+	       <description>관리자</description>
+	       <role-name>manager</role-name>
+	   </auth-constraint>
+	</security-constraint>
+	
+	
+	<users-data-constraint> 요소
+	
+<users-data-constraint>는 클라이언트와 서버 간에 데이터를 전송할 때 데이터를 보호하는 방법을 설정하는 요소로 형식은 다음과 같다.
+
+
+	<user-data-constraint>
+	      <transport-guarantee>NONE/INTEGRAL/CONFIDENTIAL</transport-guarantee>
+	</user-data-constraint>
+	
+	
+<transport-guarantee>의 종류
+
+
+
+	종류				설명
+
+	NONE			기본 값으로 데이터를 보호하지 않겠다는 의미이다.
+
+	INTEGRAL		전송 중 데이터가 변경되지 않았음을 보장한다는 의미이다.(데이터 무결성)
+
+	CONFIDENTIAL	전송 중 데이터를 아무도 훔쳐보지 않았음을 보장한다는 의미이다.(기밀성)
+	
+	
+다음은 클라이언트와 서버 간에 데이터를 전송할 때 다른 사람이 훔쳐보지 않도록 보장하는 예이다.
+
+
+	<security-constraint>
+	   <user-data-constraint>
+	         <transport-guarantee>CONFIDENTIAL</transport-guarantee>
+	   </user-data-constraint>
+	</security-constraint>
+	
+	
+	2.3	시큐리티 인증 설정
+	
+인증 처리를 위한 로그인 페이지나 오류 페이지를 호출하는데 사용한다.
+web.xml 파일에 인증 관련 내용을 구성한다.
+
+
+	<login-config>
+	   <auth-method>BASIC | DIFEST | FORM | CLIENT-CERT</auth-method>
+	   <realm-name>...</realm-name>
+	   <form-login-config>...</form-login-config>
+	</login-config>
+	
+	
+	요소					설명
+	
+	<auth-method>		웹 자원에 대한 인증 처리 방식을 설정한다.
+
+	<realm-name>		웹 자원에 접근할 수 있는 인증된 사용자를 설정한다.
+
+	<form-login-config>	데이터 전송 시 데이터 보호를 설정한다.
+	
+	
+	<auth-method> 요소
+	
+웹 어플리케이션의 인증 처리 기법을 설정하는 요소이다.
+인증 처리 기법은 BASIC, DIGEST, FORM, CLIENT-CERT 등으로 이 중 하나를 요소에 설정한다.
+
+
+	종류				설명
+
+	BASIC			웹 자원을 보호하는 간단하고 일반적인 방법이다.
+
+	DIGEST			압호화 메커니즘을 이용하여 전송한다.
+					많이 사용되지 않는 암호화 기법으로 JSP 컨테이너가 반드시 지원하지 않을 수 도 있다.
+	
+	FORM			일반적인 폼 페이지를 이용하여 로그인 정보를 서버에 전송하는 방식이다.
+					암호화되지 않은 로그인 정보를 그대로 전송한다.
+	
+	CLIENT-CERT		클라이언트가 인증서를 가지고 공인 키 인증 방식을 사용하여 로그인하는 방식이다.
+					클라이언트가 인증서를 가지고 있어야만 로그인되므로 비즈니스 환경에서만 사용된다.
+					
+					
+	FORM 기반 인증 시 로그인 페이지의 요구 사항
+	
+	
+	종류						tjfaud
+	
+	form 태그의 action 속성		j_security_check
+	
+	사용자의 name 속성			j_username
+	
+	비밀번호의 name 속성			j_password
+	
+	
+	FORM 기반 인증 시 로그인 페이지의 예
+	
+
+	<form action="j_security_check" method="post">
+	   ID : <input type="text" name="j_username"/>
+	   PW : <input type="password" name="j_password"/>
+	   <input type="submit" value="log-in"/>
+	</form>
+	
+	
+	<relm-name> 요소
+	
+기본 인증의 영역 이름을 설정하는 요소이다.
+<realm-name> 요소에 설정된 영역 이름은 대개 웹 브라우저의 로그인 대화 상자에 표시한다.
+<realm-name>요소는 FORM기반 인증이나 다른 인증 방법에 필요하지 않기 때문에 아무런 영향을 미치지 않지만, 
+<login-config>요소에 대한 설명 속성이 없으므로 데이터를 문서화하는 데 일반적으로 사용한다.
+
+	
+	<login-config>
+	  <realm-name>Login</realm-name>
+	</login-config>
+	
+	
+	<form-login-config>요소
+
+인증 처리를 위한 로그인 및 오류 페이지를 설정하는 요소이다.
+<auth-method>요소가 FORM 기반 인증 처리 기법으로 설정되었을 때 사용한다.
+<form-login-page>, <form-error-page>등의 하위 요소로 구성된다. 
+로그인 및 오류 페이지의 경로는 웹 애플리케이션 이름(이클립스, 프로젝트이름에 해당)을 기준으로 설정한다.
+
+
+	<login-config>
+	   <auth-method>FORM</auth-method>
+	   <form-login-config>
+	      <form-login-page>/login.jsp</form-login-page><%--로그인 페이지 URL--%>
+	      <form-error-page>/error.jsp</form-error-page><%--로그인 오류 페이지 URL--%>
+	   </form-login-config>
+	</login-config>
+	
+	
+	요소						설명
+
+	<form-login-page>		인증을 위한 로그인 페이지를 설정한다.
+
+	<form-error-page>		인증 실패 시 표시할 오류 페이지를 설정한다.

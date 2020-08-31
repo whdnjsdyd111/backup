@@ -1,0 +1,442 @@
+프로젝트의 규모가 조금만 커져도 한 개의 어플리케이션에서 생성하는 스프링 빈 객체는 수백 개 이상으로 증가하게 되는데,
+이 경우 스프링 빈 간의 의존 관계를 XML 설정이나 자바 기반 설정을 관리하는데 시간을 뺏길 수 있다. 또는, 특정 타입의 빈 객체가 한 개 밖에 존재하지 않는 경우가 많아서
+의존 객체가 너무 뻔할 때가 있다. 만약 일일이 의존 관계를 설정할 필요 없이 자동으로 프로퍼티나 생성자 파라미터 값으로 동일한 타입의 빈 객체를 전달해주는 기능이 있다면,
+설정 코드가 많이 줄어들 것이다.
+
+스프링 개발자가 일일이 의존 정보를 설정하지 않아도(예로 XML에서 <ref> 태그를 사용하지 않아도) 자동으로 스프링 빈 객체 간의 의존을 설정 해주는 기능을 제공하고 있는데,
+이 기능을 하용하면 스프링 코드 설정을 짧게 유지할 수 있게 된다. 의존 자동 설정을 위한 몇 가지 방법이 있는데, 이 절에서는 이 방법 중에서 자주 사용되는
+@Autowired 어노테이션과 @Resource 어노테이션 그리고 @Inject 어노테이션에 대해 살펴보자.
+
+
+	5.1 어노테이션 기반 의존 자동 연결을 위한 설정
+	
+이 절에서 설명할 @Autowired 어노테이션과 @Resource 어노테이션을 사용하려면 XML 설정에 다음과 같은 코드를 추가해주어야 한다.
+
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/context
+	       http://www.springframework.org/schema/context/spring-context.xsd">
+	
+		<context:annotation-config />
+		...
+	</bean>
+	
+	
+<context:annotation-config> 태그는 다수의 스프링 전처리기 빈을 등록해주는데, 이중 의존 자동 연결과 관련된 스프링 빈은 다음과 같다.
+
+	- o.s.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor
+		: @Autowired 어노테이션을 처리해주는 전처리기이다. JSR-330에 정의된 @Inject 어노테이션도 처리한다.
+	
+	- o.s.context.annotation.CommonAnnotationBeanPostProcessor
+		: @Resource, @PostConstruct 등 JSR-250에 정의된 어노테이션을 처리해주는 전처리기이다.
+	
+	- o.s.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver
+		: @Qualifier 어노테이션을 처리해주는 전처리기이다.
+		
+<context:annotation-config> 태그를 사용하지 않고 아래 코드처럼 각각의 전처리기를 개별적으로 등록해도 된다.
+하지만 전처리기를 따로 등록하기 보다는 <context:annotation-config> 태그를 사용하는 것이 일반적이다.
+
+
+	<bean class=
+		"org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+	<bean class=
+		"org.springframework.context.annotation.CommonAnnotationBeanPostProcessor" />
+		
+		
+[@Configuration 어노테이션을 이용한 자바 기반 설정을 사용할 경우 별도의 추가 설정을 하지 않아도 어노테이션을 알맞게 처리해준다.]
+
+
+	5.2	@Autowired 어노테이션을 이용한 의존 자동 설정
+	
+o.s.beans.factory.annotation.Autowired 어노테이션은 의존 관계를 자동으로 설정할 때 사용된다.
+@Autowired 어노테이션은 생성자, 필드, 메소드의 세 곳에 적용이 가능한데, 예를 들어, 프로퍼티 설정 메소드에 다음과 같이 @Autowired 어노테이션을 적용할 수 있다.
+
+
+	public class OrderService {
+	
+		private ErpClientFactory erpClientFactory;
+	
+		@Autowired
+		public void setErpClientFactory(ErpClientFactory erpClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+		}
+		
+		
+스프링은 필드, 메소드, 생성자 등에 @Autowired 어노테이션이 적용되어 있으면, 해당하는 타입의 스프링 빈 객체를 알맞게 연결해준다.
+예를 들어, 다음의 XML 설정을 보자.
+
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/context
+	       http://www.springframework.org/schema/context/spring-context.xsd">
+	
+		<context:annotation-config />
+		
+		<bean id="orderService" class="net.madvirus.spring4.chap02.shop.OrderService">
+			<!-- eprClientFactory 프로퍼티에 대한 설정이 없음 -->
+		</bean>
+		
+		<bean id="ecFactory" class="net.madvirus.spring4.chap02.erp.ErpClientFactory"
+			factory-method="instance">
+			...
+		</bean>
+	</bean>
+	
+	
+XML 설정을 보면, orderService 빈은 erpClientFactory 프로퍼티의 값을 설정하고 있지 않다.
+하지만, setErpClientFactory() 메소드에 @Autowired 어노테이션이 적용되어 있으므로, 스프링은 동일한 타입을 갖는 "ecFactory" 빈을 erpClientFactory 프로퍼티의 값으로 사용한다.
+
+프로퍼티 설정 메소드뿐만 아니라 임의의 메소드에 @Autowired 어노테이션을 적용해도 의존 객체를 자동으로 연결해준다.
+예를 들어, 아래 코드는 init() 메소드에 @Autowired 어노테이션을 적용했는데, 이 경우 두 파라미터의 값으로 일치하는 타입을 가진 스프링 빈 객체를 전달받게 된다.
+
+
+	public class OrderService {
+	
+		private ErpClientFactory erpClientFactory;	
+		private SearchClientFactory searchClientFactory;
+		
+		@Autowired
+		public void init(ErpClientFactory erpClientFactory,
+				SearchClientFactory searchClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+생성자에 적용해도 동일하게 동작한다.
+
+
+	public class OrderService {
+		
+		private ErpClientFactory erpClientFactory;	
+		private SearchClientFactory searchClientFactory;
+		
+		@Autowired
+		public OrderService(ErpClientFactory erpClientFactory,
+				SearchClientFactory searchClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+필드에 @Autowired 어노테이션을 적용할 수도 있다.
+
+
+	public class OrderService {
+		
+		@Autowired
+		private ErpClientFactory erpClientFactory;	
+		
+		@Autowired
+		private SearchClientFactory searchClientFactory;
+		
+		...
+		
+		
+[@Autowired 어노테이션을 필드에 적용하면, 의존 객체를 전달받기 위한 메소드를 추가하지 않아도 된다.
+하지만 단위 테스트와 같이 스프링 이외의 환경에서 사용될 수도 있으니 의존 객체를 전달받기 위한 메소드나 생성자는 남겨두는 것이 좋다.]
+
+[XML 설정 뿐 아니라 자바 코드 설정을 사용하는 경우도 동일하게 동작한다. 단, 차이나는 부분은 생성자를 사용하는 경우다.
+XML 설정에서는 스프링이 생성자를 호출하는데 반해 자바 코드 설정에서는 코드에서 생성자를 직접 호출한다.
+이런 이유로 자바 코드 설정에서는 생성자에 @AutoWired 어노테이션을 적용하더라도 의존 객체가 전달되지 않는다.]
+
+	(1) @Autowired 어노테이션 적용 프로퍼티의 필수 여부 지정
+	
+스프링은 @Autowired 어노테이션을 발견하면, @Autowired에 해당하는 스프링 빈 객체를 찾아서 설정한다.
+그런데, @Autowired 어노테이션에 해당하는 타입의 빈 객체가 존재하지 않으면 스프링은 컨테이너를 초기화하는 과정에서 익셉션을 발생시킨다.
+예를 들어, 아래 코드와 같이 monitor 필드에 @Autowired를 적용했는데, 실제 스프링 설정에는 Monitor 타입의 빈이 존재하지 않는다고 해보자.
+
+	
+	public class OrderService {
+		
+		@Autowired
+		private Monitor monitor;
+		
+		
+이 경우, 스프링 컨테이너를 초기화하는 과정에는 다음과 같은 익셉션이 발생하게 된다.
+에러 내용을 좀 보면 @Autowired 어노테이션을 사용할 경우 최소 한 개 후보가 필요하다는 내용이 나온다. (스프링 버전에따라 익셉션 내용이 다름)
+
+@Autowired 어노테이션을 적용은 했지만, 스프링 빈이 존재하지 않는 경우에 익셉션을 발생시키지 않고 단순히 null로 값을 유지하고 싶을 수도 있을 것이다.
+이런 경우 @Autowired 어노테이션의 required 속성 값을 false로 지정하면 된다.
+
+	
+	public class OrderService {
+		@Autowired(required = false)
+		private Monitor monitor;
+		
+		
+required 속성 값이 false일 경우, 스프링은 일치하는 스프링 빈이 존재하지 않더라도 익셉션을 발생시키지 않는다.
+만약 일치하는 스프링 빈이 존제하면 해당 빈 객체를 사용한다.
+
+	(2) @Qualifier 어노테이션을 이용한 자동 설정 제한
+	
+아래 코드와 같이 동일한 타입의 빈 객체를 두 개 이상 정의했다고 하자.
+
+
+	<bean id="orderSearchClientFactory"
+		class="net.madvirus.spring4.chap02.search.SearchClientFactoryBean">
+		...
+	</bean>
+
+	<bean id="productSearchClientFactory"
+		class="net.madvirus.spring4.chap02.search.SearchClientFactoryBean">
+		...
+	</bean>
+	
+	<bean id="productService" class="net.madvirus.spring4.chap02.shop.ProductService">
+	</bean>
+	
+	
+그리고 ProductService는 아래 코드처럼 SerchClientFacotry 타입의 프로퍼티 설정 메소드에 @Autowired 어노테이션을 적용했다고 하자.
+
+
+	public class ProductService {
+	
+		private SearchClientFactory searchClientFactory;
+	
+		@Autowired
+		public void setSearchClientFactory(SearchClientFactory searchClientFactory) {
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+앞서 설정에서 SearchClientFactory 타입의 빈은 두 개가 존재하기 때문에, 스프링은 ProductService의 setSearchClientFactory() 메소드에 어떤 빈 객체를 주입해야 하는지 알 수 없다.
+따라서, 스프링은 초기화 과정에서 익셉션을 발생 시킨다. (스프링 버전에 따라 익셉션 내용이 다를 수 있음)
+
+즉, @Autowired 어노테이션을 사용할 경우, @Autowired 어노테이션의 적용 대상이 되는 빈은 한 개여야 하는것이다.
+하지만, 앞서 예제처럼 두 개 이상의 빈 객체가 @Autowired의 후보가 될 경우, 좀더 범위를 좁히는 방법이 있는데 이는 @Qualifier 어노테이션을 함께 사용하는 것이다.
+
+스프링은 빈을 정의할 때 빈의 한정자(qualifier)를 지정할 수 있다. XML 설정에서는 <qualifier> 태그를 이용해서 한정자를 지정하며,
+자바 설정에서는 @Qualifier 어노테이션을 이용해서 한정자를 지정한다.
+
+	
+	-- XML 설정
+	<bean id="orderSearchClientFactory"
+		class="net.madvirus.spring4.chap02.search.SearchClientFactoryBean">
+		<qualifier value="order" />
+		<property name="server" value="10.20.30.40" />
+		...
+	</bean>
+	
+	-- 자바 설정
+	@Configuration
+	public class ConfigShop {
+	
+		@Bean
+		@Qualifier("order")
+		public SearchClientFactoryBean orderSearchClientFactory() {
+			SearchClientFactoryBean searchClientFactoryBean = new SearchClientFactoryBean();
+			...
+			return searchClientFactoryBean;
+		}
+		
+		
+위 코드는 둘 다 생성할 빈의 한정자 값으로 "order"를 지정하고 있다. @Autowired 어노테이션을 사용하는 코드는 @Qualifier 어노테이션을 이용해서 사용할 의존 객체를 한정지을 수 있다.
+다음은 사용 예이다.
+
+	
+	import org.springframework.beans.factory.annotation.Qualifier;
+	
+	public class OrderService {
+	
+		private ErpClientFactory erpClientFacrtory;
+		
+		@Autowired
+		@Qualifier
+		private SearchClientFactory searchClientFactory;
+		
+		
+위 코드에서 스프링은 searchClientFactory 필드에 "order" 한정자를 갖는 스프링 빈을 할당한다.
+
+@Autowired 어노테이션이 적용된 메소드나 생성자가 두 개 이상의 파라미터를 갖는 경우에는 파라미터에 @Qualifier 어노테이션을 적용한다.
+
+
+	public class OrderService {
+	
+		private ErpClientFactory erpClientFactory;	
+		private SearchClientFactory searchClientFactory;
+	
+		@Autowired
+		public OrderService(ErpClientFactory erpClientFactory,
+				@Qualifier("order") SearchClientFactory searchClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+	5.3 @Resource 어노테이션을 이용한 의존 자동 설정
+	
+JSR250 스펙은 객체의 초기화와 관련된 어노테이션을 정의하고 있는데, 이들 어노테이션 중에서 javax.annotation.Resource 어노테이션은 의존 설정과 관련되어 있다.
+스프링은 필드나 프로퍼티 설정 메소드에 @Resource 어노테이션이 적용되어 있으면 알맞은 빈 객체를 할당한다. 
+@Autowired 어노테이션과 차이가 있다면, @Autowired 어노테이션은 타입을 기준으로 빈 객체를 선택하는 반면에
+@Resource 어노테이션은 이름을 기준으로 빈 객체를 선택한다는 점이다.
+
+아래 코드는 @Resource 어노테이션의 사용 예이다.
+
+
+	import javax.annotation.Resource;
+
+	public class ProductService {
+	
+		private SearchClientFactory searchClientFactory;
+	
+		@Resource(name = "productSearchClientFactory")
+		public void setSearchClientFactory(SearchClientFactory searchClientFactory) {
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+@Resource 어노테이션의 name 속성은 사용할 스프링 빈 객체의 이름을 갖는다.
+위 코드의 경우, 스프링은 setSearchClientFactory() 메소드에 이름이 productSearchClientFactory인 빈 객체를 전달한다.
+
+@Resource 어노테이션의 name 속성에 지정한 이름을 갖는 빈 객체가 존재하지 않으면, 스프링은 익셉션을 발생시킨다.
+
+name 속성의 값을 지정하지 않을 경우, 필드 이름이나 프로퍼티 이름을 사용한다.
+아래 코드는 이름이 "searchClientFactory"와 "erpClientFactory"인 빈 객체를 각각 searchClientFactory 필드와 setErpClientFactory() 메소드에 할당/전달한다.
+
+
+	public class OrderService {
+	
+		private ErpClientFactory erpClientFactory;
+		
+		@Resource
+		private SearchClientFactory searchClientFactory;
+		
+		@Resource
+		public void setErpClientFactory(ErpClientFactory erpClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+		}
+		
+		
+name 속성을 지정하지 않은 상태에서 필드 이름이나 프로퍼티 이름에 해당하는 스프링 빈이 존재하지 않으면 어떻게 될까
+이 경우 @Autowired 어노테이션과 비슷하게 일치하는 타입의 스프링 빈을 선택하고, 일치하는 빈이 없거나 두 개 이상 존재하면 익셉션을 발생시킨다.
+
+
+	5.4 @Inject 어노테이션을 이용한 의존 자동 설정
+	
+javax.inject.Inject 어노테이션은 이름에서 느끼듯 DI(Dependency Injection) 목적으로 만들어진 어노테이션으로서 JSR 330 표준에 포함되어 있다.
+@Inject 어노테이션 외에도 JSR 330 표준에는 @Named 어노테이션이 포함되어 있으며, 스프링은 이 두 어노테이션을 이용한 의존 자동 설정을 지원한다.
+
+@Inject 어노테이션을 사용하려면, 먼저 @Inject 어노테이션을 포함한 jar 파일을 개발환경에 추가해주어야 한다. 
+메이븐 의존을 사용할 경우 다음과 같이 의존 설정을 추가해주면 된다.
+
+
+	<dependency>
+		<groupId>javax.inject</groupId>
+		<artifactId>javax.inject</artifactId>
+		<version>1</version>
+	</dependency>
+	
+	
+@Inject 어노테이션을 사용하면 @Autowired 어노테이션과 마찬가지로 필드, 메소드, 생성자에 적용할 수 있다.
+아래 코드는 적용 예이다.
+
+
+	public class OrderService {
+		...
+		@Inject
+		public void setErpClientFactory(ErpClientFactory erpClientFactory) {
+			this.erpClientFactory = erpClientFactory;
+		}
+		
+		@Inject
+		public void setSearchClientFactory(
+				@Named("orderSearchClientFactory") SearchClientFactory searchClientFactory) {
+			this.searchClientFactory = searchClientFactory;
+		}
+		
+		
+위 코드에서 두 번째 @Inject 어노테이션이 적용된 메소드의 파라미터에 @Named 어노테이션을 적용했다. @Named 어노테이션은 자동 설정 대상이 두 개 이상일 경우 특졍한 빈을 선택할 목적으로 사용된다는 점에서
+@Qualifier 어노테이션과 유사하다. 차이점이라면 @Named 어노테이션은 사용할 빈의 이름을 지정한다는 것이다.
+
+@Autowired 어노테이션이 required 속성을 이용해서 필수 여부를 지정할 수 있는 것과 달리, @Inject 어노테이션은 반드시 사용할 빈이 존재해야 한다.
+
+
+	5.5 @Configuration과 의존 설정
+	
+@Configuration 어노테이션을 이용할 경우, 여러 클래스에 빈 정보를 나눠서 설정할 수 있다.
+예를 들어, 다음 코드를 보자.
+
+
+	@Configuration
+	public class Config2 {
+	
+		@Bean
+		public User user1() {...}
+	
+		@Bean(name = "user2")
+		public User user() {...}
+		
+		@Bean
+		public UserRepository userRepository() {
+			UserRepository userRepo = new UserRepository();
+			userRepo.setUsers(Arrays.asList(user1(), user()));
+			return userRepo;
+		}
+	}
+	
+	@Configuration
+	public class Config1 {
+
+		@Bean
+		public PasswordChangeService pwChangeSvc() {
+			return new PasswordChangeService(*userRepository 필요*);
+		}
+	
+		@Bean
+		public AuthFailLogger authFailLogger() {...}
+	
+		@Bean
+		public AuthenticationService authenticationService() {
+			AuthenticationService authSvc = new AuthenticationService();
+			authSvc.setFailLogger(authFailLogger());
+			authSvc.setUserRepository(*userRepository 필요 *);
+			return authSvc;
+		}
+	}
+		
+		
+Config2 클래스는 UserRepository 타입의 빈을 정의하고 있고, Config1 클래스에 정의된 두 개의 빈(pwChangeSvc와 authenticationService)은
+UserRepository 타입의 빈을 필요로 한다. @Configuration을 이용한 설정에서는 @Bean 어노테이션이 적용된 메소드를 호출하는 방법으로 의존 객체를 참조하게 되는데,
+다른 @Configuration 클래스에 정의된 @Bean의 경우는 이 방법을 사용할 수 없다.
+
+이렇게 다른 @Configuration 클래스에 정의한 빈을 참조해야 할 때, 앞서 살펴본 @Autowired나 @Resource 등의 어노테이션을 사용하면 된다.
+다음은 사용 예이다.
+
+
+	@Configuration
+	public class Config1 {
+	
+		@Autowired
+		private UserRepository userRepository;
+		
+		@Bean
+		public PasswordChangeService pwChangeSvc() {
+			return new PasswordChangeService(userRepository);
+		}
+	
+		@Bean
+		public AuthFailLogger authFailLogger() {...}
+	
+		@Bean
+		public AuthenticationService authenticationService() {
+			AuthenticationService authSvc = new AuthenticationService();
+			authSvc.setFailLogger(authFailLogger());
+			authSvc.setUserRepository(userRepository);
+			return authSvc;
+		}
+	}
+		
+		
+위 코드에서 userRepository 필드에 @Autowired 어노테이션을 적용했는데, 이 경우 스프링은 userRepository 필드에 일치하는 스프링 빈 객체를 할당한다.
+따라서, 객체 생성 과정에서 해당 빈을 참조해야 한다면 userRepository 필드를 대신 사용하면 된다.
+
+[필자는 테스트 코드와 @Configuration 적용 클래스를 제외한 나머지 코드는 자동연결 기능을 사용하지 않는 편이며,
+사용하더라도 매우 제한적으로 사용한다. 자동 연결 기능을 사용하지 않는 이유는 그저 취항 차이이며, 필자는 객체 간 의존 연결 정보가 잘 드러나는 것을 선호한다.]

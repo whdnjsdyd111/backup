@@ -1,0 +1,427 @@
+스프링 4 버전은 하이버네이트 3.6 또는 그 이후 버전을 지원한다. 이 장에서는 하이버네이트 3.6과 하이버네이트 4 버전에 대한 설정 방법에 대해 살펴볼 것이다.
+
+[책에서 제공하는 소스 코드를 다운로드 받으면, mvnprj/spring4-chap13-hib 디렉토리에 하이버네이트4 기준 코드가 포함되어 있고,
+mvnprj/spring4-chap13-hib3 디렉토리에 하이버네이트 3 기준 코드가 포함되어 있다.]
+
+
+	2.1 하이버네이트 4 버전 연동 설정
+	
+하이버네이트 4 버전을 스프링에서 사용하려면 다음과 같은 설정을 해주면 된다.
+
+	- 의존에 하이버네이트 4 모듈 추가
+	- 스프링 설정
+		~ LocalSessionFactoryBean으로 SessionFactory 설정
+		~ HibernateTransactionManager로 트랜잭션 관리자 설정
+		~ DAO에서 SessionFactory 사용
+		
+	(1) 하이버네이트 4 의존 추가
+	
+먼저 해야 할 작업은 하이버네이트 4 모듈을 클래스패스에 추가하는 것이다. 메이븐 설정에서는 pom.xml 파일에 다음과 같은 의존을 추가해주면 된다.
+다음은 하이버네이트 4.2.12 버전과 스프링 4.0.4 버전을 기준으로 메이븐의 의존을 설정한 예이다.
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>4.2.12.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.7.4</version>
+		</dependency>
+		...
+	</dependencies>
+	
+	(2) LocalSessionFactoryBean과 트랜잭션 관리자 설정
+	
+다음으로 할 작업은 스프링 설정 작업이다. 하이버네이트만 사용할 경우 hibernate.cfg.xml 파일을 이용해서 DB 연결 정보, 트랜잭션 관련 정보, 매핑 목록 등을 설정하는데,
+스프링을 사용할 경우 LocalSessionFactoryBean을 이용해서 이들 정보를 설정한다. 따라서, 별도의 하이버네이트 설정 파일을 작성하지 않는다.
+
+하이버네이트를 스프링과 연동할 때 사용되는 빈은 다음과 같다.
+
+	- o.s.orm.hibernate4.LocalSessionFactoryBean : 하이버네이트의 SessionFactory를 생성하기 위한 팩토리 빈.
+	- o.s.orm.hibernate4.HibernateTransactionManager : 스프링의 트랜잭션 관리 기능과 하이버네이트의 트랜잭션을 연동해주는 트랜잭션 관리자.
+	
+설정 방법은 다음과 같다.
+
+
+	<bean
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="mappingResources">
+			<list>
+				<value>hibernate/Item.hbm.xml</value>
+				<value>hibernate/Payment.hbm.xml</value>
+				<value>hibernate/Order.hbm.xml</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	
+LocalSessionFactoryBean은 다음의 세 프로퍼티를 이용해서 하이버네이트의 SessionFactory를 생성하는데 필요한 값을 전달받는다.
+
+	- dataSource : 하이버네이트가 DB에 연결할 때 사용할 DataSource를 전달한다.
+	- mappingResources : 하이버네이트 XML 매핑 설정 파일 목록을 전달한다.
+	- hibernateProperties : 하이버네이트 SessionFactory의 설정 프로퍼티 목록을 전달한다. 위 예제에서는 hibernate.dialect 프로퍼티만 전달했지만,
+		hibernate.show_sql, hibernate.format_sql 등 필요한 설정 프로퍼티를 전달하면 된다.
+		
+DB 연결과 트랜잭션 관리는 스프링을 통해서 처리하기 때문에, hibernateProperties 프로퍼티에 DB 연결 정보나 트랜잭션 관리 설정을 추가할 필요는 없다.
+
+HibernateTransactionManager의 sessionFactory 프로퍼티에는 스프링의 트랜잭션 관리 기능을 적용할 SessionFactory 빈을 설정한다.
+
+XML 설정 파일 대신 @Entitiy 등의 어노테이션을 이용해서 매핑 정보를 자바 코드에 설정했다면, 다음과 같이 LocalSessionFactoryBean의 annotatedClasses 프로퍼티를 이용해서
+설정 클래스 목록을 전달하면 된다.
+
+
+	<bean
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="annotatedClasses">
+			<list>
+				<value>net.madvirus.spring4.chap13.store.domain.Item</value>
+				<value>net.madvirus.spring4.chap13.store.domain.PaymentInfo</value>
+				<value>net.madvirus.spring4.chap13.store.domain.PurchaseOrder</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	
+@Configuration을 이용한 설정을 사용할 경우, 다음과 같이 LocalSessionFactoryBean과 HibernateTransactionManager를 설정한다.
+
+
+@Configuration
+@EnableTransactionManagement
+public class JavaConfigXmlMapping {
+
+	@Bean(destroyMethod = "close")
+	public DataSource dataSource() {
+		ComboPooledDataSource ds = new ComboPooledDataSource();
+		...
+		return ds;
+	}
+
+	@Bean
+	public PersistenceExceptionTranslationPostProcessor persistenceExceptionTranslationPostProcessor() {
+		return new PersistenceExceptionTranslationPostProcessor();
+	}
+	
+	@Bean
+	public PlatformTransactionManager transactionManager() {
+		HibernateTransactionManager txMgr = new HibernateTransactionManager();
+		txMgr.setSessionFactory(sessionFactoryBean().getObject());
+		return txMgr;
+	}
+
+	@Bean
+	public LocalSessionFactoryBean sessionFactoryBean() {
+		LocalSessionFactoryBean sessionFactoryBean = new LocalSessionFactoryBean();
+		sessionFactoryBean.setDataSource(dataSource());
+		sessionFactoryBean.setMappingResources("hibernate/Item.hbm.xml", "hibernate/Order.hbm.xml");
+		Properties prop = new Properties();
+		prop.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5InnoDBDialect");
+		sessionFactoryBean.setHibernateProperties(prop);
+		return sessionFactoryBean;
+	}
+	
+	
+	(3) DAO에서 SessionFactory 사용하기
+	
+SessionFactory를 설정했다면, 그 다음으로 할 일은 SessionFactory를 필요로 하는 빈에서 SessionFactory를 사용하는 것 뿐이다.
+예를 들어, 다음과 같이 SessionFactory를 사용하는 코드가 있다고 하자.
+
+
+	import org.hibernate.SessionFactory;
+	import org.springframework.stereotype.Repository;
+	
+	@Repository
+	public class HibernateItemRepository implements ItemRepository {
+	
+		private SessionFactory sessionFactory;
+	
+		public void setSessionFactory(SessionFactory sessionFactory) {
+			this.sessionFactory = sessionFactory;
+		}
+	
+		@Override
+		public Item findById(Integer itemId) {
+			Item item = (Item) sessionFactory.getCurrentSession().get(Item.class, itemId);
+			return item;
+		}
+	
+	}
+	
+	
+위 클래스를 사용하려면 빈으로 등록하고, 앞서 설정한 LocalSessionFactoryBean이 생성하는 SessionFactory를 DI로 전달해주면 된다.
+다음은 XML 설정을 사용하는 경우의 예시 코드이다.
+
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		...
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="itemRepository"
+		class="net.madvirus.spring4.chap13.store.persistence.HibernateItemRepository">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	
+LocalSessionFactoryBean 클래스는 하이버네이트의 컨텍스트 세션을 지원하기 때문에, SessionFactory.getCurrentSession() 메소드를 이용해서 SessionFactory를 구하면 된다.
+이렇게 구한 SEssionFactory는 스프링이 제공하는 트랜잭션 관리 기능과 연동된다. 따라서, 하이버네이트의 트랜잭션 관련 코드를 사용할 필요 없이,
+스프링이 제공하는 트랜잭션 관리 기능(선언적 트랜잭션이나 TransactionTemplate)을 그대로 사용하면서 하이버네이트 코드를 스프링이 관리하는 트랜잭션 범위 내에서 실행할 수 있다.
+
+
+	2.2 하이버네이트 3 버전 연동 설정
+	
+하이버네이트 3 버전 설정은 하이버네이트 4 버전 설정과 다르지 않다. 차이점이 있다면, 패키지 이름이 o.s.orm.hibernate4 대신 o.s.orm.hibernate3을
+사용한다는 것과 어노테이션 기반 매핑 설정을 사용할 경우 AnnotationSessionFactoryBean 클래스를 이용해서 설정한다는 점이다.
+
+	(1) 하이버네이트 3 의존 추가
+	
+하이버네이트 3버전을 사용하려면 관련 의존 모듈을 추가해주어야 한다. 다음은 메이븐 설정 예시 코드이다.
+
+
+	<dependencies>
+		<!-- 하이버네이트 3 관련 의존 모듈 -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>3.6.10.Final</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<version>3.12.0.GA</version>
+		</dependency>
+
+		<!-- 스프링 관련 의존 설정 -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.7.4</version>
+		</dependency>
+		...
+	</dependencies>
+	
+	
+	(2) LocalSessionFactoryBean과 트랜잭션 관리자 설정
+	
+다음으로 할 작업은 스프링 설정 작업이다. 여기서는 다음의 두 빈을 설정한다.
+
+	- o.s.orm.hibernate3.LocalSessionFactoryBean : 하이버네이트의 Session Factory를 생성하기 위한 팩토리 빈.
+	- o.s.orm.hibernate3.HibernateTransactionManager : 스프링의 트랜잭션 관리 기능과 하이버네이트의 트랜잭션을 연동해주는 트랜잭션 관리자.
+	
+설정 방법은 다음과 같다.
+
+
+	<bean
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="mappingResources">
+			<list>
+				<value>hibernate/Item.hbm.xml</value>
+				<value>hibernate/Order.hbm.xml</value>
+				<value>hibernate/Payment.hbm.xml</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	
+LocalSessionFactoryBean과 HibernateTransactionManager의 설정은 앞서 설명했던 하이버네이트 4 버전과 동일하다.
+
+XML 설정 파일 대신 @Entitiy 등의 어노테이션을 이용해서 매핑 정보를 자바 코드에 설정했다면, 
+LocalSessionFactoryBean 대신 AnnotationSessionFactoryBean 클래스를 이용해야 한다.
+다음은 설정 예이다.
+
+
+	<bean
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="annotatedClasses">
+			<list>
+				<value>net.madvirus.spring4.chap13.store.domain.Item</value>
+				<value>net.madvirus.spring4.chap13.store.domain.PaymentInfo</value>
+				<value>net.madvirus.spring4.chap13.store.domain.PurchaseOrder</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	
+@Configuration 어노테이션을 이용한 스프링 설정을 사용할 경우, 설정 자바 코드 작성 방법은 하이버네이트 4 버전과 동일하다.
+
+	(3) DAO에서 SessionFactory 사용하기
+	
+스프링 3 버전에 맞게 SessionFactory를 설정했다면, 그 다음으로 할 일은 SessionFactory를 필요로 하는 빈에서 SessionFactory를 사용하는 것이다.
+이 과정은 하이버네이트 4 버전을 사용할 때와 동일하므로 하이버네이트 4의 DAO에서 SessionFactory를 사용하는 것을 설명한 부분을 참고하자.
+
+
+	2.3 LocalSessionFactoryBean의 주요 프로퍼티
+	
+하이버네이트 3과 4 버전을 위한 LocalSessionFactoryBean의 주요 설정 프로퍼티는 다음과 같다.
+프로퍼티 중 (*) 표시한 것은 하이버네이트 3 버전 기준으로 AnnotationSessionFactoryBean에서 제공한다.
+
+
+	프로퍼티						설명			설명
+	
+	dataSource					DataSource	DB 연결에 사용할 DataSource를 지정한다.
+	
+	mappingResource				String[]	클래스패스에 위치한 매핑 파일 경로 목록을 지정한다.
+	
+	mappingLocations			Resource[]	스프링 Resource 타입으로 파일 경로 목록을 지정한다.
+	
+	mappingDirectoryLocations	Resource[]	지정한 디렉토리 및 하위 디렉토리에 위치한 모든 *.hbm.xml 파일을 매핑 파일로 사용한다.
+	
+	entityInterceptor			Interceptor	하이버네이트의 엔티티 Interceptor를 설정한다. (org.hibernate.Interceptor 구현 객체)
+	
+	hibernateProperties			Properties	하이버네이트 설정 프로퍼티를 지정한다.
+	
+	annotatedClasses (*)		Class[]		어노테이션 매핑 정보를 담은 클래스 목록을 지정한다.
+	
+	packagesToScan (*)			String[]	어노테이션 매핑 정보를 담은 클래스를 검색할 패키지 목록을 지정한다.
+	
+	
+	2.4	하이버네이트와 JTA 트랜잭션 사용 설정
+	
+JTA를 이용해서 트랜잭션을 관리해야 할 경우, JtaTransactionManager를 사용해야 한다.
+JtaTransactionManager가 관리하는 트랜잭션을 하이버네이트의 SessionFactory에 적용하려면, LocalSessionFactoryBean의
+JtaTransactionManager 프로퍼티에 JtaTransactionManager 객체를 전달해주어야 한다. 다음은 JtaTransactionManager를 사용할 때의 
+하이버네이트 설정 예를 보여주고 있다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		...
+	</bean>
+	
+	<!-- XA를 위한 DataSource 설정 -->
+	<bean id="shopDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		...
+	</bean>
+	
+	<bean id="payDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		...
+	</bean>
+	
+	<!-- 각 DataSource를 위한 SessionFactory 설정 -->
+	<bean id="shopSessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="shopDataSource" />
+		...
+		<property name="jtaTransactionManager" ref="transactionManager" />
+	</bean>
+	
+	<bean id="paySessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="payDataSource" />
+		...
+		<property name="jtaTransactionManager" ref="transactionManager" />
+	</bean>
+
+	<bean id="itemRepository"
+		class="net.madvirus.spring4.chap13.store.persistence.HibernateItemRepository">
+		<property name="sessionFactory" ref="shopSessionFactory" />
+	</bean>
+
+	<bean id="paymentInfoRepository"
+		class="net.madvirus.spring4.chap13.store.persistence.HibernatePaymentInfoRepository">
+		<property name="sessionFactory" ref="paySessionFactory" />
+	</bean>
+	
+	
+위 설정에서 중요한 점은 두 개의 SessionFactory를 생성할 때 서로 다른 DataSource를 사용하도록 했고, 두 SessionFactory를 JTA 트랜잭션으로 묶기 위해
+jtaTransactionManager 프로퍼티에 jtaTransactionManager 빈 객체를 전달했다는 점이다.
+이렇게 함으로써 스프링이 제공하는 트랜잭션 관리 범위에서 두 개의 서로 다른 하이버네이트 세션을 실행할 수 있게 된다.
+
+[LocalSessionFactoryBean의 jtaTransactionManager 프로퍼티를 설정하는 대신,
+하이버네이트 설정 프로퍼티 중 "hibernate.transaction.factory_class"의 값을 org.hibernate.engine.transaction.internal.jta.CMTTransactionFactory로 설정해도 된다.]

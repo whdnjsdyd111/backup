@@ -1,0 +1,28 @@
+cart 테이블은 장바구니 역할을 하는 것으로 사용자가 장바구니에 담은 상품의 정보를 갖고 있다.
+
+CREATE TABLE cart(
+	cart_id NUMBER CONSTRAINT cart_id_pk PRIMARY KEY,
+	buyer VARCHAR2(50) CONSTRAINT cart_buyer_fk REFERENCES member(id),
+	book_id NUMBER CONSTRAINT cart_book_id_fk REFERENCES book(book_id),
+	buy_price NUMBER CONSTRAINT cart_price_nn NOT NULL,
+	buy_count NUMBER CONSTRAINT cart_count_nn NOT NULL,
+	book_image VARCHAR2(16) DEFAULT 'nothing.jpg'
+);
+
+다음은 cart 테이블의 각 필드에 대한 설명이다.
+
+필드명			설명
+
+cart_id			장바구니의 아이디를 저장하는 필드, 기본 키
+	
+buyer			구매자를 저장하는 필드
+
+book_id			구매할 상품의 아이디를 저장하는 필드
+
+book_title		구매할 상품의 제목을 저장하는 필드
+
+buy_price		구매할 상품의 가격을 저장하는 필드
+
+buy_count		구매할 상품의 수량을 저장하는 필드
+
+book_image		구매할 제품의 이미지를 저장하는 필드

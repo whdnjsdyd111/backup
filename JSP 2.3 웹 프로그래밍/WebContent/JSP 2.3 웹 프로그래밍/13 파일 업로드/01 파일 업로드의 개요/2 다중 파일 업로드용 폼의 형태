@@ -1,0 +1,113 @@
+다중 파일 업로드를 위해 다중 파일을 선택하는 폼은 자바스크립트를 사용한 방식, jQuery Multiple Upload Plugin을 사용하는 방식, HTML5에서 추가된 multiple 속성을 사용하는 세 가지 방법이 있다.
+
+
+(1) 방법1 : 자바스크립트에서 직접 작성하는 방법
+
+<input type="file"> 태그는 기본적으로 1개의 파일만을 업로드할 수 있으므로, 만일 여러 개의 파일을 입력받을 경우 <input type="file"> 태그를 입력받을 파일의 수만큼 생성한다.
+이것은 자바스크립트를 사용해서 직접 작성하는 방식이다.
+
+
+		HTML 태그
+		
+<dl>
+	<dd>
+		<label for="num">업로드할 파일의 수</label>
+		<input type="number" id="num">
+		<button id="createf">업로드 필드 생성</button>
+	</dd>
+	<dd>
+		<label for="title">제목</label>
+		<input type="text" id="title">
+	</dd>
+	<dd>
+		<div id="upfiles"></div>
+	</dd>
+	<dd>
+		<input type="submit" value="전송">
+	</dd>
+</dl>
+
+		자바스크립트(JS)
+		
+$('#createf').click(function() {
+	var num = $('#num').val();
+	var field = "";
+	var str1 = "";
+	
+	$('#upfiles').append("<label>업로드할 파일 선택</label>");
+	$('#upfiles').append("<br>");
+	
+	for(var i = 0; i < num; i++) {
+		str1 = "<input type='file' id='f" + num + "'" + " name='f" + num + "'>";
+		field = $(str1);
+		$('#upfiles').append(field);
+		$('#upfiles').append('<br>');
+	}
+});
+
+
+jQuery 에서 특정 태그에 하위 태그를 추가할 때는 특정 태그.append(하위 태그)와 같이 append() 메소드를 사용한다.
+위의 예시를 실행하면 업로드할 파일의 수를 입력하는 부분이 표시된다. 이때 업로드할 파일 수를 입력한 후 [업로드 필드 생성] 버튼을 클릭하면 <div id="upfiles"></div> 영역에
+업로드할 필드가 지정한 수만큼 생성된다.
+
+
+(2) 방법2 : jQuery Multiple File Upload Plugin을 사용하는 방법
+
+두 번째로 요즘 스타일의 다중 업로드를 지원하는 jQuery Multiple File Upload Plugin(제이쿼리 멀티 파일 업로드 플러그인)을 사용하는 방법을 알아본다.
+jQuery Multiple File Upload Plugin은 파일 업로드 시 파일의 다중 선택 부분과 선택된 파일의 UI 부분은 jQuery Multiple File Upload Plugin을 사용하고,
+서버에 업로드를 처리하는 페이지를 Ajax 방식으로 요청하는 것은 jQuery Form Plugin을 사용한다.
+
+	
+		HTML 태그
+		
+<script src="jquery-1.11.0.min.js"></script>
+<script src="jquery.form.min.js"></script>
+<script src="jquery.MetaData.js"></script>
+<script src="jquery.MultiFile.js"></script>
+<script src="jquery.blockUI.js"></script>
+... 생략
+<ul>
+	<li>
+	<input type="file" id="file1" name="file1" class="multi" maxlength="3">
+	<li>
+	<input type="submit" id="upPro1" value="다중 파일 업로드">
+</ul>
+
+		자바스크립트(JS)
+		
+$('#formid').ajaxForm({	// 지정한 upPro.jsp 페이지에 폼 데이터 전송
+	success : function(data, status) {	//  업로드 성공 시
+		// 결과 처리
+	}
+});
+
+	- HTML 태그 : 	<script> 태그를 추가해서 jQuery Form Plugin과 jQuery Multiple File Upload Plugin을 사용한다.
+					jQuery Multiple File Upload Plugin은 <input type="file" id="file1" name="file1" class="multi" maxlength="3">
+					과 같이 <input type="file"> 태그에 class 속성값으로 "multi"만 추가하면 다중 업로드를 지원한다.
+					maxlength 속성은 한 번에 업로드할 파일의 수를 제하할 경우 사용하는 속성이다. 만일 이 속성을 사용하지 않으면 한 번에 업로드할 수 있는 파일의 수는 무제한이 된다.
+	
+	- 자바스크립트(JS) :	jQuery Form Plugin을 사용한 업로드 처리 페이지 요청을 하기 때문에 $('#폼Id').ajaxForm();과 같이
+						form 엘리먼트 객체에 ajaxForm() 메소드를 사용해 지정한 페이지로 폼 데이터를 전송한다.
+						
+						
+(3) 방법3 : HTML5의 multiple 속성을 사용한 방법
+
+마지막 방법은 HTML5에서 제공하는 multiple 속성을 <input type="file"> 태그에 사용하는 것이다.
+
+<input type="file" name="selectfile" multiple>
+
+	- multiple 속성 : 	<input> 태그에 값을 1개 이상 넣을 수 있게 해준다.
+			~ <input type="file" multiple>에서와 같이 파일을 여러 개 선택하는 경우에는 Ctrl 또는 Shift를 같이 사용한다. 여러 파일은 쉼표(,)를 사용해서 나열된다.
+			~ <input type="email" multile>의 경우에는 이메일 입력 필드에 여러 이메일 주소를 쉼표(,)를 사용해서 나열한다.
+			
+<script src="jquery-1.11.0.min.js"></script>
+<script src="jquery.form.min.js"></script>
+<dl>
+	<dd>
+		<label for="files">파일 선택</label>
+		<input type="file" id="files" multiple>
+		<button id="send">전송</button>
+	</dd>
+</dl>
+
+파일 전송으로 여러 파일들을 선택하면 C:\file1,C:\file2,C:\file3 과 같은 형태로 쉼표(,)를 사용해서 나열된다.

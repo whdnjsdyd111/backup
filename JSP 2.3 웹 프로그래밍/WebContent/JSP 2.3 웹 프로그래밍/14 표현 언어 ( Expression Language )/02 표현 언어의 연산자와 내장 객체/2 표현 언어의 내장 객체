@@ -1,0 +1,31 @@
+표현 언어에서 제공되는 내장 객체는 다음과 같으며, 이들은 ${sessionScope.id}와 같은 형태로 표현식에서 사용한다.
+
+
+내장 객체				설명
+
+pageScope			page 영역 객체
+
+requestScope		request 객체
+
+sessionScope		session 영역 객체
+
+applicationScope	application 영역 객체
+
+param				요청 파라미터 객체. 파라미터 값을 얻어낼 때 사용하는 것으로 request.getParameter()와 같은 역할을 수행
+
+paramValues			요청 파라미터 컬렉션. 복수의 값을 갖는 파라미터로부터 값을 얻어낼 때 사용하는 것으로 request.getParameterValues()와 같은 역할 수행
+
+header				HTTP 요청 헤더 객체. 헤더 값을 얻어낼 때 사용하는 것으로 request.getHeader()와 같은 역할을 수행
+
+headerValues		HTTP 요청 헤더 객체 컬렉션. 복수의 값을 갖는 헤더로부터 값을 얻어낼 때 사용하는 것으로 request.getHeader()와 같은 역할 수행
+
+cookie				모든 쿠키값 컬렉션. 요청 객체로부터 모든 쿠키값을 얻어낼 때 사용하는 것으로 request.getCookie()와 같은 역할을 수행
+	
+initParam			모든 애플리케이션의 초기화 파라미터 이름을 얻어내는 컬렉션으로 config.getInitParameter()와 같음
+
+pageContext			현재 JSP 페이지의 콘텍스트(context). 주로 다른 내장 객체 servletContext, session, request, response 를 구할 때 사용
+
+
+이 예제는 표현 언어의 표현식에서 내장 객체를 사용하는 방법을 학습하는 것이다.
+
+elEx2.jsp		585쪽

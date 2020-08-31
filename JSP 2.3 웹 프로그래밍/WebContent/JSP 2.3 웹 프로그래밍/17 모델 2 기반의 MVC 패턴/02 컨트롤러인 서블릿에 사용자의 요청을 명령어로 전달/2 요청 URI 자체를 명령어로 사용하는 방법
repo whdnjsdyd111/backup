@@ -1,0 +1,31 @@
+요청 URI 자체를 명령어로 사용하는 방법은 사용자가 요청한 URI 자체를 명령어로 사용하는 방법이다.
+
+http://127.0.0.1:8080/studyjsp/ch17/test.do
+
+위의 예시는 URI 자체를 명령어로 인식하도록 했는데, 이 방법은 일단 요청한 URI을 읽어서 웹 애플리케이션 루트까지의 문자열 위치값을 알아낸 후 URI에서 웹 애플리케이션의 다음 문자열부터 명령어로 인식하게 하는 방법이다.
+이 예시에서는 "http://127.0.0.1:8080/studyjsp/ch17/test.do" 로부터 웹 애플리케이션 루트인 "http://127.0.0.1:8080/studyjsp"를 제외한
+"/ch17/test.do"만을 명령어로 사용한다.
+이 방법은 요청되는 URI가 실제 페이지가 아니고 명령어이므로 악의적인 명령어로부터 사이트가 보호되며, 요청되는 URI이 좀 더 자연스러워 진다는 장점이 있다.
+
+
+이 예제는 컨트롤러인 ControllerURI 서블릿이 사용자의 요청 자체를 URI로 전달받아서, 그 요청 URI 자체를 명령어로 사용하는 것에 대한 처리를 하는 것이다.
+이 때 명령어 컨트롤러에 사용자의 요청 자체를 URI로 전달받아서 해당 명령어에 해당하는 처리를 명령어 처리 클래스에 일임해서 처리하게 하고, 
+그 결과를 전달받아서 뷰인 process.jsp 페이지로 보내서 사용자의 요청에 응답한다.
+
+	
+사용자의 요청이 URI로 전달된다.
+http://127.0.0.1:8080/studyjsp/ch17/message.do
+
+											2 명령어 처리
+					1 요청	ControllerURI	<--->		명령어 처리
+					 →		(Controller)				인터페이스
+		Web Browser				│ 3 처리 결과 뷰로 보냄		(CommandProcess)
+								V							↑
+					4 응답	   View						명령어 처리
+					 ←		(process.jsp)				    클래스
+					 								(MessageProcess)
+					 							
+					 							
+commandURI.properties		715쪽
+
+MessageProcessURI.java		715쪽

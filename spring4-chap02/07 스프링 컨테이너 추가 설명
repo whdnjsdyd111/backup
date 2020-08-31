@@ -1,0 +1,184 @@
+지금까지 살펴본 예에서는 ApplicationContext가 제공하는 메소드 중에 getBean() 메소드만 주로 사용했는데, 이 절에서는 getBean() 메소드를 포함해서
+ApplicationContext가 제공하는 기능 및 스프링 컨테이너에 대한 추가적인 내용을 살펴보도록 하자.
+
+
+	7.1	컨테이너의 빈 객체 구하기 위한 기본 메소드
+	
+[이 절에서 소개되는 메소드는 거의 쓸 일은 거의 없다. 필자는 어플리케이션 개발 과정에서 사용한 메소드는 2-3개 정도에 불과하다.
+이절은 그냥 이런 기능이 있구나 정도만 알아두고 넘어가자.
+]
+
+[그림 2.2 121]을 보자.
+
+ApplicationContext는 BeanFactory를 포함한 몇 개의 인터페이스를 상속받고 있다.
+이들 인터페이스마다 제공하는 메소드가 다른데, 먼저 BeanFactory 인터페이스에 정의된 주요 메소드를 먼저 살펴보자.
+BeanFactory 인터페이스는 다음과 같이 한 개의 빈을 구하는데 필요한 메소드를 정의하고 있다.
+
+	- <T> T getBean(String name, Class<T> requiredType)
+		: 이름이 name이고, 타입이 requiredType인 빈을 구한다. 일치하는 빈이 존재하지 않을 경우 NoSuchBeanDefinitionException이 발생한다.
+	
+	- <T> T getBean(Class<T> requiredType)
+		: 타입이 requiredType인 빈을 구한다. 일치하는 타입을 가진 빈이 존재하지 않을 경우 NoSuchBeanDefinitionException이 발생하고,
+			같은 타입의 빈이 두 개 이상일 경우  NoUniqueBeanDefinitionException이 발생한다.
+			
+	- boolean containsBean(String name)
+		: 지정한 이름을 가진 빈이 존재할 경우 true를 리턴한다.
+	
+	- boolean isTypeMatch(String name, Class<?> targetType)
+		: 지정한 이름을 가진 빈의 타입이 targetType인 경우 true를 리턴한다. 해당 이름을 가진 빈이 존재하지 않을 경우  NoSuchBeanDefinitionException이 발생한다.
+	
+	- Class<?> getType(String name)
+		: 이름이 name인 빈의 타입을 구한다. 해당 이름이 가진 빈이 존재하지 않을 경우  NoSuchBeanDefinitionException이 발생한다.
+		
+ListableBeanFactory 인터페이스는 빈의 목록과 관련된 메소드를 정의하고 있다
+이들 메소드는 다음과 같다.
+
+	- int getBeanDefinitionCount() : 전체 빈의 개수를 리턴한다.
+	
+	- String[] getBeanDefinitionNames() : 전체 빈의 이름 목록을 배열로 구한다.
+	
+	- String[] getBeanNamesForType(Class<?> type) : 지정한 타입을 가진 빈의 이름 목록을 배열로 구한다.
+	
+	- <T> Map<String, T> getBeanOfType(Class<T> type) : 지정한 타입을 가진 빈 객체를 맵으로 구한다. 맵의 키는 빈의 이름이고, 맵의 값이 빈 객체이다.
+	
+	- String[] getBeanNamesForAnnotation(Class<? extends Annotation> annotationType) : 클래스가 지정한 어노테이션을 가진 빈의 이름 목록을 배열로 구한다.
+	
+	-  Map<String, Object> getBeansWithAnnotation(Class<? extends Annotation> annotationType)
+		: 지정한 어노테이션을 가진 빈 객체를 맵으로 구한다. 맵의 키는 빈의 이름이고, 맵의 값이 빈 객체이다.
+		
+
+	7.2	스프링 컨테이너의 생성과 종료
+	
+스프링 컨테이너는 크게 다음의 주기를 갖는다.
+
+	1. 컨테이너 생성
+	2. 빈 메타 정보(XML이나 자바 기반 설정)을 이용해서 빈 객체 생성 
+	3. 컨테이너 사용
+	4. 컨테이너 종료 (빈 객체 제거)
+	
+1번과 2번 과정은 컨테이너를 생성할 때 함께 진행된다.
+
+
+	// 빈 메타 정보를 컨테이너 생성 시점에서 제공해서, 빈 객체 생성
+	GenericXmlApplicationContext ctx =
+		new GenericXmlApplicationContext("classpath:config.xml");
+		
+
+또는 다음과 같이 컨테이너를 먼저 생성하고, 그 다음에 메타 정보를 컨테이너에 제공할 수도 있다.
+
+
+	// 1. 컨테이너 생성
+	GenericXmlApplicationContext ctx = new GenericXmlApplicationContext();
+	// 2. 메타 정보 제공 및
+	ctx.load("classpath:config.xml");
+	// 2. 빈 객체 생성 (읽어온 메타 정보로 빈 객체 재생성)
+	ctx.refresh();
+	
+	
+자바 기반 설정을 사용하는 경우에도 동일하게, 컨테이너를 먼저 생성한 뒤에 설정 클래스를 제공할 수 있다.
+
+	
+	AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+	ctx.register(Config.class);
+	ctx.refresh();
+	
+	
+컨테이너를 생성한 뒤에 XML 설정이나 자바 코드 설정을 제공할 때에는 반드시 refresh() 메소드를 호출해서 빈 객체를 초기화해주어야 한다.
+refresh() 메소드를 호출하지 않으면, 컨테이너가 초기화되지 않아 빈을 구할 때 익셉션이 발생한다.
+
+컨테이너를 사용하면 앞서 살펴봤던 getBean() 등의 메소드를 이용해서 빈 객체를 사용할 수 있다.
+
+	
+	// 3. 컨테이너 사용
+	AuthenticationService authSvc = 
+		ctx.getBean("authenticationService", AuthenticationService.class);
+		
+	
+컨테이너를 더 이상 사용할 필요가 없다면, 예를 들어 프로그램을 종료하기 직전이라면, 컨테이너를 종료해야 한다.
+컨테이너를 종료할 때에는 close() 메소드를 사용한다.
+
+
+	// 4. 컨테이너 종료
+	ctx.close();
+	
+	
+다음 장에서 살펴보겠지만 스프링 빈은 생성 - 사용 - 소멸의 라이프사이클을 갖고있고, 소멸 과정에서 별도 작업을 수행햐야 하는 경우가 있다.
+그런데, 빈의 소멸 절차는 스프링 컨테이너를 종료할 때 실행되기 때문에, 스프링 컨테이너를 알맞게 종료하지 않으면, 프로그램이 비정상 상태가 될 수도 있다.
+따라서, 컨테이너의 사용이 끝나면 컨테이너를 종료시키는 것이 좋다.
+
+항상 원하는 순간데 close() 메소드를 호출할 수 있는 것은 아니다.
+예를 들어, java를 실행 중인 콘솔(또는 명령행 프롬프트)에서 Ctrl + C 키를 눌러서 자바 프로세스를 강제 종료할 수 있다.
+이런 경우, close() 메소드를 호출하는 부분의 코드가 실행되지 않을 수 있다. 만약 이런 상황이 발생할 수 있다면,
+registerShutdownHook() 메소드를 사용해야 한다.
+
+
+	AnnotationConfigApplicationContext ctx = 
+		new AnnotationConfigApplicationContext(Config.class);
+	// JVM이 종료될 때, 컨테이너 종료 과정이 실행된다.
+	ctx.registerShutdownHook();
+	
+	
+registerShutdownHook() 메소드는 자바의 셧다운후크 기능을 사용해서, JVM이 종료될 때 스프링 컨테이너 종료 과정을 실행하도록 만든다.
+따라서, 예기치 않은 이유로 JVM이 종료될 때, 안정적으로 컨테이너 종료할 수 있는 기회가 생긴다.
+(물론, OS 수준에서 JVM 프로세스를 강제로 종료하면 실행되지 않는다)
+
+[셧다운 후크 관련 내용은		http://javacan.tistory.com/entry/86		을 참고]
+
+
+	7.3	스프링 컨테이너 계층 구조
+	
+이 장에서 마지막으로 살펴볼 내용은 스프링 컨테이너의 계층 구조에 대한 것이다. 스프링 컨테이너는 부모-자식 관계의 계층 구조를 가질 수 있다.
+
+
+			┌───────────────┐
+			│	부모 컨테이너	│
+			│	  svc 빈		│
+			└───────────────┘
+				↑		  ↑
+	┌───────────────┐	┌───────────────┐
+	│	자식 컨테이너	│	│	자식 컨테이너	│
+	│	   ui 빈		│	│		api 빈	│
+	└───────────────┘	└───────────────┘
+	
+	
+위처럼 자식에 속하는 컨테이너의 빈은 부모 컨테이너에 속한 빈을 참조할 수 있다. 즉, 의존 객체로 사용할 수 있다.
+반대로 부모 컨테이너에 속한 빈은 자식 컨테이너에 속한 빈을 참조할 수는 없다.
+
+부모/자식 구조를 만들고 싶다면, 자식 컨테이너를 생성할 때 setParent() 메소드를 이용해서 부모 컨테이너를 지정해주면 된다.
+아래 코드는 부모/자식 관계를 설정하는 예를 보여주고 있다.
+
+
+	GenericXmlApplicationContext parent = 
+		new GenericXmlApplicationContext("classpath:conf-parent.xml");
+	GenericXmlApplicationContext child = new GenericXmlApplicationContext();
+	child.setParent(parent);
+	child.load("classpath:conf-child.xml");
+	child.refresh();
+	
+	
+부모 컨테이너를 지정할 때 주의할 점은 자식 컨테이너의 빈을 초기화하기 위해 부모 컨테이너를 지정해야 한다는 점이다.
+예를 들어, 위 코드에서 conf-parent.xml 파일과 conf-child.xml 파일이 아래와 같다고 해보자.
+
+
+	-- conf-parent.xml
+	<bean id="svc" class="net.some.svc.Svc">
+	</bean>
+	
+	-- conf-child.xml
+	<bean id="ul" class="net.some.ui.Ui">
+		<property name="service" ref="svc" />	<!-- 부모 컨테이너의 svc 빈을 참조 -->
+	</bean>
+	
+	
+자식 컨테이너(conf-child.xml)에 생성될 ui 빈은 부모 컨테이너 (conf-parent.xml)에 포함되어 있는 svc 빈을 참조하고 있다.
+그런데 만약 다음과 같이 부모 컨테이너를 지정하기 전에 자식 컨테이너를 초기화하면, 자식 컨테이너를 초기화하는 과정에서 svc 빈이 없다는 익셉션이 발생하게 될 것이다.
+
+
+	GenericXmlApplicationContext child = new GenericXmlApplicationContext();
+	child.load("classpath:conf-child.xml");
+	child.refresh();	// 자식 컨테이너에서 참조하고 있는 svc 빈이 없으므로 익셉션 발생
+	child.setParent(parent);
+	
+	
+일반적으로 컨테이너 계층 구조를 사용할 일이 많진 않지만, 서로 다른 두 개의  컨테이너에서 공통 기능을 필요로 할 때 계층 구조를 유용하게 쓸 수 있다.
+예를 들어, 메일 발송, 메시지 전송 등의 공통 기능을 제공하는 빈을 부모 컨테이너에 생성하고, 여러 자식 컨테이너에서 이들 빈을 사용해서 기능을 사용하도록 구성할 수 있을 것이다.

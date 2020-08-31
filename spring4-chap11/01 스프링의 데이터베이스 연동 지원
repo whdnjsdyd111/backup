@@ -1,0 +1,134 @@
+스프링은 JDBC를 이용한 DAO 클래스를 구현할 수 있도록 다양한 기능을 지원하고 있는데, 그 내용은 다음과 같다.
+
+	- 템플릿 클래스를 통한 데이터 접근 자원
+	- 의미 있는 익셉션 타입
+	- 트랜잭션 처리
+	
+이 세 가지는 어떤 연동 방식을 사용해도 동일하게 적용되는데, 각각에 대해 차례대로 살펴보자.
+
+
+	1.1 데이터베이스 연동을 위한 템플릿 클래스
+	
+데이터에 접근하는 코드는 거의 동일한 코드 구성을 갖는다. 예를 들어, JDBC를 사용할 경우 특정 테이블에서 데이터를 로딩하는 코드는 다음과 같은 구조를 갖는다.
+
+
+	Connection conn = null;
+	PreparedStatement pstmt = null;
+	ResultSet rs = null;
+	try {
+		conn = getConnection();
+		pstmt = conn.prepareStatement("select * from message where guestBookId = ?");
+		pstmt.setInt(1, guestBookId);
+		rs = pstmt.executeQuery();
+		if (rs.next()) {
+			do {
+				Message message = new Message();
+				message.setContent(rs.getString("content"));
+				...
+			} while (rs.next());
+		}
+	} catch (SQLException ex) {
+		// 알맞은 익셉션
+	} finally {
+		if(rs != null) rs.close();
+		if(pstmt != null) pstmt.close();
+		if(conn != null) conn.close();
+	}
+	
+	
+위 코드에서 Connection을 생성하고, PreparedStatement, ResultSet 그리고 Connection 등의 자원을 반환하는 코드는 거의 모든 JDBC 코드에서 중복되는 코드이다.
+
+
+	// 반복해서 출현하는 코드 구조
+	Connection conn = null;
+	...
+	try {
+		conn = getConnection();
+		...
+	} finally {
+		if(conn != null) conn.close();
+	}
+	
+	
+PreparedStatement를 구하고 ResultSet으로부터 데이터를 읽어와 자바빈 객체에 저장하는 코드 역시 동일한 구성을 갖는다.
+
+이런 반복되는 구조의 코드는 개발자를 귀찮게 만들 뿐만 아니라 코드 누락 등의 실수를 유발할 수 있다.
+템플렛 메소드 패턴과 전략 패턴을 함께 사용하면 이런 구조적인 중복을 줄일 수 있는데, 스프링은 이미 이 두 가지 패턴이 적용된 JDBC 템플릿 클래스를 제공하고 있다.
+
+예를 들어, JDBC를 위한 JdbcTemplate 클래스를 제공하고 있으며, 이 클래스를 사용하면 다음과 같이 try-catch-finally 블록 및 커넥션
+관리를 위한 중복되는 코드를 줄이거나 없앨 수 있다.
+
+
+	List<Message> messages = jdbcTemplate.query(
+			"select * from guestmessage order by id desc limit ?, ?",
+			new Object[] {start, size}, new RowMapper<Message>() {
+				@Override
+				public Message mapRow(ResultSet rs, int rowNum)
+						throws SQLException {
+					Message m = new Message();
+					m.setId(rs.getInt("id"));
+					...
+					return m;
+				}
+			});
+			
+			
+자바 8 버전부터 지원되는 람다 표현식을 사용하면 좀 더 간결하게 위 코드를 표현할 수 있다.
+
+
+	List<Message> messages = jdbcTemplate.query(
+			"select * from guestmessage order by id desc limit ?, ?",
+			new Object[] {start, size},
+			(rs, rowNum) -> {
+				Message m = new Message();
+				m.setId(rs.getInt("id"));
+				...
+				return m;
+			}
+		);
+		
+		
+	1.2 스프링의 익셉션 지원
+	
+JDBC 프로그래밍을 할 때 아쉬운 부분 중의 하나는 데이터베이스 처리 과정에서 발생하는 에러는 항상 SQLException이라는 점이다.
+예를 들어, 아래 코드의 경우 SQLException을 catch하는 코드는 Connection을 구하는 과정에서 익셉션이 발생했는지 Statement를 생성하는 과정에서 익셉션이 발생했는지,
+아니면 SQL 쿼리를 실행하는 과정에서 익셉션이 발생했는지 바로 알 수 없다.
+
+
+	try {
+		conn = getConnection();
+		stmt = conn.createStatement();
+		rs = stmt.executeQuery("select * fro GUESTBOOK_MESSAGE");
+		...
+	} catch (SQLException ex) {
+		// 왜 익셉션이 발생한 걸까?
+	}
+	
+	
+왜 익셉션이 발생했는지 확인하려면 SQLException의 실제 타입이 뭔지 확인해야 하고, 에러 코드를 확인해야 한다.
+하지만, 익셉션이 발생하는 원인을 찾기 위한 코드를 작성하는 일은 꽤 성가신 일이다.
+
+스프링은 데이터베이스 처리 과정에서 발생한 익셉션이 왜 발생했는지를 구체적으로 확인할 수 있도록, 데이터베이스 처리와 관련된 익셉션 클래스를 제공하고 있다.
+예를 들어, OptimisticLookingFailureException이나 DataRetrievalFailureException과 같이 실패(익셉션 발생) 원인을 보다 구체적으로
+설명해주는 익셉션 클래스를 제공하고 있다.
+
+JdbcTemplate 클래스는 DB 연동 과정에서 SQLException이 발생하면 스프링이 제공하는 익셉션 클래스 중 알맞은 익셉션 클래스로 변환해서 발생시킨다.
+예를 들어, 아래 코드와 같이 올바르지 않은 SQL 쿼리를 실행하는 경우 JdbcTemplate는 BadSqlGrammarException을 발생시킨다.
+
+
+	// 잘못된 SQL 입력,
+	// JdbcTemplate이 SQLException을 BadSqlGrammarException으로 변환해서 발생시킴
+	List<Message> list = jdbcTamplate.query(
+			"select * from GUESTBOOK_MESSAGE order by GUESTBOOK_MESSAGE_ID desc " +
+			"limited ?, ?",	// MySQL 쿼리 오류
+			...);
+			
+			
+스프링이 제공하는 데이터베이스 관련 익셉션 클래스들은 모두 DataAccessException 클래스를 상속받고 있는데,
+DataAccessException은 RuntimeException이다. 따라서, 필요한 경우에만 try-catch 블록을 이용해서 익셉션을 처리하면 된다.
+
+JdbcTemplate 뿐만 아니라 JPA, 하이버네이트, MyBatis를 위한 지원 기능은 내부적으로 발생하는 익셉션 클래스를 스프링이 제공하는 익셉션 클래스로
+알맞게 변환한 익셉션을 발생시킨다. 따라서, 스프링이 제공하는 기능을 사용하면 데이터베이스 연동 기술에 상관없이 동일한 익셉션 타입을 이용해서 에러를 처리할 수 있다.
+
+
+	그림	478쪽

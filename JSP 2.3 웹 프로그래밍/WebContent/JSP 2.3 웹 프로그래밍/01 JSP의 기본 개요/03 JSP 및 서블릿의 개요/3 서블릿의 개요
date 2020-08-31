@@ -1,0 +1,100 @@
+서블릿은 멀티 스레딩으로 사용자 요구를 처리하고 가공한 후에 이에 대한 결과를 내보내는 구조이다.
+CGI가 클라이언트를 프로세스로 처리하는데 반해 서블릿은 클라이언트를 쓰레드로 처리하기 때문에 다수의 클라이언트 요구를 효과적으로 처리할 수 있다.
+JSP와 서블릿은 둘 다 자바 기반으로 만들어진 웹 프로그래밍 언어이며, 처리 구조가 같다. 엄밀히 말하면 JSP 페이지는 최초의 요청이 있을 시에 자바 코드로 한 번 변화된 후
+서블릿 클래스로 컴파일된다. 즉 JSP는 실행 시 서블릿으로 변환된다. 단 한 번만 서블릿으로 변경되며, 코드를 수정하기 전까지 재변환 작업이 일어니지 않기 때문에
+JSP나 서블릿 간에 처리 속도는 차이가 없다.
+
+서블릿과 JSP는 상호 연계되어 사용된다. JSP 페이지는 화면에 결과를 표시하는 정적인 부분을 담당하고, 서블릿에서는 웹 애플리케이션의 흐름을 제어해서 효율적인 웹 사이트를 구성한다.
+즉, JSP 페이지는 주로 사용자 뷰(View)의 구현에 사용되고, 서블릿은 사용자 뷰와 프로그램 로직 사이를 제어해주는 컨트롤러(Controller)로 사용된다.
+
+(1) HTTP 프로토콜
+
+HTTP 프로토콜은 연결을 유지하지 않고(Connectionless, 비연결성), 서버의 상태에 상관하지 않는(Stateless, 비상태성) 특징을 갖고 있다.
+웹 브라우저는  HTTP 프로토콜에 맞게 요청(request)을 웹 서버에 전송하고, 웹 서버 역시 HTTP 프로토콜에 맞게 요청에 따른 응답(reply)을 웹 브라우저에 전송한다.
+
+웹 서버에 요청을 전송하기 위한 HTTP 메소드(method)는 다음과 같다.
+
+
+메소드명	특징
+
+Get		http header 에 정보를 실어 보냄
+		메소드 생략시 기본값
+		url 뒤에 요청  쿼리가 붙음
+		전달 속도 빠름
+		256byte가 한계
+		적은 양의 데이터 전송 시 좋음
+		
+Post	http의 body에 정보를 실어 보냄
+		데이터 크기의 제한이 없음
+		보안에 좋음
+		
+Head	Header(서버)의 정보만 얻어낼 때 사용
+
+Put		Resource를 저장할 때 사용
+
+Delete	Resource를 제거할 때 사용
+		Put과 Delete를 허용하면 서버의 안정성이 떨어짐
+		
+Trace	클라이언트에서 서버까지 가는 경로를 추적
+
+Options	서버의 성능 등을 확인할 때 사용
+
+
+(2) 서블릿의 동작 원리
+
+HTTP Servlet이나 다른 종류의 Servlet을 생성하려면 서블릿 API를 사용해야 한다. 서블릿은 javax.servlet이나 javax.setvlet.http 패키지의 클래스와 인터페이스를 사용해 만든다.
+javax.servlet 패키지는 프로토콜에 독립적인 서블릿을 만들기 위한 클래스를 제공하고, javax.servlet.http 패키지는 HTTP 프로토콜의 고유한 기능(GET, POST 등)을 제공하는
+서블릿을 만드는 클래스를 제공한다. 모든 서블릿은 javax.servlet.Servlet 인터페이스를 구현해서 생성하야 한다. 이 인터페이스는 서블릿을 직접 생성할 수 없기 때문에 하위 클래스인
+javax.setvlet.GenericServlet 또는 javax.servlet.http.HttpServlet 클래스 중 하나를 상속받아 작성한다.
+프로토콜에 독립적인 서블릿은 GenericServlet 클래스를 상속받아 작성하고, HTTP 서블릿은 HttpServlet 클래스를 상속받아 작성한다.
+자바 애플릿(applet)처럼 서블릿도 main() 메소드를 갖지 않는다. 대신, 서블릿의 특정 메소드를 서버가 호출해 실행한다. 서버가 서블릿에 요청을 전달할 때마다, 서블릿의 service() 메소드가
+호출되어 사용자의 요청을 처리한다. 프로토콜에 독집적인 제네릭(generic) 서블릿은 요청을 처리하기 위해 service() 메소드를 재정의해야 한다.
+service() 메소드는 request 객체와 response 객체를 매개 변수로 가진다. request 객체는 클라이언트의 요청을 처리하고, response 객체는 그 요청을 처리한 결과를 클라이언트에 반환하기 위해 사용된다.
+
+						
+											GenericServlet 서브 클래스
+Request		->	┌─────────────────┐	->		┌─────────────────┐
+				│	Web Server	  │			│	Service()	  │
+Response 	<-	└─────────────────┘	<-		└─────────────────┘
+											request가 올 때마다 service() 메소드를 자동으로 호출
+											
+											
+HTTP 서블릿은 일반적으로 service() 메소드를 재정의하지 않는다. 대신에 GET 요청을 다루기 위해 doGet() 메소드를, POST 요청을 다루기 위해 doPOST() 메소드를 재정의한다.
+javax.servlet 패키지 안에 있는 ServletRequest와 ServletResponse 클래스는 제네릭 서블릿의 request와 response에 대한 접근을 제공하는 반면,
+javax.servlet.http 패키지 안에 있는 HttpServletRequest와 HttpServletResponse 클래스는 HTTP 요청과 응답에 대한 기능을 제공한다.
+
+
+	HTTP 서블릿의 요청과 응답 과정
+											Container			객체가 없으면 생성
+┌─────────────────┐		1				┌─────────────────┐ No				 2
+│				  │	- HTTP request ->	│ 객체 생성 유무 체크	  │	->	Class Loader -> Invoker 프로그램 호출기
+│				  │						│				  │	Yes					↑		│
+│	Web Browser	  │						│				  │	────────────────────┘		│
+│				  │<- HTTP response -	│	IS servlet	  │							  3	↓
+│				  │		5				│	loaded?		  │	<─────────────────	Service Thread 들
+└─────────────────┘						└─────────────────┘		4 output
+										HTTP(Web) Server
+										
+
+1 클라이언트 서비스 요청 -> 객체 생성의 유무 체크 : only one
+2 Yes 면 생성 안 함, no 면 객체 생성(메모리에 올린다.)
+3 Invoker를 실행
+	thread를 하나 만듦 - 작업용 request당 1개씩
+4 Invoker에서 생성된 thread에서 service 메소드(response의 내용이 담김) 호출.
+	thread의 run 메소드와 유사, 클라이언트당 1개씩 생성
+5 결과를 클라이언트에게 보냄. 이때 결과를 mime type 으로 보내는데 웹 브라우저의 mime type은 text/html임
+
+container는 객체 생성의 유무를 체크해서 객체가 없으면 생성하는 역할을 한다.
+
+
+	서블릿의 요청과 응답의 과정에서 container가 하는 일의 순서
+	
+1 객체의 유무를 판단, 없으면 생성
+2 thread 생성
+3 Service() 호출
+4 Service() (HttpServlet class의 메소드)가 doGet() 자동 호출
+
+	서블릿의 요청과 응답의 과정에서 Service() 메소드가 하는 일의 순서
+	
+1 Request가 올 때마다 doGet() 호출
+2 doGet()은 HttpServlet에 의해 지원 받는 메소드 중 하나로 요청을 처리

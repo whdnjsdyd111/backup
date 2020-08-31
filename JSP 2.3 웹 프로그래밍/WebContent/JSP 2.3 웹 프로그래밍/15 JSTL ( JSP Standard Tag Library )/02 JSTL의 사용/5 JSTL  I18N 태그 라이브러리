@@ -1,0 +1,238 @@
+JSTL I18N(Interationalization, Formatting) 태그 라이브러리는 국제화, 지역화 태그로 다국어 문서를 처리할 때 유용하며 날짜와 형식을 다룰 때 사용된다.
+
+	- I18N 태그 라이브러리 사용법
+	
+1	JSP 페이지에서 다음과 같이 taglib 디렉티브를 작성한다.
+
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+
+-	prefix : I18N 태그 라이브러리에서는 "fmt"
+-	uri : I18N 태그 라이브러리에서는 "http://java.sun.com/jsp/jstl/fmt"
+
+2	사용할 태그를 필요한 위치에 <fmt:태그명>과 같이 쓴다. 사용 예시는 다음과 같다.
+
+<fmt:setLocale value="ko"> <!-- 로케일을 한국어로 지정 -->
+
+- <fmt:setLocale> : fmt가 prefix 값으로 네임스페이스명이고, setLocale이 태그명이다.
+
+	- I18N 태그의 기능별 분류
+	
+-	Locale 설정 : <fmt:setLocale>, <fmt:requestEncoding>
+-	메시지 처리 : <fmt:bundle>, <fmt:message(param)>, <fmt:setBundle>
+-	숫자 날짜 형식 : <fmt:formatNumber>, <fmt:formDate>, <fmt:parseDate>, <fmt:parseNumber>, <fmt:setTimeZone>, <fmt:timeZone>
+
+	- JSTL I18N 태그 리스트
+	
+		태그 요약(Tag Summary)
+		
+requestEncoding		request.getCharacterEncoding()과 같은 역할을 한다.
+
+getLocale			다국어를 지원하는 페이지를 만들 경우에 사용한다. ResourceBundle로 불러오는 *.properties 파일들과 연계되어서 쓰인다.
+
+timeZone			타임 존(Time Zone)을 적용할 때 사용된다.
+
+setTimeZone			특정 scope의 타임 존을 설정할 대 사용된다.
+
+bundle				properties 확장자를 사용하는 자원 파일을 읽어오는 역할을 한다.
+
+setBundle			페이지 전체에서 사용할 수 있는 번들(bundle)을 지정하는 데 사용된다.
+
+message				번들 태그에서 정한 값들을 가져온다.
+
+param				<fmt:message> 태그의 서브 태그로 <fmt:message> 태그에서 설정하지 않은 값을 채워준다.
+
+formatNumber		숫자 형식으로 표현할 때 사용된다.
+
+parseNumber			문자열로부터 수치를 파싱해낸다. 즉, 문자열을 숫자로 변환할 때 사용된다.
+
+formatDate			날짜 형식을 표현할 때 사용된다.
+
+parseDate			문자열에서 날짜를 파싱해낸다. 즉, 문자열을 날짜로 변환할 때 사용된다.
+
+
+(1) <fmt:setLocale> - 로케일 지정
+
+다국어를 지원하는 페이지를 만들어 사용할 경우 리소스번들(ResourceBundle : 지역화 파일)인 *.properties 파일들과 연계되어서 사용한다.
+<fmt:setLocale> 태그의 기본형은 다음과 같다.
+
+<fmt:setLocale value="locale" [variant="variant"]
+	[scope="{page | request | session | application}"] />
+	
+-	value : 로케일 값. 이 값은 두 글자로 된 국가 코드와 언어 코드를 반드시 지정해주어야 한다.
+			언어 코드와 국가 코드는 "-", "_"로 연결한다. 한글의 경우 ko_KR로 지정하며, 기본값은 en_US이다.
+-	variant : 다양한 브라우저의 스펙 등을 기술한다.
+-	scope : 로케일 설정 변수의 공유 범위를 나타내는 것으로 생략 시 기본값은 page이다.
+
+다음 예시는 로케일을 한국어로 설정한 것이다.
+
+<fmt:setLocale value="ko" />
+
+
+(2)  <fmt:requestEncoding> - 문자 인코딩 설정
+
+request.setCharacterEncoding()과 같은 역할을 하며, 요청 파라미터의 인코딩을 설정한다.
+<fmt:requestEncoding> 태그의 기본형은 다음과 같다.
+
+<fmt:requestEncoding value="charsetName" />
+
+- value : 속성값에는 인코딩 값을 기술
+
+<fmt:requestEncoding value="utf-8" />
+
+
+이 예제는 <fmt:requestEncoding> 태그를 사용해서 파라미터의 인코딩을 설정하는 것이다.
+
+jstlEx06.jsp		614쪽
+
+
+(3) <fmt:bundle> - 리소스 번들 읽어옴
+
+properties 확장자를 사용하는 리소스 번들(자원 파일)을 읽어오는 역할을 한다.
+<fmt:bundle> 태그의 기본형은 다음과 같다.
+
+<fmt:bundle basename="basename" prefix="prefix">
+	body 내용
+</fmt:bundle>
+
+-	basename : 	properties 파일명을 기술한다. properties 파일은 보통 실제 서비스 환경에서 웹 애플리케이션의 [WEB-INF] - [classes] 폴더, 이클립스 가상 환경에서는 [프로젝트]
+				- [Java Resources] - [src]에 위치한다. 디렉터리의 깊이에 따라서 패키지 형식의 이름을 가진다. testBundle.properties 파일이 [ch15.bundle] 패키지에 있다면
+				bundlename 속성값은 ch15.bundle.testBundle로 작성한다. locale이 ko인 경우 testBundle_ko.properties 파일을 읽어오게 되며, locale이 맞지 않는 경우에는
+				testBundle.properties 처럼 언어 코드가 붙이 않는 파일을 읽어온다.
+				
+-	prefix : 	key 이름 앞에 붙여줄 prefix를 지정한다.
+
+기존에 properties 파일에서 한글 개짐 현상이 발생했었다. 이클립스 버전 4.4 에서는 properties 파일 작성 시 파일의 인코딩을 utf-8 방식으로 변환하면 입력한 한글을 자동으로 유니코드로 변경해준다.
+
+
+(4) <fmt:message> - 리소스 번들에서 변수값 얻어냄
+
+지정한 변수의 값을 리소스 번들에서 얻어낸다.
+<fmt:message> 태그의 기본형은 다음과 같다.
+
+<fmt:message [key="messageKey"][bundle="resourceBundle"][var="varName"][scope="{page | request | session | application}"] />
+
+-	key : 읽어올 메시지의 key. key는 리소스번들에서 정의한 변수명
+-	bundle : setBundle 태그를 사용해서 로딩한 번들을 읽어올 때 사용
+-	var 속성 : 읽어온 key의 값인 메시지를 저장할 변수명
+-	scope : 변수가 저장되는 공유 범위를 지정
+
+아래 예시는 key 속성값인 message 변수값을 properties 파일로부터 읽어와서, var의 속성에 기술된 msg 변수에 저장한다.
+
+<fmt:message key="message" var="msg" />
+
+
+이 예제는 <fmt:bundle> 태그와 <fmt:message> 태그를 사용해서 .properties 파일로부터 설정한 값을 출력한다.
+
+testBundle.properties		617쪽
+
+
+(5) <fmt:setBundle> - 리소스 번들 읽어옴
+
+리소스 번들을 읽어 들여서 사용한다.
+<fmt:setBundle> 태그의 기본형은 다음과 같다.
+
+<fmt:setBundle basename="basename" [var="varName"][scope="{page | request | session | application}"] />
+
+-	basename : properties 파일명
+-	var : 읽어온 번들을 저장하기 위한 변수명
+-	scope : 변수가 저장되는 공유 범위를 지정
+
+
+(6) <fmt:formatNumber> - 숫자 형식
+
+숫자 형식(서식)을 표현할 때 사용한다.
+<fmt:formatNumber> 태그의 기본형은 다음과 같다.
+
+<fmt:formatNumber value="numbericValue" [type="{number | currency | percent}"]
+	[pattern="customPattern"][currencyCode="currencyCode"][currencySymbol="currencySymbol"]
+	[groupingUsed="{true | false}"][maxIntegerDigits="maxIntegerDigits"][minIntegerDigits="minIntegerDigits"]
+	[maxFractionDigits="maxFractionDigits"][minFractionDigits="minFractionDigits"]
+	[var="varName"][scope="{page | request | session | application}"] />
+	
+	
+이 예제는 <fmt:formatNumber>를 사용해서 숫자 형식을 지정하는 것이다.
+
+jstlEx08.jsp		621쪽
+
+
+(7) <fmt:parseNumber> - 숫자로 파싱
+
+문자형 숫자 데이터를 숫자 데이터로 파싱한다. 예를 들어 "123"으로 표현된 문자열 숫자값을 연산 가능한 123으로 변환하는 것이다.
+
+<fmt:parseNumber [value="numbericValue"][type="{number | currency | percent}"]
+	[pattern="customPattern"][parseLocale="parseLocale"]
+	[integerOnly="{true | false}"][var="varName"]
+	[scope="{page | request | session | application}"] />
+
+-	value : 숫자로 파싱할 문자형 숫자값
+-	type : 숫자, 통화, 퍼센트({number | currency | percent}) 중 지정
+-	pattern : 사용자가 지정한 형식 패턴 지정
+-	parseLocale : 파싱 작업의 기본 형식 패턴(숫자, 통화, 퍼센트 각각)을 제공하는 로케일
+-	integerOnly : 주어진 값에서 정수 부분만 파싱할지 여부를 지정
+-	var : 파싱 결과를 저장할 변수
+-	scope : var의 scope 지정
+
+
+(8) <fmt:formatDate> - 날짜 형식
+
+날짜 형식(서식)을 표현할 때 사용된다.
+<fmt:formatDate> 태그의 기본형은 다음과 같다.
+
+<fmt:formatDate value="date" [type="{time | date | both}"]
+	[dateStyle="{default | short | medium | long | full}"]
+	[timeStyle="{default | short | medium | long | full}"]
+	[pattern="customPattern"][timeZone="timeZone"][var="varName"]
+	[scope="{page | request | session | application}"] />
+	
+-	value : 형식을 적용할 날짜 데이터와 시간 데이터 지정
+-	type 속성 : 형식을 적용할 데이터로 시간, 날짜 또는 시간과 날짜 모두의 셋 중 하나를 지정
+-	dataStyle : type 속성 생략 또는 date나 both일 때 사용하는 것으로 미리 정의된 날짜 형식 지정
+-	timeStyle : type 속성이 time이나 both일 때 사용하는 것으로 미리 정의된 시간 형식 지정
+-	pattern : 사용자 지정 형식 스타일 지정
+-	timeZone : java.util.TimeZone 에 따른 타임존 지정
+-	var : 출력 결과 문자열을 저장할 변수
+-	scope : var의 scope 지정
+
+
+(9) <fmt:parseDate> - 날짜로 파싱
+
+문자열 데이터를 날짜 데이터로 파싱할 때 사용된다.
+<fmt:parseDate> 태그의 기본형은 다음과 같다.
+
+<fmt:parseDate [value="dateString"][type="{time | date | both}"]
+	[dateStyle="{default | short | medium | long | full}"]
+	[timeStyle="{default | short | medium | long | full}"][pattern="customPattern"]
+	[timeZone="timeZone"][parseLocale="parseLocale"][var="varName"]
+	[scope="{page | request | session | application}"] />
+	
+-	value : 파싱할 날짜 데이터와 시간 데이터 지정
+-	type : 파싱할 데이터가 시간, 날짜 또는 시간과 날짜 모두의 셋 중 하나를 지정
+-	dateStyle : type 속성 생략 또는 date나 both일 때 사용하는 것으로 미리 정의된 날짜 형식 지정
+-	timeStyle : type 속성이 time이나 both일 때 사용하는 것으로 미리 정의된 시간 형식 지정
+-	pattern : 사용자 지정 형식 스타일 지정
+-	timeZone : 타임존 지정
+-	parseLocale : 파싱하는 동안 적용될 로케일 지정
+-	var : 파싱 결과를 저장할 변수 지정
+-	scope : var의 parse 지정
+
+
+(10) <fmt:setTimeZone>, <fmt:timeZone> - 타임존 설정
+
+<fmt:setTimeZone> 태그는 특정 시간대(타임존)를 설정하고, <fmt:timeZone> 태그는 타임존을 적용한다.
+<fmt:setTimeZone> 태그의 기본형은 다음과 같다.
+
+<fmt:setTimeZone value="timeZone" [var="varName"]
+	[scope="{page | request | session | application}"] />
+	
+-	value : 설정할 시간대를 지정
+-	var : 설정한 시간대를 지정
+-	scope : var의 scope 지정
+
+<fmt:timeZone> 태그의 기본형은 다음과 같다.
+
+<fmt:timeZone value="timeZone">
+	적용한 날짜/시간 데이터
+</fmt:timeZone>
+
+-	value : 적용할 시간대
+

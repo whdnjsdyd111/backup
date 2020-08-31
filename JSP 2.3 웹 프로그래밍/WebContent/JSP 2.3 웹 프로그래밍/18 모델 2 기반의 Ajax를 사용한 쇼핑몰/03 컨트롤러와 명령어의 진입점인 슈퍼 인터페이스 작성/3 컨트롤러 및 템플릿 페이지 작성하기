@@ -1,0 +1,12 @@
+(1) 컨트롤러 작성
+
+쇼핑몰 시스템의 프로그램 흐름을 관리하는 컨트롤러(Controller)를 작성한다.
+
+Controller.java		759쪽
+
+
+(2) 템플릿 페이지 작성
+
+템플릿(Template) 역할을 하는 index.jsp 페이지를 작성한다.
+
+index.jsp		764쪽

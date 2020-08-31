@@ -1,0 +1,6 @@
+JSTL 1.2.1(책을 쓰는 시점의 최신 버전)을 사용하려면 javax.servlet.jsp.jstl-1.2.1.jar 와 javax.servlet.jsp.jstl-api-1.2.1.jar 가 필요하다.
+이 두 파일을 프로젝트의 [WEB-INF]-[lib] 폴더에 넣어서 사용한다. 이 파일들은 다운로드하거나 하면 된다.
+
+JSTL 라이브러리를 다운로드 하여 특정 폴더에 넣자.
+
+'https://jstl.java.net'

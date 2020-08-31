@@ -1,0 +1,211 @@
+스프링은 코드 기반의 트랜잭션 처리(Programmatic Transaction)뿐만 아니라 선언적 트랜잭션(Declarative Transaction)을 지원하고 있다.
+따라서, 개발자가 직접적으로 트랜잭션의 범위를 코드 수준에서 정의하고 싶을 경우에는 스프링이 제공하는 트랜잭션 템플릿 클래스를 이용해서 손쉽게 트랜잭션 범위를 지정할 수 있다.
+또한, 설정 파일이나 어노테이션을 이용해서 트랜잭션의 범위 및 규칙을 정의할 수 있기 때문에 트랜잭션을 매우 쉽게 관리할 수 있다.
+
+스프링은 데이터베이스 연동 기술에 상관없이 동일한 방식으로 트랜잭션을 처리할 수 있도록 하고 있다. 예를 들어, 하이버네이트를 사용하거나 JDBC를 사용하거나 JPA를 사용하거나
+또는 JTA를 이용해서 트랜잭션을 처리하는 지의 여부에 상관없이 스프링은 동일한 코드를 이용해서 트랜잭션을 관리할 수 있도록 지원한다.
+
+
+	2.1 스프링의 PlatformTransactionManager 설정
+	
+스프링은 PlatformTransactionManager 인터페이스를 이용해서 트랜잭션 처리를 추상화하였고, 데이터베이스 연동 기술에 따라 알맞은 PlatformTransactionManager 구현 클래스를 제공하고 있다.
+다음은 구현 클래스간의 관계를 보여주고 있다.
+
+
+										<< interface >>
+									PlatformTransactionManager
+												↑
+								AbstractPlatformTransactionManager
+												↑
+				┌───────────────────────────────┴───────────────────────────┬───────────────────────┐
+	DataSourceTransactionManager		JtaTransactionManager	HibernateTransactionManager JpaTransactionManager
+												↑
+						┌───────────────────────┴───────────────┐
+			WebLogicJtaTransactionManager		WebSphereUowTransactionManager
+			
+			
+각각의 트랜잭션 관리자 구현 클래스는 관련된 데이터베이스 기술에 따라 알맞은 트랜잭션을 처리 수행한다.
+예를 들어 HibernateTransactionManager의 경우 내부적으로 하이버네이트의 Transaction을 이용해서 트랜잭션을 처리한다.
+즉, 다음과 같이 트랜잭션 관련 처리를 HibernateTransactionManager에 요청하면, HibernateTransactionManager는 그 요청을 
+하이버네티의 Transaction에 전파함으로써 트랜잭션을 처리하게 된다.
+
+			→ 1: commit()						→ 2: commit()
+	client			HibernateTransactionManager			Transaction
+	
+	
+실제 스프링의 트랜잭션 기능을 사용할 때에는 PlatformTransactionManager를 직접 사용하진 않는다. 대신, TransactionTemplate 클래스나
+선언적 방식을 이용해서 트랜잭션을 처리하게 된다. TransactionTemplate이나 선언적 방식 트랜잭션 처리에 대한 내용은 뒤에서 자세히 보자.
+
+
+	2.2 JDBC 기반 트랜잭션 관리자 설정
+	
+JDBC나 MyBatis와 같이 JDBC를 이용해서 데이터베이스 연동을 처리하는 경우, 다음과 같이 DataSourceTransactionManager를 트랜잭션 관리자로 사용한다.
+
+
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="com.mysql.jdbc.Driver" />
+		<property name="jdbcUrl"
+			value="jdbc:mysql://localhost/guestbook?characterEncoding=utf8" />
+		<property name="user" value="spring4" />
+		<property name="password" value="spring4" />
+	</bean>
+	
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	
+DataSourceTransactionManager는 dataSource 프로퍼티를 통해서 전달받은 DataSource로부터 Connection을 가져온 뒤,
+Connection의 commit(), rollback() 등의 메소드를 사용해서 트랜잭션을 관리한다.
+
+	
+	2.3 JPA 트랜잭션 관리 설정
+	
+JPA를 사용할 경우에는 JpaTransactionManager를 트랜잭션 관리자로 사용하면 된다.
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		...
+	</bean>
+	
+	<bean id="transactionManager"
+		class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory" />
+	</bean>
+
+JpaTransactionManager는 entityManagerFactory 프로퍼티를 통해 전달받은 EntityManagerFactory를 이용해서 트랜잭션을 관리한다.
+스프링에서 EntityManagerFactory를 설정하는 방법은 13장에서 살펴본다.
+
+
+	2.4 하이버네이트 트랜잭션 관리자 설정
+	
+하이버네이트를 사용하는 경우에는 HibernateTransactionManager를 트랜잭션 관리자로 사용한다.
+아래 코드는 설정 예이다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="mappingResource">
+			...
+		</property>
+		<property name="hibernateProperties">
+			...
+		</property>
+	</bean>
+	
+	
+HibernateTransactionManager는 sessionFactory 프로퍼티를 통해서 전달받은 하이버네이트 Session으로부터 하이버네이트 Transaction을 생성한 뒤,
+Transaction을 이용해서 트랜잭션을 관리한다. 스프링에서 SessionFactory를 설정하는 방법은 13장에서 설명한다.
+
+
+	2.5 JTA 트랜잭션 관리자 설정
+	
+다중 자원을 접근하는 경우 JTA(Java Transaction API)를 이용해서 트랜잭션을 처리하게 되는데, 이 경우에는 JtaTransactionManager를 사용한다.
+JtaTransactionManager는 아래와 같이 transactionManagerName 프로퍼티를 이용해서 JTATransactionManager를 구할 수 있는 JNDI 이름을 설정한다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.transaction.jta.JtaTransactionManager">
+		<property name="transactionManagerName" value="java:comp/TransactionManager" />
+	</bean>
+	
+
+컨테이너가 제공하는 TransactionManager를 사용하지 않고, TransactionEssentials과 같은 오픈 소스 라이브러리를 이용해서 로컬 JTA를 사용할 경우에는, userTransaction 프로퍼티를 이용해서
+UserTransaction을 직접 설정할 수도 있다. 다음은 TransactionEssentials 라는 JTA 구현체를 이용할 때 JtaTransactionManager를 설정하느 예를 보여주고 있다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.transaction.jta.JtaTransactionManager"
+		depends-on="userTransactionService">
+		<property name="transactionManager" ref="atomikosTransactionManager" />
+		<property name="userTransaction" ref="atomikosUserTransaction" />
+	</bean>
+	
+	<bean id="userTransactionService" 
+		class="com.atomikos.icatch.config.UserTransactionServiceImp"
+		init-method="init" destroy-method="shutdownForce">
+		...
+	</bean>
+
+	<bean id="atomikosTransactionManager" 
+		class="com.atomikos.icatch.jta.UserTransactionManager"
+		init-method="init" destroy-method="close"
+		depends-on="userTransactionService">
+		<property name="forceShutdown" value="true" />
+	</bean>
+	
+	<bean id="atomikosUserTransaction" 
+		class="com.atomikos.icatch.jta.UserTransactionImp"
+		depends-on="userTransactionService">
+		<property name="transactionTimeout" value="300" />
+	</bean>
+	
+	
+JtaTransactionManager는 내부적으로 javax.transaction.UserTransaction의 commit(), rollback() 등을 이용해서 트랜잭션을 처리한다.
+
+
+	2.6	트랜잭션 전파와 격리 레벨
+	
+현재 진행중인 트랜잭션이 있는 상태에서 새로운 트랜잭션을 시작하고 싶다면 어떻게 할까?
+JDBC를 이용한다면, 아마도 다음과 같이 새로운 커넥션을 가져와 트랜잭션을 시작할 것이다.
+
+
+	Connection conn = getConnection();
+	conn.setAutoCommit(false);
+	...
+		Connection connNew = getConnection();
+		connNew.setAutoCommit(false);	// 새로운 커넥션으로 트랜잭션 시작
+		...
+		connNew.commit();	// 새로운 트랜잭션 종료
+		connNew.close();
+	...
+	conn.commit();
+	conn.close();
+	
+	
+스프링은 새로운 트랜잭션을 새로 생성하는 것뿐만 아니라 기존 트랜잭션을 그대로 사용하거나 기존에 트랜잭션이 진행중인 상태에서 현재 코드를 실행하는 등의 트랜잭션 전파와 관련된 부분을 설정로
+지정할 수 있도록 지원하고 있다. 스르핑이 제공하는 트랜잭션 전파 지원은 다음과 같다. 실제 설정에서 사용하는 값은 사용할 트랜잭션 지원 방식에 따라 조금씩 다르다.
+예를 들어 TransactionTemplate 에서는 PROPAGATION_REQUIRED를 값으로 사용하는 반면에 <tx:advice> 태그에서는 REQUIRED를 사용한다.
+
+
+	트랜잭션 전파		설명
+	
+	REQUIRED		메소드를 수행하는 데 트랜잭션이 필요하다는 것을 의미한다. 현재 진행 중인 트랜잭션이 존재하면, 해당 트랜잭션을 사용한다. 존재하지 않는다면 새로운 트랜잭션을 생성한다.
+	
+	MANDATORY		메소드를 수행하는 데 트랜잭션이 필요하다는 것을 의미한다. 하지만, REQUIRED와 달리, 진행 중인 트랜잭션이 존재하지 않을 경우 익셉션을 발생시킨다.
+	
+	REQUIRES_NEW	항상 새로운 트랜잭션을 시작한다. 기존 트랜잭션이 존재하면 기존 트랜잭션을 일시 중지하고 새로운 트랜잭션을 시작한다. 새로 시작된 트랜잭션이 종료된 뒤에 기존 트랜잭션이 계속된다.
+	
+	SUPPORTS		메소드가 트랜잭션을 필요로 하지는 않지만, 기존 트랜잭션이 존재할 경우 트랜잭션을 사용한다는 것을 의미한다. 진행 중인 트랜잭션이 존재하지 않더라도 메소드는 정상적으로 동작한다.
+	
+	NOT_SUPPORTED	메소드가 트랜잭션을 필요로 하지 않음을 의미한다. SUPPORTS와 달리 진행 중인 트랜잭션이 존재할 경우 메솓가 실행되는 동안 트랜잭션은 일시 중지 되며, 메소드 실행이 종료된 후에
+					트랜잭션을 계속 진행한다.
+	
+	NEVER			메소드가 트랜잭션을 필요로 하지 않으며, 만약 진행 중인 트랜잭션이 존재하면 익셉션을 발생시킨다.
+	
+	NESTED			기존 트랜잭션이 존재하면, 기존 트랜잭션에 중첩된 트랜잭션에서 메소드를 실행한다. 기존 트랜잭션이 존재하지 않으면 REQUIRED와 동일하게 동작한다.
+					이 기능은 JDBC 3.0 드라이버를 사용할 때에만 적용된다. (JTA Provider가 이 기능을 지원할 경우에도 사용 가능하다.)
+					
+					
+스프링에서 설정 가능한 트랜잭션 격리 레벨은 다음과 같다.
+
+
+	격리 레벨				설명
+	
+	DEFAULT				기본 설정을 사용한다.
+	
+	READ_UNCOMMITTED	다른 트랜잭션에서 커밋하지 않은 데이터를 읽을 수 있다.
+	
+	READ_COMMITTED		다른 트랜잭션에 의해 커밋된 데이터를 읽을 수 있다.
+	
+	REPEATABLE_READ		처음에 읽어 온 데이터와 두 번째 읽어 온 데이터가 동일한 값을 갖는다.
+	
+	SERIALIZABLE		동일한 데이터에 대해서 동시에 두 개 이상의 트랜잭션이 수행될 수 없다.

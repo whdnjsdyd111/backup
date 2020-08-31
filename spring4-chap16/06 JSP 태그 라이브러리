@@ -1,0 +1,33 @@
+스프링 시큐리티는 JSP에서 사용할 수 있는 커스텀 태그를 제공하고 있다. 이들 태그를 사용하면 사용자가 가진 권한에 따라 메뉴를 보여주거나 현재 접속한 사용자의 정보를 보여줄 수 있다.
+
+JSP에서 스프링 시큐리티가 제공하는 커스텀 태그를 사용하려면 JSP 코드에 다음과 같이 taglib 디렉티브를 추가한다.
+
+
+	<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+	
+	
+태그 라이브러리가 제공하는 커스텀 태그에서 가장 많이 사용되는 태그 <sec:authorize> 태그다. <sec:authorize> 커스텀 태그는 access 속성에 지정한 권한 값에 따라 태그의 몸체 내용을 보여준다.
+예를 들어, 인증된 경우에만 로그아웃 링크를 보여주고 싶다면, 다음과 같이 <sec:authorize> 태그를 사용하면 된다.
+
+
+	<sec:authorize access="isAuthenticated()">
+		<li><a href="<c:url value='/user/logout' />">로그아웃</a></li>
+	</sec:authorize>
+	
+	
+access 속성에는 hasRole(), hasAuthority(), isAuthenticated() 등의 표현식이 올 수 있다.
+
+특정 경로에 접근 권한을 가진 경우만 몸체 내용을 처리하고 싶다면 url 속성을 사용하면 된다.
+
+
+	<sec:authorize access="/admin/main">
+		<li><a href="<c:url value='/admin/main' />">관리자 화면</a></li>
+	</sec:authorize>
+	
+	
+<secL:authorize> 태그는 SecurityContext에 보관된 Authentication 객체의 값을 출력할 때 사용된다.
+예를 들어, Authentication 객체의 getPrincipal() 메소드가 리턴하는 객체 타입이 UserDetails라면,
+다음 코드를 이용해서 UserDetails의 값을 출력할 수 있다.
+
+
+	<sec:authentication property="principal.username" />

@@ -1,0 +1,129 @@
+cos.jar 라이브러리에서 파일 업로드 및 폼 요소를 처리하는 MultipartRequest 클래스를 사용하려면 객체를 생성하는 주요 생성자와 파일 업로드 관련 작업을 처리하는 메소드를 알고 있어야 한다.
+
+
+(1) MultipartRequest 클래스의 생성자
+
+MultipartRequest 클래스를 사용하기 위해서는 객체를 생성해야 한다. 객체를 생성하려면 해당 클래스의 생성자가 요구하는 매개 변수들을 확인해야 한다.
+다음은 이 클래스에서 주로 사용하는 생성자의 구조와 그 매개 변수에 대한 설명이다.
+
+MultipartRequest(javax.servlet.http.HttpServletRequest request,	// request 객체
+	java.lang.String saveDirectory,	// 파일 업로드할 폴더
+	int maxPostSize,	// 업로드할 파일의 최대 크기
+	java.lang.String encoding,	// 인코딩 방식
+	FileRenamePolicy policy)	// 같은 파일 덮어쓰기 방지 설정
+	
+-	request 		: request 객체
+-	saveDirectory	: 업로드된 파일이 저장될 경로로 저장 폴더
+-	maxPostSize		: 업로드할 파일의 최대 크기로 1024 * 1 과 같이 보기 쉽게 작성
+-	encoding		: 인코딩 타입을 지정
+-	policy			: 업로드될 파일명이 기존 파일명과 중복될 경우 덮어쓰기되는 것을 방지하기 위해 설정하는 부분
+
+
+(2) MultipartRequest 클래스의 메소드
+
+생성된 객체의 정보를 얻어내거나 저장하는 작업은 메소드가 수행한다. 따라서 파일 업로드를 수행하는 MultipartRequest 클래스의 작업 처리는 메소드가 한다.
+다음은 MultipartRequest 클래스가 제공하는 메소드들이다.
+
+
+메소드 : 리턴타입
+
+getContentType(java.lang.String name) : java.lang.String
+	업로드된 파일의 콘텐트 타입을 반환하는 것으로, 업로드된 파일이 없으면 null을 리턴한다.
+- name : 폼으로부터 넘어온 file을 갖고 있는 파라미터의 이름
+
+getFile(java.lang.String name) : java.io.File
+	서버상에 업로드된 파일을 File 객체 타입으로 리턴한다. 업로드된 파일이 없다면 null을 리턴한다.
+	
+getFileNames() : java.util.Enumeration
+	폼의 요소들 중 <input type="file">로 된 파라미터들을 받아서 Enumeration 타입의 객체를 리턴한다.
+	
+getFilesystemName(java.lang.String name) : java.lang.String
+	사용자가 업로드한 파일명을 리턴한다.
+	
+getOriginalFileName(java.lang.String name) : java.lang.String
+	name에 해당하는 파라미터의 값을 리턴한다.
+- name : 폼으로부터 넘어온 파일이 아닌 단일 값을 갖는 파라미터 이름
+
+getParameterNames() : java.util.Enumeration
+	폼의 요소들 중 <input type="file"> 아닌 파라미터들을 Enumeration 객체 타입으로 리턴한다.
+	
+getParameterValues(java.lang.String name) : java.lang.String[]
+	하나의 파라미터에 대해 여러 개의 값을 가지는 <input type="checkbox">와 같은 경우에 파라미터의 값을 얻어내기 위해 사용된다.
+	
+	
+1) getContentType() 메소드
+
+업로드된 파일의 콘텐트 타입을 얻어내는 메소드로 업로드된 파일이 없는 경우 null 값이 반환되며, MultipartRequest객체.getContentType(파라미터명)과 같은 형태로 사용한다.
+이때 파라미터명은 file을 값으로 갖는 파라미터이다.
+
+		사용 예시
+		
+// MultipartRequest 객체 생성
+MultipartRequest upload = new MultiPartRequest(request, fileSave,
+	1024 * 5, "utf-8", new DefaultFileRenamePolicy());
+String type = upload.getContentType(name);	// 업로드된 파일의 콘텐트 타입을 얻어냄
+
+
+2) getFile() 메소드
+
+업로드된 파일을 File 객체 타입으로 얻어내며, 업로드된 파일이 없으면 null을 반환한다.
+MultipartRequest객체.getFile(파라미터명)과 같은 형태로 사용하며, 파라미터명은 file을 값으로 갖는 파라미터이다.
+
+		사용 예시
+		
+// upload는 MultipartRequest 객체 생성
+File file = upload.getFile(name);	// 업로드된 파일을 File 객체 타입으로 얻어냄
+out.println("파일 크기: " + file.length());		// 파일의 크기를 화면에 표시
+
+이 메소드는 주로 업로드한 파일의 크기 등을 얻어내는 데 사용한다.
+
+
+3) getFileNames() 메소드
+
+폼으로부터 넘어온 파라미터 중 <input type="file">로 된 파라미터들을 받아서 Enumeration 타입의 객체를 얻어낸다.
+MultipartRequest객체.getFileNames()과 같은 형태로 사용한다.
+
+		사용 예시
+		
+// upload는 MultipartRequest 객체
+Enumeration files = upload.getFileNames();	// Enumeration 타입의 객체 얻어냄
+
+업로드된 파일이 1개 이상이라는 가정 하에 컬렉션인 Enumeration 객체에 각 파일명을 저장한다.
+따라서 반복문을 사용해서 Enumeration 내의 객체들을 객체가 있을 때까지 반복해서 처리한다. Enumeration 내의 각 객체는 nextElement() 메소드를 사용해서 얻어낸다.
+
+// upload는 MultipartRequest 객체
+Enumeration files = upload.getFileNames();
+while(files.hasMoreElements()) {
+	String name = (String) files.nextElement();	// 객체를 얻어냄
+	String filename = upload.getFilesystemName(name);	// 업로드된 파일명
+	String original = upload.getOriginalFileName(name);	// 원래 파일명
+}
+
+위의 예시에서는 Enumeration에 저장된 파일명을 nextElement()를 사용해서 얻어낸 후 name 변수에 저장한다. 파일명은 String 객체이나 컬렉션에 저장될 때는
+Object 타입으로 변환된다. 따라서 Enumeration에 저장된 파일명을 얻어낼 때는 얻어낸 객체를 반드시 원래의 타입인 String으로 형 변환해서 사용해야 한다.
+
+
+4) getFilesystemName() 메소드
+
+사용자가 업로드한 파일명을 얻어낸다. 업로드 시 중복된 파일명이 있는 경우 파일명이 변경되어 업로드된다. 이 메소드가 얻어내는 파일명은 서버상에 업로드된 파일명이다.
+MultipartRequest객체.getFilesystemName(name)과 같은 형태로 사용하며, 파라미터명은 file을 값으로 갖는 파라미터이다.
+
+		사용 예시
+		
+// upload는 MultipartRequest 객체
+// 서버상에 업로드된 파일명을 얻어냄
+String filename = upload.getFilesystemName(name);
+
+
+5) getOriginalFileName() 메소드
+
+사용자가 업로드한 파일의 원래 파일명을 얻어낸다. MultipartRequest객체.getOriginalFileName(name)과 같은 형태로 사용하며, 파라미터명은 file을 값으로 갖는 파라미터이다.
+
+		사용 예시
+		
+// upload는 MultipartRequest 객체
+// 사용자가 업로드한 실제 파일명을 얻어냄
+String original = upload.getOriginalFileName(name);
+
+MultipartRequest 클래스의 생성자 중 중복된 파일을 덮어쓰는 것을 방지하기 위한 방법으로 FileRenamePolicy 인터페이스를 구현한 DefaultFileRenamePolicy 클래스를 사용한다.
+이 클래스는 업로드 시 중복된

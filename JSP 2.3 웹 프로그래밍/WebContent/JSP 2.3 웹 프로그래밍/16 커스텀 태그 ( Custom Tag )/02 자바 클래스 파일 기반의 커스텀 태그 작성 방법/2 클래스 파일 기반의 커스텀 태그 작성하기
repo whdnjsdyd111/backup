@@ -1,0 +1,149 @@
+(1) javax.serlvet.jsp.tagext 패키지
+
+클래스 파일 기반의 커스텀 태그를 작성하려면 javax.servlet.jsp.tagext 패키지에서 제공하는 인터페이스를 구현(implements)해서 한다.
+다음은 이 패키지에서 제공하는 인터페이스 리스트이다. 자세한 내용은 tagext에 관한 구글링을 참고하자.
+
+			java.servlet.jsp.tagext 패키지의 인터페이스
+			
+BodyTag					태그의 내용 부분이 있는 커스텀 태그를 정의할 때 사용한다. JSP 1.2 부터 제공한다.
+
+DynamicAttribute		이 인터페이스를 구현하는 동적 속성(dynamic attribute)을 받아들이는 태그를 정의하기 위해 제공한다. JSP 2.0부터 제공한다.
+
+IterationTag			반복적인 작업을 처리하는 커스텀 태그를 정의할 때 사용한다. JSP .1.2 부터 제공한다.
+
+JspIdConsumer			컴파일러에 의해 생성된 ID를 제공하는 태그 핸들러인 컨테이너를 감지한다. JSP 2.1 부터 제공한다.
+
+JspTag					Tag와 SimpleTag를 위한 베이스 클래스(부모 클래스)로 제공한다. JSP 2.0 부터 제공한다.
+
+SimpleTag				Tag, IterationTag를 하나로 묶어서 좀 더 쉽게 구현이 가능한 커스텀 태그 생성 시 사용한다. JSP 2.0 부터 제공한다.
+
+Tag						단순한 커스텀 태그를 정의할 때 사용한다. JSP 1.2 부터 제공한다.
+	
+TryCatchFinally			Tag, Iteration, BodyTag를 위한 보조 인터페이스로, 리소스 관리를 위한 부분이 필요할 때 사용한다.
+						JSP 1.2부터 제공한다.
+						
+						
+javax.servlet.jsp.tagext 패키지의 인터페이스들 중 실질적으로 커스텀 태그를 정의하는 데 사용하는 것은 Tag, IterationTag, BodyTag, SimpleTag 인터페이스이다.
+이들 인터페이스는 커스텀 태그의 작성 시 사용하지 않고 이들의 하위 클래스를 상속받아 생각한다. 이들이 구현된 하위 클래스를 사용해 커스텀 태그를 정의하는 것이 더 간단하다.
+
+	- Tag, IterationTag 인터페이스를 구현해 커스텀 태그를 정의하는 경우 : TagSupport
+		클래스를 상속받아 정의한다.
+		
+	- BodyTag 인터페이스를 구현해 커스텀 태그를 정의하는 경우 : BodyTagSupport 클래스를 상속받아 정의한다.
+	
+	- SimpleTag 인터페이스를 구현해 커스텀 태그를 정의하는 경우 : SimpleTagSupport 클래스를 상속받아 정의한다.
+	
+	
+(2) 커스텀 태그를 정의하고 처리하는 태그 핸들러 클래스
+
+태그 핸들러(Tag Handler)란 커스텀 태그를 직접적으로 담당하여 처리하고 결과물을 생성해 주는 클래스 파일을 말한다. 커스텀 태그를 만든다는 것은 "태그 핸들러를 만드는 과정이다." 라고 할 수 있다.
+왜냐하면 태그 핸들러가 실질적으로 커스텀 태그의 정의와 처리를 담당하는 클래스 파일이기 때문이다. 이러한 태그 핸들러를 만든다는 것은 일반적인 자바 프로그래밍을 하는 것과 같으며
+Tag, IterationTag, BodyTag, SimpleTag 인터페이스를 통해 개발자가 작성해야 할 메소드가 미리 정의되어 있다.
+
+1) 각 인터페이스에서 제공하는 태그 정의 시 사용하는 메소드
+
+Tag 인터페이스의 메소드는 다음과 같다.(자세한 설명은 독스 오라클 7 api 페이지 참고)
+다음의 메소드들은 TagSupport 클래스, BodyTagSupport 클래스를 상속받아 커스텀 태그를 정의할 때 사용할 수 있다.
+
+
+	메소드				설명
+	
+int doEndTag()			끝 태그를 만날 때 실행된다.	
+
+int doStartTag()		시작 태그를 만날 때 실행된다.
+
+Tag getParent()			부모 태그를 구한다.
+
+void release()			커스텀 태그를 사용하지 않을 때 실행된다.
+
+void setPageContext(PageContext ctx)		커스텀 태그가 포함된 JSP 페이지의 콘텍스트를 전달받는다.
+
+void setParent(Tag t)	해당 태그의 부모 태그가 존재할 때 부모 태그를 설정한다.
+
+
+IterationTag 인터페이스의 메소드는 다음과 같다. IterationTag 인터페이스는 Tag 인터페이스를 상속받으므로 Tag 인터페이스의 모든 멤버(멤버 변수와 메소드)를 사용할 수 있다.
+다음의 메소드들은 TagSupport 클래스, BodyTagSupport 클래스를 상속받아 커스텀 태그를 정의할 때 사용할 수 있다.
+
+
+	메소드				설명
+	
+int doAfterBody()	태그의 body 내용을 처리한 뒤에 실행된다.
+
+
+BodyTag 인터페이스의 메소드는 다음과 같다. BodyTag 인터페이스는 IterationTag 인터페이스를 상속받으므로 IterationTag 인터페이스의 모든 멤버(멤버 변수와 메소드)를  사용할 수 있다.
+또한 IterationTag 인터페이스의 슈퍼 인터페이스인 Tag 인터페이스의 모든 멤버도 사용할 수 있다.
+다음 메소드들은 BodyTagSupport 클래스를 상속받아 커스텀 태그를 정의할 때 사용할 수 있다.
+
+
+	메소드						설명
+	
+void doinitBody()			body를 수행하기 위한 준비를 한다.
+
+void setBodyContent(BodyContent b)		bodycontent 속성을 지정한다.
+
+
+정의한 태그 내용의 처리 유무에 따라 TagSupport 클래스를 상속받을지 BodyTagSupport 클래스를 상속받을지를 결정해야 했다. 그러나 JSP 2.0 이후에서는 이런 것을 신경 쓸 필요 없이 모두
+SimpleTag 인터페이스에서 처리한다.
+SimpleTag 인터페이스의 메소드는 다음과 같으며 SimpleTagSupport 클래스를 상속받아 커스텀 태그를 정의할 때 사용할 수 있다.
+
+
+	메소드								설명
+	
+void doTag()							커스텀 태그를 만나면 실행된다.
+
+protected JspFragment getJspBody()		이 메소드를 통해 JspFragment 객체를 얻는데, JspFragment 객체로 커스텀 태그의 body를 처리한다.
+
+protected JspContext getJsp Context()	JspContext 객체를 얻어낸다.
+
+
+2) 태그 핸들러 클래스 분류
+
+태그 핸들러 클래스는 태그 내용의 처리 여부에 따라 사용하는 것이 다르다.
+
+
+태그 핸들러 클래스			사용
+
+TagSupport			태그의 내용(body)을 처리하지 않는 경우
+
+BodyTagSupport		태그의 내용을 처리하는 경우
+
+SimpleTagSupport	태그의 내용이 있거나 없거나 모두 사용 가능
+
+
+내용이 있는 태그와 그렇지 않은 태그는 다음 예시와 같다.
+
+
+태그 내용 처리에 따른 구분	예시
+
+내용이 없는 태그			<tag:welcome/>
+
+내용이 있는 태그			<tagLwelcome>홍길동</tag:welcome>
+
+
+만일 내용이 없는 커스텀 태그를 처리할 태그 핸들러가 필요하다면 당연히 TagSupport 클래스를 상속받아 작성하면 된다. 그런데 내용이 있으면 문제가 약간 복잡해진다. 커스텀 태그가 내용을 가지면 이 내용을 처리하느냐 혹은
+처리하지 않느냐에 따라서 상속받을 때 그 핸들러 클래스가 달라진다. 먼저 커스텀 태그가 내용을 가지고 있지만 이것을 처리하지 않는 경우라면 TagSupport를 상속받아 작성하는 것으로 충분하다.
+그러나 커스텀 태그의 내용을 반드시 처리해야 한다면 BodyTagSupport를 상속받아 작성해야 한다. 여기서 태그의 내용 처리란, body 내용을 읽거나 변경하지 않고 JSP 페이지에 있는 내용을 그대로 출력하는 경우를 말한다.
+
+이런 복잡한 문제는 태그의 내용이 있거나 없거나, 내용을 처리하거나 하지 않거나 SimpleTagSupport 클래스를 사용하면 신경 쓰지 않아도 된다.
+JSP 2.0 기반의 SimpleTag를 사용한 커스텀 태그는 doTag() 메소드를 사용해서 시작 태그와 종료 태그를 모두 처리한다. doTag() 메소드는 커스텀 태그를 만나기만 하면 실행된다.
+또한 커스텀 태그의 내용은 getJspBody() 메소드를 통해 JspFragment 객체를 받아와서 처리할 수 있다. 그리고 getJspContext().getOut() 메소드를 사용하면 JspWriter 객체인
+out 객체를 리턴받을 수 있기 때문에 out.println()과 같이 화면에 내용을 출력할 수도 있다.
+
+
+(3) 태그 핸들러 클래스를 사용한 커스텀 태그 예제 작성
+
+TagSupport 클래스를 사용한 내용 없는 커스텀 태그의 정의는 이번 챕터애서 다뤘으므로 생략한다.
+BodyTagSupport 클래스는 거의 SimpleTagSupport 클래스를 사용하는 것으로 많이 대체되었으므로 여기서는 SimpleTagSupport 클래스를 사용하여 내용이 없는 태그와 있는 태그를 정의해서 사용하는 예제를 살펴본다.
+
+
+JSP 2.0에서 SimpleTag를 사용하여 "Welcome to My CustomTag"라는 문자열을 화면에 출력하는 커스텀 태그 예제이다.
+
+SimpleWelcomeTag.java		657쪽
+
+simpleTag.tld		658쪽
+
+simpleTag.jsp		661쪽
+
+simpleBodyTag.java		662쪽
+
+simpleTag.tld		663쪽

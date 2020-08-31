@@ -1,0 +1,49 @@
+요청 파라미터로 명령어를 전달하는 방법은 컨트롤러인 서블릿에 요청 파라미터를 정보를 덧붙여서 사용하는 방법이다.
+
+http://localhost:8001/JSP_2.3_웹_프로그래밍/MessageController?message=aaa
+
+위의 예시에서 컨트롤러인 MessageController 서블릿에 message라는 파라미터와 파라미터 값 aaa를 붙여서 사용자의 요청을 받는다.
+이때 파라미터인 message가 가진 값에 따라 컨트롤러에서 처리되는 작업이 달라지고 처리 결과도 달라진다.
+이 방법이 간편하긴 하나 명령어를 파라미터로 전달 시 정보가 웹 브라우저를 통해 노출된다.
+간혹 이러한 파라미터를 보고 악의적으로 사이트에 접근할 수 있는 빌미를 제공한다는 단점을 가지고 있다.
+
+
+이 예제는 컨트롤러인 Controller 서블릿이 사용자의 요청을 명령어로 전달받아서 그 명령어에 따른 처리를 하는 것이다.
+이때 컨트롤러에 요청 파라미터를 전달받아서 해당 명령어에 대한 처리를 명령어 처리 클래스에 일임해서 처리하게 한다. 그리고 그 결과를 전달받아서 뷰인 process.jsp 페이지로 보내서 사용자의 요청에 응답한다.
+
+
+											2 명령어 처리
+					1 요청	Controller		<--->		명령어 처리
+					 →		(Controller)				인터페이스
+		Web Browser				│ 3 처리 결과 뷰로 보냄		(CommandProcess)
+								V							↑
+					4 응답	   View						명령어 처리
+					 ←		(process.jsp)				    클래스
+					 								(MessageProcess)
+					 								
+
+command.properties		702쪽
+
+CommandProcess.java		703쪽
+
+MessageProcess.java		704쪽
+
+Controller.java			707쪽
+
+process.jsp				713쪽
+
+
+	<<interface>>										<<interface>>
+	CommandProcess	명렁어 처리								CommandProcess	명렁어 처리
+					인터페이스												인터페이스
+	+requestPro											+requestPro				<───────────────────┐
+												┌────────┘				^							│
+		↑										│						│							│
+												│						│							│
+	MessageProcess	명령어 처리					MessageProcess	명령어 처리		MessageProcess	명령어 처리		MessageProcess	명령어 처리
+					클래스									클래스						클래스						클래스
+	+requestPro								+requestPro					+requestPro					+requestPro
+	
+	슈퍼 인터페이스인 CommandProcess와								슈퍼 인터페이스인 CommandProcess와
+	명령어 처리 클래스인 MessageProcess 간의							명령어 처리 클래스들 간의 관계
+	관계

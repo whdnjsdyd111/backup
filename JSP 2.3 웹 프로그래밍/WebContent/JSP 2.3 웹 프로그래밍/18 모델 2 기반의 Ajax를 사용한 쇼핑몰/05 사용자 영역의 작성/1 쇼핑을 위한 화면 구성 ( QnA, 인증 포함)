@@ -1,0 +1,262 @@
+여기서는 회원 가입, 인증, 수정, 탈퇴의 작업이 포함된 회원 인증, 쇼핑몰의 메인 화면, 제품 상세 정보 및 상품 QnA 작성, 수정, 삭제 작업을 작성한다.
+
+(1) 자바빈 쇼핑 부분 및 상품 QnA 관련 자바빈은 관리자 영역에서 작성한 자바빈을 같이 사용하고, 여기에서는 회원 인증에 관련된 자바빈만을 작성한다. 회원 인증에 관련된 자바빈은
+챕터 11에서 작성한 자바빈과 거의 같다.
+
+1) 회원 인증 데이터 저장빈_LogonDataBean
+
+다음은 데이터 저장빈 LogonDataBean의 프로퍼티이다.
+
+프로퍼티명		설명
+
+id			아이디
+
+passwd		비밀번호
+
+name		이름
+
+reg_date	가입 날짜
+
+address		주소
+
+tel			전화번호
+
+
+LogonDataBean.java		857쪽
+
+
+2) 회원 인증 DB 처리빈_LogonDBBean
+
+다음은 DB 연동빈 LogonDBBean의 메소드이다.
+
+
+메소드명										작업 내용
+
+getInstance()								전역 LogonDBBean 객체의 레퍼런스를 리턴한다.
+
+getConnection()								쿼리 작업에 사용할 Connection 객체를 커넥션 풀로부터 얻어내서 리턴한다.
+
+insertMember(LogonDataBean member)			회원 가입한 사용자를 member 테이블에 추가한다. 회원 가입 폼 처리(registerPro.jsp)에서 사용한다.
+
+userCheck(String id, String passwd)			사용자 인증 시 사용한 회원 인증 처리(loginPro.jsp) 및 회원 정보 수정, 탈퇴를 위한 인증(memberCheck.jsp)에서 사용한다.
+
+confirmId(String id)						회원 가입 시 아이디 중복 확인(confirmId.jsp)을 할 때 사용한다. 회원 가입 폼(registerForm.jsp)에서 사용한다.
+	
+getMember(Strinbg id)						id에 해당하는 레코드를 member 테이블에서 검색한다.
+
+getMember(String id, String passwd)			id, passwd에 해당하는 레코드를 member 테이블에서 검색한다.
+
+updateMember(LogonDataBean member)			수정된 회원 정보를 갱신할 때 사용된다. 회원 정보 수정 처리(modifyPro.jsp)에서 사용한다.
+
+deleteMember(String id, String passwd)		id에 해당하는 레코드를 member 테이블에서 삭제한다. 회원 탈퇴 처리(deletePro.jsp)에서 사용한다.
+
+
+LogonDBBean.java		859쪽
+
+
+(2) 사용자 쇼핑 화면, 회원 인증 및 상품 QnA
+
+1) 사용자 쇼핑 화면
+
+다음은 사용자 쇼핑화면에서 사용되는 로직과 페이지이다.
+
+
+로직 및 페이지명				작업 내용
+
+ShopMainAction.java		사용자 메인 화면 처리 로직
+
+ProListAction.java		메인 화면에 표시하는 상품 목록 로직
+
+BookContentAction.java	상품 내용 보기 처리 로직
+
+shopMain.jsp			사용자 메인 화면으로 신상품 목록을 화면에 표시하는 페이지
+
+showList.jsp			사용자가 쇼핑할 수 있도록 상품 목록을 제공하는 페이지
+
+BookContent.jsp			상품의 내용을 표시하는 페이지
+
+bookContent.js			관리자 인증과 관련된 요청을 처리하며, 인증 폼의 인증되지 않은 사용자 영역에서 [로그인] 버튼 클릭 또는 인증된 사용자 영역에서 [로그아웃] 버튼을 클릭 시 작업을 처리
+
+
+commandMapping.properties		주석 제거
+
+
+사용자 메인 관련 작업의 로직과 웹 페이지를 작성한다.
+
+ShopMainAction.java			870쪽
+
+ProListAction.java		873쪽
+
+showList.jsp		874쪽
+
+BookContentAction.java		877쪽
+
+bookContent.jsp		878쪽
+
+bookContent.js		881쪽
+
+
+2) 사용자 회원 인증
+
+다음은 사용자 회원 인증 처리에서 사용되는 로직과 페이지이다.
+
+
+로직 및 페이지명					작업 내용
+
+RegisterFormAction.java		회원 가입 폼 처리 로직
+
+RegisterProAction.java		회원 가입 처리 로직
+
+ConfirmIdAction.java		아이디 중복 확인 처리 로직
+
+LoginFormAction.java		로그인 폼 로직
+
+LoginProAction.java			로그인 처리 로직
+
+LogoutAction.java			로그아웃 로직
+
+ModifyAction.java			회원 정보 수정과 탈퇴의 메인 화면 로직
+
+ModifyFormAction.java		회원 정보 수정 폼 로직
+
+ModifyProAction.java		회원 정보 수정 처리 로직
+
+DeleteProAction.java		회원 정보 탈퇴 처리 로직
+
+registerForm.jsp			회원 가입 폼 페이지
+
+register.js					회원 가입 관련 요청을 처리하며 [ID 중복확인], [가입하기], [취소] 버튼을 클릭 시 작업을 처리
+
+registerPro.jsp				회원 가입 처리 페이지
+
+confirmId.jsp				아이디 중복 확인 페이지
+
+loginForm.jsp				로그인 폼 페이지
+
+login.js					로그인 관련 요청을 처리하며 인증되지 않은 경우 [회원가입]과 [로그인]을, 인증된 경우 [회원정보 변경]과 [로그아웃] 및 [장바구니]와 [구매내역] 버튼을 클릭 시 작업을 처리
+
+loginPro.jsp				로그인 처리 페이지
+
+logout.jsp					회원 인증 무효화 페이지
+
+modify.jsp					회원 정보 수정과 탈퇴의 메인 화면 페이지
+
+modifyForm.jsp				회원 정보 수정 폼 페이지
+
+modify.js					회원 정보 수정과 관련된 요청을 처리하며 [수정], [취소] 버튼을 클릭 시 작업을 처리
+
+modifyPro.jsp				회원 정보 수정 처리 페이지
+
+deletePro.jsp				회원 정보 탈퇴 처리페이지
+
+
+commandMapping.properties		주석 제거
+
+
+사용자 인증 관련 작업의 로직과 웹 페이지를 작성한다.
+
+RegisterFormAction.java		888쪽
+
+register.js		890쪽
+
+ConfirmIdAction.java		891쪽
+
+confirmId.jsp		892쪽
+
+RegisterProAction.java		893쪽
+
+registerPro.jsp		894쪽
+
+LoginFormAction.java		894쪽
+
+loginForm.jsp		894쪽
+
+login.js		896쪽
+
+LoginProAction.java		898쪽
+
+loginPro.jsp		899쪽
+
+LogoutAction.java		899쪽
+
+logout.jsp		900쪽
+
+ModifyAction.java		900쪽
+
+modify.jsp		901쪽
+
+ModifyFormAction.java		902쪽
+
+modifyForm.jsp		903쪽
+
+modify.js		904쪽
+
+ModifyProAction.java		905쪽
+
+modifyPro.jsp		906쪽
+
+DeleteProAction.java		906쪽
+
+deletePro.jsp		907쪽
+
+
+3) 사용자 상품 QnA 작성, 수정, 삭제
+
+다음은 사용자 상품 QnA 작성, 수정, 삭제에서 사용되는 로직과 페이지이다.
+
+
+로직 및 페이지명					작업 내용
+
+QnaFormAction.java			상품 QnA 쓰기 폼 로직
+
+QnaProAction.java			상품 QnA 쓰기 처리 로직
+
+QnaUpdateFormAction.java	상품 QnA 수정 폼 로직
+
+QnaUpdateProAction.java		상품 QnA 수정 처리 로직
+
+QnaDeleteProAction.java		상품 QnA 삭제 처리 로직
+
+qnaForm.jsp					상품 QnA 쓰기 폼 페이지
+
+write.js					상품 QnA 쓰기 관련 작업 요청을 처리하며 [상품등록], [상품수정/삭제], [전체구매목록 확인], [상품 QnA 답변] 버튼을 클릭 시 작업을 처리
+
+qnaPro.jsp					상품 QnA 쓰기 처리 페이지
+
+qnaUpdateForm.jsp			상품 QnA 수정 폼 페이지
+
+update.js					관리자 인증을 무효화하는 페이지
+
+qnaUpdatePro.jsp			상품 QnA 수정 처리 페이지
+
+qnaDeletePro.jsp			상품 QnA 삭제 처리 페이지
+
+
+commandMapping.properties		주석 제거
+
+
+사용자 상품 QnA 작성, 수정, 삭제 관련 작업의 로직과 웹 페이지를 작성한다.
+
+QnaFormAction.java		911쪽
+
+qnaForm.jsp			912쪽
+
+write.js			913쪽
+
+QnaProAction.java		914쪽
+
+qnaPro.jsp			916쪽
+
+QnaUpdateFormAction.java		916쪽
+
+qnaUpdateForm.jsp		917쪽
+
+update.js		918쪽
+
+QnaUpdateProAction.java		919쪽
+
+qnaUpdatePro.jsp		920쪽
+
+QnaDeleteProAction.java		920쪽
+
+qnaDeletePro.jsp		921쪽

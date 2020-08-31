@@ -1,0 +1,90 @@
+forward 액션 태그는 다음과 같이 사용한다.
+
+<jsp:forward page="이동할 페이지명" />
+
+	page 속성
+	
+이동할 페이지명을 기술한다. 이동할 페이지명은 상대 경로나 웹 애플리케이션 절대 경로로 지정할 수 있고, 표현식도 사용할 수 있다.
+
+<jsp:forward page="a.jsp" /> <%-- 상대 경로 --%>
+<jsp:forward page="/ch05/a.jsp" /> <%-- 웹 애플리케이션 절대 경로 --%>
+<jsp:forward page="<%= movePage %>" /> <%-- 표현식 사용 --%>
+
+(2) forward 액션 태그의 처리 과정
+
+forward 액션 태그는 다음과 같이 처리된다.
+
+
+						┌───────────────────┐
+				요청 1	│2		a.jsp		│
+┌───────────┐───────>	││	<jsp:forward	│
+│ 웹 브라우저	│			│V	page="b.jsp/>	│
+└───────────┘			└│──────────────────┘
+		^			  3	┌│──────────────────┐
+		│				│V		b.jsp		│
+		│ 응답 5			││					│
+		└───────────────│V 4				│
+						└───────────────────┘
+						
+
+1	웹 브라우저에서 웹 서버로 a.jsp 페이지 요청한다.
+
+2	요청된 a.jsp 페이지를 수행한다.
+
+3	a.jsp 페이지를 수행하다가 <jsp:forward> 액션 태그를 만나면 이제까지 저장되어 있는 출력 버퍼의 내용을 제거하고, 프로그램 제어를 page 속성에서 지정한 b.jsp로 이동(포워딩)한다.
+
+4	b.jsp 페이지를 수행한다.
+
+5	b.jsp 페이지를 수행한 결과를 웹 브라우저에게 응답한다.
+
+
+여기서 우리가 한 가지 주목해야 할 점은 요청된 페이지는 a.jsp 이지만 웹 브라우저에 응답되는 내용은 b.jsp 라는 점이다. 이 방법을 활용해서 모듈화된 JSP 페이지의 흐름을 제어할 때 사용된다.
+forward 액션 태그도 include 액션 태그와 마찬가지로 같은 request 객체를 공유한다. 위의 그림의 a.jsp와 같은 request 객체를 공유한다. 원래 request 객체는 각 요청마다
+개별적인 request 객체가 생성되나, forward 액션 태그를 사용한 a.jsp 페이지의 request 객체와 b.jsp 페이지의 request 객체는 같은 객체이다.
+
+
+							┌───────────────────────────────────────────────┐
+							│					a.jsp						│
+			요청(request)		│  <% request.setCharacterEncoding("utf-8"); %>	│
+┌───────────┐───────────>	│	<jsp:include page="b.jsp" flush="false" />	│
+│  웹 브라우저	│				└───────────────────────────────────────────────┘		a.jsp의 request 객체와 b.jsp의 request 객체는 같음
+└───────────┘<──────────	┌───────────────────────────────────────────────┐
+			응답(response)	│					b.jsp						│
+							│  <% request.setCharacterEncoding("utf-8"); %>	│
+							│					...							│
+							└───────────────────────────────────────────────┘
+							
+							
+이 예제를 통해 forward 액션 태그를 사용해 페이지의 흐름 제어 및 request 객체를 공유하는 것을 확인한다. forwardFrom.jsp 페이지에서 request 객체에 setAttribute() 메소드를 사용해
+id와 name 속성을 설정한 후 forward 액션 태그를 사용하여 forwardTo.jsp 페이지로 이동하면, 같은 request 객체를 공유하기 때문에 getAttribute() 메소드를 사용해 id와 name 속성의 값을 얻어낼 수 있다.
+
+forwardFrom.jsp		190쪽
+
+forwardTo.jsp		191쪽
+
+
+(3) forward 액션 태그에서 포워딩되는 페이지에 값 전달하기
+
+forward 액션 태그에서 값을 전달하기 위한 param 액션 태그의 사용 방법은 include 액션 태그에서와 같다.
+forward 액션 태그에서 param 액션 태그를 사용해서 프로그램의 제어가 이동할 페이지에 파라미터 값을 전달한다.
+
+<jsp:forward page="이동할 페이지명">
+	<jsp:param name="paramName1" value="var1" />
+	<jsp:param name="paramName2" value="var2" />
+</jsp:forward>
+
+
+이 예제는 forward 액션 태그에 param 액션 태그를 사용해서 포워딩되는 페이지에 값을 전달하는 방법을 확인하는 것이다.
+색을 선택하는 forwardParamForm.jsp 페이지에서 선택한 값을 forwardParamTo.jsp 페이지로 전달하면 forwardParamTo.jsp 페이지에서 색상값에 해당하는 JSP 페이지로 포워딩한다.
+
+forwardParamForm.jsp		192쪽
+
+forwardParamTo.jsp			193족
+
+blue.jsp					194쪽
+
+green.jsp					195쪽
+
+red.jsp						196쪽
+
+yellow.jsp					196쪽

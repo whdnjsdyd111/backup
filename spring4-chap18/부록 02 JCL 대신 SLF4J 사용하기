@@ -1,0 +1,75 @@
+SLF4J가 나오기 전까지만 해도 많은 프레임워크나 라이브러리가 JCL을 이용해서 로그를 남기는 경우가 많았고, 스프링 프레임워크도 그중 하나이다.
+하지만, SLF4J가 나온 뒤로 JCL 대신 SLF4J를 사용하는 오픈소스 프로젝트가 증가하고 있다. 따라서, 의존 모듈을 추가하다보면 어떤 모듈은 JCL을 사용하고
+어떤 모듈은 SLF4J를 사용해서 두 로깅 프레임워크가 혼재되어 사용되는 상황이 발생하게 된다.
+
+JCL과 SLF4J를 혼용해서 사용해도 실질적으로 로그를 남길 때 사용하는 모듈이 Log4j면 문제가 발생하지 않지만, 이왕이면 하나의 로깅 프레임워크를 이용하도록 맞추는 것이 좋을 것이다.
+SLF4J는 이런 경우에 SLF4J로 맞출 수 있는 jcl-over-slf4j 모듈을 제공하고 있다. 이 모듈을 사용하면 기존 JCL을 이용해서 남기는 로그를 SLF4J를 통해서 남기도록 할 수 있다.
+스프링을 사용할 때 스프링이 JCL 대신 SLF4J를 이용해서 로그를 남기도록 하려면 다음과 같이 의존 설정을 해주면 된다.
+
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>4.0.4.RELEASE</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jcl-over-slf4j</artifactId>
+			<version>1.7.7</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.7</version>
+		</dependency>
+
+
+위에서 눈여겨볼 부분은 spring-core 모듈의 <exclusion> 설정 부분이다. <exclusion>은 의존 모듈 중에서 사용하지 않을 모듈을 지정할 때 사용되며,
+위 설정은 spring-core 모듈이 사용하는 모듈 주에서 JCL(commons-logging) 모듈을 사용하지 않는다고 설정하고 있다.
+이렇게 함으로써 JCL 모듈을 사용하지 않게 된다.
+
+jcl-over-slf4j 모듈은 JCL이 제공하는 인터페이스를 그대로 제공한다. 차이점이 있다면, JCL이 아닌 SLF4J를 이용해서 로그를 남기는 구현을 제공한다.
+위 설정을 사용하면 스프링이 생성하는 로그 메시지를 SLF4J를 이용해서 남기게 된다.
+
+slf4j-log4j12 모듈은 SLF4J에 전달된 로그를 Log4j를 이용해서 남길 때 사용하는 모듈이다. 위 의존 설정을 사용하면 스프링이 발생하는 로그는 SLF4J를 거쳐 Log4j를 통해 기록된다.
+
+실제 로그 메시지를 기록할 때 Log4j 대신 사용되는 로깅 모듈로 Logback을 들 수 있는데, SLF4J를 사용하면서 Log4j 대신 Logback을 사용하고 싶다면
+다음과 같이 slf4j-log4j12 모듈 대신 logback-classic 모듈을 의존에 추가해주면 된다.
+
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-core</artifactId>
+			<version>4.0.4.RELEASE</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jcl-over-slf4j</artifactId>
+			<version>1.7.7</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.1.2</version>
+		</dependency>
+		
+		
+각 로깅 모듈에 대한 내용이 궁금하면 아래 글을 참고하자.
+
+	- Log4j를 이용하여 로그를 기록 : http://javacan.tistory.com/entry/9
+	- Logback을 사용해야 하는 이유 : http://goo.gl/p9M8C
+	- Log4j에서 Logback으로 마이그레이션 하기 : http://goo.gl/jIffc8
+	- JCL 사용자 가이드 : http://commons.apache.org/proper/commons-logging/guide.html
+	- SLF4J 매뉴얼 : http://www.slf4j.org/manual.html

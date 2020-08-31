@@ -1,0 +1,240 @@
+상품 구매를 처리하는 코드가 아래와 같다고 하자.
+
+
+	public class PlaceOrderServiceImpl implements PlaceOrderService {
+	
+		...
+		@Override
+		public PurchaseOrderResult order(PurchaseOrderRequest orderRequest)
+				throws ItemNotFoundException {
+			Item item = itemDao.findById(orderRequest.getItemId());
+			if (item == null)
+				throw new ItemNotFoundException(orderRequest.getItemId());
+	
+			PaymentInfo paymentInfo = new PaymentInfo(item.getPrice());
+			paymentInfoDao.insert(paymentInfo);
+	
+			PurchaseOrder order = new PurchaseOrder(item.getId(), orderRequest
+					.getAddress(), paymentInfo.getId());
+			purchaseOrderDao.insert(order);
+			
+			return new PurchaseOrderResult(item, paymentInfo, order);
+		}
+	}
+	
+	
+위 코드는 다음과 같은 수서로 상품 구매를 처리한다.
+
+	- 1. itemDao로부터 구매하려는 상품 정보를 구한다. 존재하지 않을 경우 익셉션을 발생시킨다.
+	- 2. paymentInfoDao를 이용해서 결제 정보(PaymentInfo)를 데이터베이스에 삽입한다.
+	- 3. purchaseOrderDao를 이용해서 구매 주문 정보(PurchaseOrder)를 데이터베이스에 삽입한다.
+	
+위 과정은 하나의 트랜잭션에서 처리되어야 한다. 만약 세 번째 과정이 실패하면 이전에 실행된 모든 과정이 롤백되어야 할 것이다.
+그렇지 않을 경우, 구매 주문은 올바르게 되지 않았지만 결제 처리는 되어 버리고 말 것이다.
+
+
+	3.1 TransactionTemplate과 TransactionCallback으로 트랜잭션 처리하기
+	
+직접 트랜잭션을 처리하려면 o.s.transaction.support.TransactionTemplate 클래스를 이용한다.
+앞서 11장의 JDBC를 위한 템플릿 클래스와 마찬가지로 TransactionTemplate 클래스는 트랜잭션과 관련된 작업(트랜잭션 시작, 커밋, 롤백 등)을 처리해주는 템플릿 클래스이다.
+
+TransactionTemplate을 사용하려면 먼저 TransactionTemplate을 빈으로 설정해주어야 한다.
+TransactionTemplate을 설정할 때에는 다음과 같이 transactionManager 프로퍼티에 스프링의 PlatformTransactionManager 빈을 지정하면 된다.
+
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean id="transactionTemplate"
+		class="org.springframework.transaction.support.TransactionTemplate">
+		<property name="transactionManager" ref="transactionManager" />
+	</bean>
+
+
+TransactionTemplate 빈 객체를 설정했다면, 이 객체를 이용해서 DB 트랜잭션을 처리할 수 있다.
+아래 코드는 TransactionTemplate 클래스의 사용 예를 보여주고 있다.
+
+
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+public class PlaceOrderServiceTxTemplateImpl implements PlaceOrderService {
+
+	private ItemDao itemDao;
+	private PaymentInfoDao paymentInfoDao;
+	private PurchaseOrderDao purchaseOrderDao;
+
+	private TransactionTemplate transactionTemplate;
+
+	public void setTransactionTemplate(TransactionTemplate transactionTemplate) {
+		this.transactionTemplate = transactionTemplate;
+	}
+
+	@Override
+	public PurchaseOrderResult order(final PurchaseOrderRequest orderRequest)
+			throws ItemNotFoundException {
+		return transactionTemplate.execute(
+				new TransactionCallback<PurchaseOrderResult>() {
+					@Override
+					public PurchaseOrderResult doInTransaction(
+							TransactionStatus status) {
+						Item item = itemDao.findById(orderRequest.getItemId());
+						if (item == null)
+							throw new ItemNotFoundException(orderRequest.getItemId());
+
+						PaymentInfo paymentInfo = new PaymentInfo(item.getPrice());
+						paymentInfoDao.insert(paymentInfo);
+
+						PurchaseOrder order = new PurchaseOrder(item.getId(),
+								orderRequest.getAddress(), paymentInfo.getId());
+						purchaseOrderDao.insert(order);
+
+						return new PurchaseOrderResult(item, paymentInfo, order);
+					}
+				});
+	}
+
+}
+
+
+위 코드를 보면 TransactionTemplate의 execute() 메소드는 TransactionCallback 타입의 객체를 파라미터로 전달받는다.
+execute() 메소드는 내부적으로 PlatformTransactionManager를 이용해서 트랜잭션을 시작한 뒤에 파라미터로 전달받은
+TransactionCallback의 doInTransaction() 메소드를 실행한다. doInTransaction() 메소드가 정상적으로 실행되면,
+TransactionTemplate의 execute() 메소드는 트랜잭션을 커밋하고 결과를 리턴한다. 다음은 이 과정을 시퀀스 다이어그램으로 정리한 것이다.
+
+
+	내 코드			:TransactionTemplate								: PlatformTransactionManager
+	ㅣ						ㅣ														ㅣ
+	│ ─ 1: TransactionCallback 객체 생성	────>	action : TransactionCallback		ㅣ
+	│						ㅣ									ㅣ					ㅣ
+	│ ─ 2: execute(action)─>│									ㅣ					ㅣ
+	│						│ ─ 2.1: getTransaction() ─────────────────────────────>│ ─ 2.1.1: ────>status: TransactionStatus
+	│						│ <──────────────────────── 2.1.2: return status ───────│						ㅣ
+	│						│									ㅣ					ㅣ						ㅣ
+	│						│ ─ 2.2: doInTransaction(status) ──>│					ㅣ						ㅣ
+	│						│ <──────── 2.3: return result ─────│					ㅣ						ㅣ
+	│						│									ㅣ					ㅣ						ㅣ
+	│						│ ─ 2.4: commit(status) ────────────────────────────────│						ㅣ
+	│ <─2.5: return result ─│									ㅣ					ㅣ						ㅣ
+	ㅣ						ㅣ									ㅣ					ㅣ						ㅣ
+	
+	
+위를 보면 트랜잭션을 시작하고(과정 2.1) 트랜잭션을 커밋(과정 2.4)하는 사이에 execute() 메소드로 전달받은 TransactionCallback의
+doInTransaction() 메소드를 실행하는 것을 알 수 있다. 일를 통해 doInTransaction() 메소드가 트랜잭션 범위 내에서 실행된다.
+
+TransactionCallback은 (과정 2.3)에서 결과 객체를 리턴하는데, TransactionTemplate은 트랜잭션 커밋 후에 그 객체를 리턴한다.
+따라서, TransactionTemplate.execute() 메소드는 결과적으로 TransactionCallback의 doInTransaction()이 리턴한 객체를 그대로 리턴한다.
+
+만약 (과정 2.2)에서 doInTransaction() 메소드가 RuntimeException을 발생하면 TransactionTemplate은 PlatformTransactionManager의 rollback()을 호출해서
+트랜잭션을 롤백시키고, TransactionTemplate의 execute() 메소드를 호출한 코드에 익셉션을 전파한다.
+
+o.s.transaction.support.TransactionCallback 인터페이스는 다음과 같이 정의되어 있다.
+
+	
+	public interface TransactionCallback<T> {
+		T doInTransaction(TransactionStatus status);
+	}
+	
+	
+일반적으로 TransactionTemplate 클래스의 execute() 메소드를 사용할 때에는 TransactionCallback 인터페이스를 구현한 클래스를 작성하기 보다는
+앞서 살펴봤던 코드와 같이 임의 클래스를 사용하거나 자바 8의 람다식을 이용해서 TransactionCallback 객체를 전달한다.
+
+doInTransaction() 메소드는 throws를 통해서 발생시킬 수 있는 익셉션을 설정하고 있지 않기 때문에, doInTransaction() 메소드 내부에서는
+RuntimeException이나 Error 타입의 익셉션만 발생시킬 수 있다. 만약, doInTransaction 내부에서 반드시 catch 처리해주어야 하는 checked 익셉션을
+발생시킨다면, 다음과 같이 doInTransaction() 메소드 내부에서 try-catch 블록을 사용해서 익셉션을 처리한 뒤 롤백 여부를 설정해주어야 한다.
+
+
+	public PurchaseOrderResult order(final PurchaseOrderRequest orderRequest)
+			throws ItemNotFoundException {
+		Object orderResult = transactionTemplate.execute(
+				new TransactionCallback<Object>() {
+			@Override
+			public Object doInTrasaction(Transaction status) {
+				try {
+					Item item = itemDao.findById(orderRequest.getItemId());
+					if (item == null)
+						throw new ItemNotFoundException(orderRequest.getItemId());
+
+					PaymentInfo paymentInfo = new PaymentInfo(item.getPrice());
+					paymentInfoDao.insert(paymentInfo);
+
+					PurchaseOrder order = new PurchaseOrder(item.getId(),
+							orderRequest.getAddress(), paymentInfo.getId());
+					purchaseOrderDao.insert(order);
+
+					return new PurchaseOrderResult(item, paymentInfo, order);
+				} catch(Exception ex) {
+					status.setRollbackOnly();
+					return ex;
+				} 
+			}
+		});
+		
+		if(orderResult instanceof Throwable) {
+			throwException(throwable);
+		} else {
+			return (PurchaseOrderResult) orderResult;
+		}
+	}
+	
+	
+위 코드에서 작성한 catch 블록을 보면 TransactionStatus의 setRollbackOnly() 메소드를 실행하고 있는데,
+이렇게 하면 TransactionTemplate은 트랜잭션을 롤백시킨다. 위 코드에서는 doInTransaction 내부에서 발생한 익셉션 객체를 리턴했는데,
+이렇게 한 이유는 doInTransaction() 메소드 내부에서 발생한 익셉션을 외부에서 사용할 수 있도록 하기 위함이다.
+
+	
+	3.2 TransactionTemplate의 트랜잭션 설정
+	
+TransactionTemplate은 기본적으로 다음의 트랜잭션 속성을 갖는다.
+
+	- 트랜잭션 전파 속성 : 트랜잭션 필요(REQUIRED)
+	- 트랜잭션 격리 레벨 : 데이터베이스의 기본(DEFAULT)
+	- 트랜잭션 타임아웃 : 없음
+	- 읽기 전용 아님
+	
+만약 트랜잭션 속성을 다르게 지정하고 싶다면, TransactionTemplate을 설정할 때 관련 속성을 변경해주면 된다.
+위의 네 가지 속성과 관련된 프로퍼티 및 사용 가능한 값은 다음과 같다.
+
+
+	프로퍼티						설명
+	
+	propagationBehaviorName		트랜잭션 전파 범위를 설정한다. 다음과 같은 값을 사용할 수 있다. (괄호 안의 숫자는 propagationBehavior 프로퍼티 설정할 때 사용 가능한 값이다.)
+	(propagationBehavior)		
+									- PROPAGATION_REQUIRED (0)
+									- PROPAGATION_SUPPORTS (1)
+									- PROPAGATION_MANDATORY (2)
+									- PROPAGATION_REQUIRES_NEW (3)
+									- PROPAGATION_NOT_SUPPORTED (4)
+									- PROPAGATION_NEVER (5)
+									- PROPAGATION_NESTED (6)
+								
+								기본 값은 PROPAGATION_REQUIRED이다.
+			
+	isolationLevelName			트랜잭션 격리 레벨을 지정한다. (괄호 안의 값은 isolationLevel 프로퍼티 설정할 때 사용 가능한 값이다.
+	(isolationLevel)
+									- ISOLATION_DEFAULT (-1)
+									- ISOLATION_READ_UNCOMMITTED (1)
+									- ISOLATION_READ_COMMITTED (2)
+									- ISOLATION_REPEATABLE_READ (4)
+									- ISOLATION_SERIALIZABLE (8)
+									
+								기본 값은  ISOLATION_DEFAULT 이다.
+								
+	timeout						초 단위 타입아웃 값을 지정한다. 기본값은 -1로서 타임아웃이 없다.
+	
+	readOnly					true를 지정하면 읽기 전용 트랜잭션이며, false로 지정하면 읽기/쓰기 트랜잭션으로 설정한다. 기본 값은 false이다.
+	
+	
+기존에 트랜잭션이 존재했는지 여부에 상관없이 트랜잭션을 새롭게 시작하고, 격리 레벨을 REPEATABLE_READ로 지정하고 싶다면 다음과 같이
+TransactionTemplate을 설정할 수 있을 것이다.
+
+
+	<bean id="transactionTemplate"
+		class="org.springframework.transaction.support.TransactionTemplate">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="propagationBehaviorName" ref="PROPAGATION_REQUIRES_NEW" />
+		<property name="isolationLevelName" value="ISOLATION_REPEATABLE_READ" />
+	</bean>

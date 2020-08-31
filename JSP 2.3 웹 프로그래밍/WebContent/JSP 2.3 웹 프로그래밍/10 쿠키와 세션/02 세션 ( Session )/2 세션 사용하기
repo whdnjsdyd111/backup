@@ -1,0 +1,60 @@
+메소드 : 리턴 타입								설명
+
+getAttribute(java.lang.String name)			세션 속성명이 name인 속성의 값을 Object 타입으로 리턴한다.
+: java.lang.Object							해당되는 속성명이 없을 경우에는 null 값을 리턴한다.
+
+getAttributeNames()							세션 속성의 이름들을 Enumeration 객체 타입으로 리턴한다.
+: java.util.Enumeration
+
+getCreationTime() : long					1970년 1월 1일 0시 0초를 기준으로 하여 현재 세션이 생성된 시간까지
+											경과한 시간을 계산하여 1/1000초 값으로 리턴한다.
+											
+getId() : java.lang.String					세션에 할당된 고유 식별자를 String 타입으로 리턴한다.
+
+getMaxInactiveInterval() : int				현재 생성된 세션을 유지하기 위해 설정된 세션 유지 시간을 int 형으로 리턴한다.
+
+invalidate() : void							현재 생성된 세션을 무효화시킨다.
+
+removeAttribute(java.lang.String name)		세션 속성명이 name인 속성을 제거한다.
+: void
+
+setAttribute(java.lang.String name,			세션 속성명이 name인 속성에 속성값으로 value를 할당한다.
+java.lang.Object value) : void
+
+setMaxInactiveInterval						세션을 유지하기 위한 세션 유지 시간을 초 단위로 설정한다.
+(intinterval) : void	
+
+
+세션을 사용해서 정보를 유지하려면 먼저 session 객체의 setAttribute() 메소드를 사용해서 세션 속성부터 설정한다.
+
+session.setAttribute("id", "aaaa@king.com");
+
+세션 속성명인 id의 속성값으로 "aaaa@king.com"을 사용해서 속성을 설정한다. 이때 id는 속성명이 되고, "aaaa@king.name"는 속성의 값이 된다.
+여기서 주의할 사항은 세션의 속성값은 객체 형태만 올 수 있다는 것이다. session 객체는 웹 브라우저와 매핑되므로 해당 웹 브라우저를 닫지 않는 한 같은 창에서 열린 페이지는 모두 같은 session 객체를 공유하게 된다.
+따라서 session 객체의 setAttribute() 메소드를 사용해서 세션의 속성을 지정하면 계속 상태를 유지하는 기능을 사용할 수 있다.
+설정된 세션의 속성을 이용해 정보를 유지하려면 session 객체의 getAttribute() 메소드를 사용한다.
+
+String id = (String) session.getAttribute("id");
+
+이 메소드는 주어진 속성명에 해당하는 속성을 얻어올 때 사용한다. session 객체의 getAttribute("id") 메소드는 매개 변수로 속성명이 들어가서 얻어낸 속성값을 id 변수에 저장한다.
+getAttribute() 메소드는 리턴 타입이 Object이므로 사용 시 실제 할당된 객체 타입으로 형 변환(casting)을 해야 한다.
+(String) session.getAttribute("id")에서 (String)이 String 타입으로 형 변환을 하는 부분이다.
+세션의 속성을 삭제하려면 session 객체의 removeAttribute() 메소드를 사용한다.
+
+session.removeAttribute("id");
+
+주어진 속성명에 해당하는 속성을 제거한다. 매개 변수로 제거할 속성명을 사용한다.
+세션의 모든 속성을 삭제할 때는 session 객체의 invalidate() 메소드를 사용한다.
+
+session.invalidate()
+
+session 객체의 invalidate() 메소드를 사용하면 세션의 모든 속성이 제거된다.
+
+쿠키와 마찬가지로 세션의 방법도 매우 간단하다. 세션의 속성을 설정하고, 속성명과 속성값이 쌍으로 생성된 형태로 세션에 대한 정보를 사용한다.
+
+
+이 예제는 세션 속성을 사용해 정보를 유지하는 것이다. 세션 속성의 설정은 setSession.jsp 페이지에서 하고, 설정된 세션을 사용해 정보를 유지하는 페이지는 viewSession.jsp
+
+setSession.jsp		399쪽
+
+viewSession.jsp		401쪽

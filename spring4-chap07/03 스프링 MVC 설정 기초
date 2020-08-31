@@ -1,0 +1,367 @@
+스프링 MVC를 이용해서 웹 어플리케이션을 개발할 때 가장 먼저 해야 할 일은 스프링 MVC 설정을 작성하는 것이다.
+기본 설정을 완료하면 본격적인 스프링 MVC를 이용한 웹 개발에 진입하게 된다.
+
+스프링 MVC를 사용하기 위한 기본 설정 과정은 다음과 같다.
+
+	- 1. web.xml에 DispatcherServlet 설정
+	- 2. web.xml에 캐릭터 인코딩 처리 위한 필터 설정
+	- 3. 스프링 MVC 설정
+		A. HandlerMapping, HandlerAdpator 설정
+		B. ViewResolver 설정
+		
+각 설정에서 대해 차례대로 살펴보도록 하자.
+
+[이 절에서 스프링 MVC 설정의 기초적인 부분을 살펴볼 것이다.]
+
+
+	3.1 DispatcherServlet 서블릿 설정
+	
+DispatcherServlet은 스프링 MVC 프레임워크의 중심이 되는 서블릿 클래스다.
+앞서 처리 흐름에서 보았듯이 웹 브라우저의 요청을 DispatcherServlet이 받게 되며, DispatcherServlet은 관련 컴포넌트를 이용해서 웹 브라우저의 요청을 처리한 뒤 결과를 전송하게 된다.
+
+이 절에서는 web.xml 파일에 DispatcherServlet을 설정하는 방법을 살펴볼 것이며, 이 장의 마지막에 서블릿 3 방식으로 설정하는 방법을 살펴볼 것이다.
+
+DispatcherServlet은 내부적으로 스프링 컨테이너를 생성한다. 별도의 초기화 파라미터 없이 DispatcherServlet을 설정하면,
+웹 어플리케이션의 /WEB-INF/ 디렉터리에 위치한 [서블릿이름]-servlet.xml 파일을 스프링 설정 파일로 사용한다.
+예를 들어, 다음과 같이 web.xml 파일을 설정했다면, DispatcherServlet은 dispatcher-servlet.xml 파일을 이용해서 스프링 컨테이너를 생성한다.
+
+	
+	<serlvet>
+		<servlet-name>dispatcher</servlet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+	</servlet>
+	
+	
+한 개 이상의 설정 파일을 사용해야 하거나 또는 이름이 [이름]-servlet.xml 형식이 아닌 파일을 사용해야 한다면, 다음과 같이 contextCofigLocation 초기화 파라미터로 설정 파일 목록을 지정하면 된다.
+
+
+	<serlvet>
+		<servlet-name>dispatcher</servlet-name>
+		<servlet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</servlet-class>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>
+				/WEB-INF/main.xml
+				/WEB-INF/bbs.xml
+			</param-value>
+		</init-param>
+	</serlvet>
+	
+	
+contextConfigLocation 초기화 파라미터는 설정 파일의 목록을 값으로 갖는데, 이때 각 설정 파일은 콤마(","), 공백(" "), 줄 바꿈(\n), 세미콜론(",")을 이용하여 구분한다.
+각 설정 파일의 경로는 웹 어플리케이션 루트 디렉토리를 기준으로 하며, "file:"이나 "classpath:" 접두어를 이용해서 로컬 파일이나 클래스패스에 위치한 파일을 사용할 수 있다.
+
+
+XML 설정 파일이 아닌 @Configuration 클래스를 이용해서 설정 정보를 작성했다면, 다음과 같이 contextClass를 추가로 설정해주어야 한다.
+
+
+	<servlet>
+		<servlet-name>dispatcherConfig</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<init-param>
+			<param-name>contextClass</param-name>
+			<param-value>
+org.springframework.web.context.support.AnnotationConfigWebApplicationContext
+        	</param-value>
+		</init-param>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>
+				net.madvirus.spring4.chap07.quickstart.MvcQuickStartConfig
+			</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>dispatcherConfig</servlet-name>
+		<url-pattern>/config/*</url-pattern>
+	</servlet-mapping>
+	
+	
+contextClass 초기화 파라미터는 DispatcherServlet이 스프링 컨테이너를 생성할 때 사용할 구현 클래스를 지정한다.
+이 값을 지정하지 않으면 XmlWebApplicationContext를 사용하는데, 이 클래스는 XML 설정 파일을 사용한다. 따라서, @Configuration 기반의 자바 설정을 이용하는 경우
+AnnotationConfigWebApplicationContext 클래스를 사용하도록 contextClass 초기화 파라미터의 값을 지정해주어야 한다.
+
+contextConfigLocation 초기화 파라미터의 값은 XML 설정 파일의 경로 대신 @Configuration 자바 클래스의 완전한 이름을 지정한다.
+두 개 이상인 경우 콤마(","), 공백(" "), 탭(\t), 줄 바꿈(\n), 세미콜론(";")을 이용해서 구분한다.
+
+	(1) 캐릭터 인코딩 필터 설정
+	
+서블릿/JSP 프로그래밍에서 웹 브라우저가 전송한 요청 파라미터를 올바르게 처리하려면, 알맞은 캐릭터 인코딩을 지정해주어야 한다.
+스프링은 요청 파라미터의 캐릭터 인코딩을 지정할 수 있는 서블릿 필터 CharacterEncodingFilter를 제공하고 있으므로,
+요청 파라미터의 캐릭터 인코딩 처리를 위해 별도의 코드를 작성할 필요가 없다. 다음은 이 필터의 설정 방법이다.
+
+
+	<web-app ...>
+		...
+		<filter>
+			<filter-name>encodingFilter</filter-name>
+			<filter-class>
+				org.springframework.web.filter.CharacterEncodingFilter
+			</filter-class>
+			<init-param>
+				<param-name>encoding</param-name>
+				<param-value>UTF-8</param-value>
+			</init-param>
+		</filter>
+		<filter-mapping>
+			<filter-name>encodingFilter</filter-name>
+			<url-pattern>/*</url-pattern>
+		</filter-mapping>
+	</web-app>
+
+	
+	3.2 스프링 MVC 설정 기초
+	
+스프링 MVC를 설정하려면 최소한 다음의 구성 요소를 빈 객체로 등록해주어야 한다.
+
+	- HandlerMapping 구현 객체
+	- HandlerAdapter 구현 객체
+	- ViewResolver 구현 객체
+	
+이 중에서 HandlerMapping과 HandlerAdapter는 다음과 같이 <mvc:annotation-driven> 태그를 이용하면 설정이 끝난다.
+따라서, ViewResolver만 추가로 설정해주면 된다.
+
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	
+	<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:mvc="http://www.springframework.org/schema/mvc" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+	       http://www.springframework.org/schema/beans/spring-beans.xsd
+	       http://www.springframework.org/schema/mvc
+	       http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+	
+		<mvc:annotation-driven />
+	
+		<bean id="viewResolver"
+			class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+			<property name="prefix" value="/WEB-INF/view/" />
+			<property name="suffix" value=".jsp" />
+		</bean>
+		
+		
+<mvc:annotation-driven> 태그는 다음의 두 클래스를 빈으로 등록해준다.
+
+	- RequestMappingHandlerMapping
+	- RequestMappingHandlerAdapter
+	
+이 두 클래스는 @Controller 어노테이션이 적용된 클래스를 컨트롤러로 사용할 수 있도록 해준다.
+이 두 객체 외에 <mvc:annotation-driven> 태그는 JSON이나 XML 등 요청/응답 처리를 위해 필요한 변환 모듈이나 데이터 바인딩 처리를 위한
+ConversionService 등을 빈으로 등록해주는데, 이들에 대한 내용은 각각 알맞은 곳에서 설명할 것이다.
+
+[<mvc:annotation-driven> 태그가 실제로 등록하는 빈 설정이 궁금한 독자는 이 책의 예제 코드에서 
+spring4-chap07/src/main/webapp/WEB-INF/sample-no-mvc.xml 파일을 참고하기 바란다.]
+
+위 설정에서 InternalResourceViewResolver는 JSP를 이용해서 뷰를 생성할 때 사용되는 ViewResolver를 지정할 때 주의할 점은 ViewResolver의 이름이
+"viewResolver"여야 한다는 점이다. prefix와 suffix는 컨트롤러의 처리 결과를 보여줄 JSP의 경로를 생성할 때 사용되는데, 이 설정은 8장에서 한다.
+
+@Configuration 자바 설정을 사용한다면, @EnalbeWebMvc 어노테이션을 사용하면 된다.
+@EnableWebMvc 어노테이션을 사용하면  <mvc:annotation-driven>과 동일하게 스프링 MVC를 설정하는데  필요한 빈을 자동으로 등록해준다.
+다음 코드처럼 @EnableWebMvc 어노테이션을 설정 클래스에 적용하면 된다.
+
+
+	import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+	
+	@Configuration
+	@EnableWebMvc
+	public class MvcQuickStartConfig {
+	
+		@Bean
+		public InternalResourceViewResolver viewResolver() {
+			InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
+			viewResolver.setPrefix("/WEB-INF/view/");
+			viewResolver.setSuffix(".jsp");
+			return viewResolver;
+		}
+		
+		
+	3.3 서블릿 매핑에 따른 컨트롤러 경로 매핑과 디폴트 서블릿 설정
+	
+앞서 HelloController 예제에서 DispatcherServlet을 web.xml에 설정할 때 *.do 패턴에 해당하는 요청을 처리하도록 매핑을 설정했었다.
+
+
+	<servlet>
+		<serlvet-name>dispatcher</servlet-name>
+		<serlvet-class>
+			org.springframework.web.servlet.DispatcherServlet
+		</setvlet-class>
+		...
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>dispatcher</servlet-name>
+		<url-pattern>*.do</url-pattern>
+	</servlet-mapping>
+	
+	
+위의 매핑은 확장자를 이용해서 클라이언트의 요청과 DispatcherServlet을 매핑한다.
+이 경우 웹 브라우저에서 입력하는 URL은 아래와 같은 형태를 띄게 된다.
+
+	- http://localhost:8080/spring4-chap07/hello.do
+	- http://localhost:8080/spring4-chap07/read.do?articleId=100
+	
+웹 개발 초기에는 이렇게 확장자를 이용한 매핑 설정을 많이 사용했지만, 최근에는 고정된 확장자를 사용하기 보다는 의미에 맞는 URL을 사용하는 곳이 증가하고 있는 추세이다.
+다음은 몇 가지 예이다.
+
+	- http://localhost:8080/spring4-chap07/messages/list
+	- http://localhost:8080/spring4-chap07/comic
+	
+위 URL에서 /spring4-chap07 이 웹 어플리케이션의 컨텍스트 경로라고 할 경우, 이런 형태의 URL을 처리하기 위해 다음처럼 서블릿 매핑 설정을 할 수 있을 것이다.
+
+	
+	<servlet-mapping>
+		<servlet-name>dispatcher</servlet-name>
+		<url-pattern>/message/*</url-pattern>
+		<url-pattern>/comic</url-pattern>
+	</servlet-mapping>
+	
+	
+컨트롤러에서는 아래와 같이 @RequestMapping에 "/message/list" 경로를 지정하면 될거라 생각하기 쉽다.
+
+
+	@Controller
+	public class SomeController {
+		@RequestMapping("/message/list")
+		public String message(Model model) {...}
+		
+		@RequestMapping("/comic")
+		public String comic(Model model) {...}
+	}
+	
+	
+그런데, SomeController를 스프링 빈으로 등록하고 http://localhost:8080/spring4-chap07/message/list를 웹 브라우저에 실행하면, 페이지가 없음을 의미하는 404 에러 응답을 받게 된다.
+왜 그럴까? 그 이유는 RequestMappingHandlerMapping의 동작 방식에 있다. RequestMappingHandlerMapping는 요청 URL과 매핑되는 컨트롤러를 찾을 때 다음의 방법을 사용한다.
+
+	- 서블릿 매핑이 "/경로/*/" 형식이면, "/경로" 이후 부분을 사용해서 컨트롤러 검색
+	- 아니면, 컨텍스트 경로 제외한 나머지 경로를 사용해서 컨트롤러 검색
+	
+위 규칙에 따르면 같은 URL이라도 서블릿 매핑 걸정을 어떻게 했느냐에 따라 컨트롤러 매핑 경로가 바뀐다.
+예를 들어, 컨텍스트가 경로가 /ctx라고 할 땨, 서블릿 매핑 설정에 따라 컨트롤러를 찾을 때 사용하는 경로는 다음과 같이 달라질 수 있다.
+
+
+		요청 URL							서블릿 매핑 URL 패턴		컨트롤러 매핑 경로
+	
+	/spring4-chap07/message/list.do		/message/*			/list.do
+	
+	/spring4-chap07/message/list.do		*.do				/message/list.do
+	
+	/spring4-chap07/comic				/comic				/comic
+	
+	
+DispatcherServlet에 대한 매핑 URL 패턴을 어떻게 설정했느냐에 따라 컨트롤러를 찾을 때 사용되는 경로가 달라지는데, 보통은 이런 동작을 원하지 않는다.
+mvc 네임스페이스를 사용하지 않는다면 아래와 같이  RequestMappingHandlerMapping의 alwaysUseFullPath 프로퍼티의 값을 true로 지정해서 이 문제를 해소할 수 있다.
+(아래 코드에서 [생략] 부분은 org.springframework.web 패키지이다.)
+
+
+	<!-- <mvc:annotation-driven>을 사용하지 않는다면 -->
+	
+	<bean id="handlerMapping"
+		class="[생략].servlet.mvc.annotation.RequestMappingHandlerMapping">
+		<property name="alwaysUseFullPath" value="true" />
+	</bean>
+	
+	<bean id="handlerAdapter"
+		class="[생략].servlet.mvc.annotation.RequestMappingHandlerAdapter" />
+		
+		
+위와 같이 설정하면, 서블릿 매핑 URL 패턴에 상관없이 컨텍스트 경로를 제외한 나머지 전체 경로를 이용해서 컨트롤러를 찾게 된다.
+하지만, RequestMappingHandlerMapping을 직접 등록하는 방식보다는 <mvc:annotation-driven>을 사용하는 것이 설정을 쉽게 할 수 있기 때문에,
+<mvc:annotation-driven> 등장 이후로는 <mvc:annotation-driven> 설정 방식을 많이 사용하고 있다. 그런데 아쉽게도 <mvc:annotation-driven> 태그는 
+alwaysUseFullPath와 같은 설정 방법을 따로 제공하고 있지 않다. (이는 @EnableWebMvc 어노테이션도 동일하다.)
+
+다음의 경우는 어떻게 해야 할까?
+
+
+	- URL에 do와 같은 확장자를 사용하지 않으면서
+	- 컨트롤러 매핑 경로로 전체 경로를 사용하고 싶음
+	
+이런 경우에는 다음의 설정 방법을 사용하면 된다.
+
+	- 서블릿 매핑 설정에서 URL 패턴을 "/"로 지정
+	- 스프링 MVC 설정에 디폴트 서블릿 핸들러를 설정
+	
+먼저 web.xml에서 DispatcherServlet에 대한 URL 패턴을 아래와 같이 "/"로 설정한다.
+
+
+	<!-- web.xml 파일의 설정 -->
+	<servlet>
+		<servlet-name>dispatcher</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		...
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>dispatcher</servlet-name>
+		<url-pattern>/</url-pattern>
+	</servlet-mapping>
+	
+	
+그리고, 스프링 MVC 설정에서는 다음과 같이 <mvc:default-servlet-handler /> 태그를 추가하면 된다.
+
+
+	<beans ...>
+	
+		<mvc:annotation-driven />
+		<mvc:default-servlet-handler />
+		
+		
+서블릿 매핑 설정에서 매핑 URL 패턴을 <url-pattern>/</url-pattern>으로 설정하면 jsp 요청을 제외한 나머지 모든 요청을 DispatcherServlet이 받게 된다.
+예를 들어, 다음의 URL을 모두 DispatcherServlet이 받게 된다.
+
+	- http://localhost/spring4-chap07/event/list
+	- http://localhost/spring4-chap07/bootstrap/bootstrap.min.css
+	
+여기서 /event/list 경로에 대한 컨트롤러가 존재한다고 해보자. 이 경우 DispatcherServlet은 /event/list 경로에 매핑된 컨트롤러를 이용해서 요청을 처리한다.
+그런데, /bootstrap/bootstrap.min.css 경로의 경우 매핑된 컨트롤러가 없다고 해보자. 사실 이 URL은 bootstrap.min.css 파일에 해당하는 경로인데,
+DispatcherServlet은 매핑된 컨트롤러가 존재하지 않으므로 404 응답 코드를 웹 브라우저에 전송하게 된다.
+이때 404 응답 대신에 컨테이너의 디폴트 서블릿을 이용해서 요청을 처리하도록 만들어주는 것이 바로 <mav:default-servlet-handler /> 설정이다.
+<mav:default-servlet-handler /> 설정을 추가하면, 디폴트 서블릿 핸들러가 빈으로 등록되며, 스프링 MVC는 다음과 같이 동작한다.
+
+	- 1. 요청 URL에 매핑되는 컨트롤러를 검색한다.
+		A. 존재할 경우, 컨트롤러를 이용해서 클라이언트 요청을 처리한다.
+		
+	- 2. 디폴트 서블릿 핸들러가 등록되어 있지 않다면,
+		A. 404 응답 에러를 전송한다.
+		
+	- 3. 디폴트 서블릿 핸들러가 등록되어 있으면, 디폴트 서블릿 핸들러에 요청을 전달한다.
+		A. 디폴트 서블릿 핸들러는 WAS의 디폴트 서블릿에 요청을 전달한다.
+		
+각 WAS 서블릿 매핑에 존재하지 않는 요청을 처리하기 위한 디폴트 서블릿을 제공하고 있다. 예를 들어, JSP에 대한 요청을 처리하는 것이 바로 디폴트 서블릿이다.
+그런데, 앞서 DispatcherServlet의 매핑 URL 패턴을 "/"로 지정하면 JSP를 제외한 모든 요청이 DispatcherServlet으로 가기 때문에,
+WAS가 제공하는 디폴트 서블릿이 *.html이나 *.css와 같은 요청을 처리할 수 없게 된다. 디폴트 서블릿 핸들러는 바로 이 디폴트 서블릿에 요청을 전달해주는 핸들러로서,
+요청 URL에 매핑되는 컨트롤러가 존재하지 않을 때 404 응답 대신, 디폴트 서블릿이 해당 요청 URL을 처리하도록 만든다. 따라서, .css 와 같이
+컨트롤러에 매핑되어 있지 않은 URL 요청은 최종적으로 3.A 과정을 통해 디폴트 서블릿에 전달되어 처리된다.
+
+@EnableWebMvc 어노테이션을 사용할 경우 아래 코드처럼 디폴트 서블릿 핸들러를 등록할 수 있다.
+
+
+	import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
+	import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+	import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+	
+	@Configuration
+	@EnableWebMvc
+	public class webConfig extends WebConfigurerAdpater {
+		
+		@Override
+		public void configureDefaultServletHandling(
+				DefaultServletHandlerConfigurer configurer) {
+			configurer.enable();		
+		}
+	
+	
+WebWebConfigureAdapter 클래스는 @EnableWebMvc 어노테이션을 이용해서 MVC를 설정할 때 사용되는 클래스로서, 스프링 MVC와 관련된 설정을 추가할 때 사용된다.
+위 코드의 경우 WebMvcConfigurerAdapter에 정의된 메소드 중에서 configureDefaultServletHandling() 메소드를 재정의했는데,
+이 메소드의 파라미터로 전달받은 DefaultServletHandlerConfigurer의 Enable() 메소드를 호출함으로써 디폴트 서블릿 핸들러가 활성화된다.
+
+[스프링 MVC는 디폴트 서블릿 핸들러 외에도 다양한 설정을 제공하고 있는데, 이에 대한 내용은 이 장의 '스프링 MVC 설정' 부분에서 좀 더 자세히 살펴볼 것이다.]
+
+[최근의 추세는 URL에 확장자를 넣지 않는 것이다. 확장자를 넣더라도 cgi나 jsp, aspx처럼 구현 기술을 알 수 있는 확장자나 .do 처럼 의미 없는 확장자를 사용하지 않고,
+.pang또는 .nhn과 같이 자신들을 드러내는 확장자를 사용하는 곳이 증가하고 있다. 또는 .json이나 .xml과 같이 확장자를 사용해서 응답 형식을 지정할 수 있도록 하기도 한다.]

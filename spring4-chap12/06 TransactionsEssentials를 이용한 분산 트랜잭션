@@ -1,0 +1,255 @@
+두 개 이상의 자원에 동시에 접근하는 데 트랜잭션이 필요한 경우가 있다. 예를 들어, 결제 정보를 저장하는 데이터베이스와 구매 내역을 저장하는 데이터베이스가 다르다고 하자.
+이 경우 두 데이터베이스에 접근하기 위한 DataSource는 서로 다르지만, 두 데이터베이스에 접근하는 코드는 단일 트랜잭션으로 처리되어야 한다.
+
+자바에서 분산 트랜잭션을 처리하기 위해서는 분산 트랜잭션 서비스를 제공해주는 트랜잭션 관리자가 필요하다.
+WebLogic이나 JBoss 같은 컨테이너는 자체적으로 분산 트랜잭션 서비스를 지원하고 있지만, 톰캣과 같은 서블릿 컨테이너는 분산 트랜잭션을 지원하고 있지 않다.
+
+단위 테스트를 수행할 때 컨테이너 없이 분산 트랜잭션을 테스트해야 한다거나 톰캣과 같이 분산 트랜잭션 서비스를 지원하지 않는 컨테이너에서 분산  트랜잭션을 구현해야 한다면,
+TransactionEssentials나 Bitronix와 같은 트랜잭션 매니저를 이용하면 된다.
+이 장에서는 이들 트랜잭션 매니저 중 TransactionEssentials을 이용해서 분산 트랜잭션을 설정하는 방법을 살펴보도록  하자.
+
+[최근 추세는 두 개 이상의 자원을 하나의 트랜잭션으로 묶어서 처리하는 방식보다는 중간에 메시징 시스템을 두고 비동기로 데이터를 동기화하는 방식을 채택하는 것이다.
+비동기 방식을 선택하는 이유 중의 하나는 성능 때문이다. 하지만, 성능보다 트랜잭션 보장이 더 중요한 영역이 존재하므로 두 개 이상의 자원에 대해
+엄격하게 트랜잭션을 적용해야 한다면 글로벌 트랜잭션을 사용해야 한다.]
+
+
+	6.1 TransactionEssentials 메이븐 설정
+	
+TransactionEssentials은 Atomikos에서 개발한 ExtremeTransaction의 오픈 소스 버전으로서 메이븐 리파지터리에 등록되어 있다.
+따라서, 다음과 같이 pom.xml 파일에 관련 의존 설정을 추가해주기만 하면 TransactionEssentials을 이용한 분산 트랜잭션을 사용할 수 있다.
+(참고로, 아래 코드는 3.9.3 버전을 기준으로 작성된 것으로서 버전에 따라 차이점이 존재할 수 있다.)
+
+
+	<dependencies>
+		...
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>4.0.4.RELEASE</version>
+		</dependency>
+		<!-- TransactionEssentials를 RDBMS에 사용하기 위한 의존 모듈 설정 -->
+		<dependency>
+			<groupId>com.atomikos</groupId>
+			<artifactId>transactions-jdbc</artifactId>
+			<version>3.9.3</version>
+		</dependency>
+		
+		<!-- 스프링4 버전은 JTA 1.1을 사용한다. -->
+		<dependency>
+			<groupId>javax.transaction</groupId>
+			<artifactId>jta</artifactId>
+			<version>1.1</version>
+		</dependency>
+	</dependencies>
+	
+	
+	6.2 TransactionEssentials와 스프링 연동
+	
+TransactionEssentials에 대한 의존 설정을 완료했다면, 스프링 설정에 다음과 같은 정보를 추가한다.
+
+	- TransactionEssentials를 이용한 JtaTransactionManager 설정
+	- TransactionEssentials가 제공하는 클래스를 이용한 XADataSource 설정
+	- DAO 등 스프링 빈에서 XADataSource를 사용하도록 설정
+	
+	(1) TransactionEssentials를 이용한 JtaTransactionManager 설정
+	
+TransactionEssentials를 이용하는 JtaTransactionManaver를 설정하려면 아래와 같은 설정을 추가해주어야 한다.
+
+
+	<!-- Transaction Essentials를 이용한 JtaTransactionManager 설정 -->
+	<bean id="userTransactionService" 
+		class="com.atomikos.icatch.config.UserTransactionServiceImp"
+		init-method="init" destroy-method="shutdownForce">
+		<constructor-arg>
+			<!-- 여기에 Atomikos 프로퍼티 위치 -->
+			<props>
+				<prop key="com.atomikos.icatch.service">
+					com.atomikos.icatch.standalone.UserTransactionServiceFactory
+				</prop>
+			</props>
+		</constructor-arg>
+	</bean>
+
+	<bean id="atomikosTransactionManager" 
+		class="com.atomikos.icatch.jta.UserTransactionManager"
+		init-method="init" destroy-method="close">
+		<property name="startupTransactionService" value="false" />
+		<property name="forceShutdown" value="true" />
+	</bean>
+
+	<bean id="atomikosUserTransaction" class="com.atomikos.icatch.jta.UserTransactionImp">
+		<property name="transactionTimeout" value="300" />
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.transaction.jta.JtaTransactionManager">
+		<property name="transactionManager">
+			<ref bean="atomikosTransactionManager" />
+		</property>
+		<property name="userTransaction">
+			<ref bean="atomikosUserTransaction" />
+		</property>
+	</bean>
+	
+[com.atomikos.icatch.config.UserTransactionServiceImp 클래스의 설정 프로퍼티 목록 및 설정 방법은 
+http://www.atomikos.com/Documentation/JtaProperties 	사이트를 참고하자.]
+
+	(2)  TransactionEssentials를 이용한 XADataSource 설정
+	
+JtaTransactionManager 설정이 완료되었다면, 그 다음으로 할 작업은 TransactionEssentials가 제공하는 클래스를 이용해서 
+XADataSource를 생성하는 것이다. TransactionEssentials는 다음의 두 가지 XADataSource를 제공하고 있다.
+
+	- com.atomikos.jdbc.AtomikosDataSourceBean : XA를 지원하는 JDBC 드라이버를 위한 DataSource 설정.
+	- com.atomikos.jdbc.nonxa.AtomikosNonXADataSourceBean
+		: XA를 지원하지 않는 JDBC 드라이버를 위한 DataSource 설정. 이 클래스는 XA에 호환되지 않기 때문에 트랜잭션의 원자성(atomic)을 보장할 수 없다.
+		
+XA를 지원하는 JDBC 드라이버를 갖고 있다면, AtomikosDataSourceBean를 이용해서 DataSource를 설정해주면 된다.
+아래 코드는 설정 예를 보여주고 있다.
+
+
+	<!-- XA를 위한 DataSource 설정 -->
+	<bean id="shopDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		<property name="uniqueResourceName" value="shopXaDs" />
+		<property name="xaDataSourceClassName"
+			value="com.mysql.jdbc.jdbc2.optional.MysqlXADataSource" />
+		<property name="xaProperties">
+			<props>
+				<prop key="user">spring4</prop>
+				<prop key="password">spring4</prop>
+				<prop key="url">jdbc:mysql://localhost/shop?characterEncoding=utf8</prop>
+				<prop key="pinGlobalTxToPhysicalConnection">true</prop>
+			</props>
+		</property>
+	</bean>
+	
+	
+AtomikosDataSourceBean 클래스를 사용할 때 설정할 프로퍼티는 다음과 같다.
+
+	- uniqueResourceName : DataSource를 식별하는 고유 자원 이름
+	- xaDataSourceClassName : XADataSource 구현 클래스의 완전한 이름
+	- xaProperties : XADataSource를 설정할 때 필요한 <이름, 값> 쌍
+	
+각 DBMS별로 XADataSource와 관련 프로퍼티에 대한 기본적인 설정 방법은	http://www.atomikos.com/Documentation/ConfiguringTranscationEssentials
+사이트에서 확인할 수 있다.
+
+JDBC 드라이버가 XA를 지원하지 않는 경우에는 AtomikosNonXADataSourceBean 클래스를 사용해서 DataSource를 설정하면 된다.
+아래 코드는 설정 예이다.
+
+
+	<bean id="shopDataSource" 
+		class="com.atomikos.jdbc.nonxa.AtomikosNonXADataSourceBean"
+		init-method="init" destroy-method="close">
+		<property name="uniqueResourceName" value="shopXaDs" />
+		<property name="user" value="spring4" />
+		<property name="password" value="spring4" />
+		<property name="url" value="jdbc:mysql://localhost/shop?characterEncoding=utf8" />
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="poolSize" value="10" />
+	</bean>
+	
+	
+AtomikosNonXADataSourceBean 클래스의 주요 프로퍼티는 다음과 같다.
+
+	- user : DB에 접근할 때 사용할 사용자 계정
+	- password : DB에 접근할 때 사용할 암호
+	- url : JDBC URL
+	- driverClassName : JDNC 드라이버 클래스 이름
+	
+AtomikosNonXADataSourceBean 클래스의 경우 완전한 XA를 지원하지 않기 때문에, 원자성(atomic)을 100% 보장하지 못한다는 점에 유의해야 한다.
+
+	(3) TransactionEssentials가 제공한 XADataSource를 이용
+	
+TransactionEssentials가 제공하는 클래스를 이용해서 XADataSource를 설정했다면, 남은 작업은 하나의 트랜잭션 범위에서 두 개 이상의 DataSource를 사용하도록
+설정하는 것뿐이다. 아래 코드는 설정 예를 보여주고 있다.
+
+
+	<!-- XA를 위한 DataSource 설정 -->
+	<bean id="shopDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		<property name="uniqueResourceName" value="shopXaDs" />
+		...
+	</bean>
+	
+	<bean id="payDataSource" class="com.atomikos.jdbc.AtomikosDataSourceBean">
+		<property name="uniqueResourceName" value="payXaDs" />
+		...
+	</bean>
+	
+	
+	<!-- DAO 설정 -->
+	<bean id="itemDao" class="net.madvirus.spring4.chap12.store.dao.jdbc.JdbcItemDao">
+		<constructor-arg ref="shopDataSource" />
+	</bean>
+
+	<bean id="paymentInfoDao"
+		class="net.madvirus.spring4.chap12.store.dao.jdbc.JdbcPaymentInfoDao">
+		<constructor-arg ref="payDataSource" />
+	</bean>
+
+	<bean id="purchaseOrderDao"
+		class="net.madvirus.spring4.chap12.store.dao.jdbc.JdbcPurchaseOrderDao">
+		<constructor-arg ref="shopDataSource" />
+	</bean>
+	
+	<tx:annotation-driven transaction-manager="transactionManager" />
+	
+	<bean id="placeOrderService"
+		class="net.madvirus.spring4.chap12.store.service.PlaceOrderServiceAnnotImpl">
+		<property name="itemDao" ref="itemDao" />
+		<property name="paymentInfoDao" ref="paymentInfoDao" />
+		<property name="purchaseOrderDao" ref="purchaseOrderDao" />
+	</bean>
+	
+	
+위 코드에서 itemDao, paymentInfoDao, purchaseOrderDao는 각각 shopDataSource와 payDataSource를 사용하고 있으며,
+placeOrderService는 itemDao와 paymentInfoDao, purchaseOrderDao를 이용해서 두 개의 DataSource에 접근하게 된다.
+위 코드에서 <tx:annotation-drive> 태그에서 참조하는 transactionManager는 앞서 TransactionEssentials를 이용해서
+설정한 JtaTransactionManager 빈이다.
+
+placeOrderService는 다음과 같이 트랜잭션 범위 내에서 두 개 이상의 DataSource에 접근하게 된다.
+
+
+	@Transaction
+	public PurchaseOrderResult order(PurchaseOrderRequest orderRequest)
+			throws ItemNotFoundException {
+		// shopDataSource 이용
+		Item item = itemDao.findById(orderRequest.getItemId());
+		if (item == null)
+			throw new ItemNotFoundException(orderRequest.getItemId());
+		// payDataSource 이용
+		PaymentInfo paymentInfo = new PaymentInfo(item.getPrice());
+		paymentInfoDao.insert(paymentInfo);
+		// shopDataSource 이용
+		PurchaseOrder order = new PurchaseOrder(item.getId(), orderRequest
+				.getAddress(), paymentInfo.getId());
+		purchaseOrderDao.insert(order);
+		
+		return new PurchaseOrderResult(item, paymentInfo, order);
+	}
+	
+	
+위 코드에서 order() 메소드는 TransactionEssentials가 제공하는 글로벌 트랜잭션을 통해서 관리되기 때문에,
+order() 메소드에서 사용하는 두 개 이상의 DataSource는 하나의 트랜잭션으로 처리된다.
+
+	(4) 커넥션 풀 관련 프로퍼티
+	
+AtomikosDataSourceBean 클래스와 AtomikosNonXADataSourceBean 클래스의 커넥션 풀 관련 프로퍼티는 다음과 같다.
+
+	
+	프로퍼티				설명									기본값
+			
+	maxPoolSize			최대 풀 개수								1
+				
+	minPoolSize			최소 풀 개수								1
+	
+	poolSize			최대/최소 풀 개수를 한번에 설정한다.				없음
+						maxPoolSize를 설정하지 않은 경우 필요하다.
+	
+	borrowConnectionTimeout	풀에서 커넥션을 가져오기까지 대기시간.		30
+							시간 단위는 초이다.
+		
+	maintenanceInterval	커넥션 풀의 검사 주기를 초 단위로 설정한다.			60
+	
+	maxIdleTime			사용되지 않는 커넥션의 최대 유효 시간.			60
+	
+	testQuery			사용된 커넥션을 풀에 되돌리기 전에 커넥션을 검사할 때 사용할 쿼리.		null
+						이 쿼리는 JTA 트랜잭션 범위에서 실행되지 않는다.				

@@ -1,0 +1,74 @@
+쇼핑몰 프로젝트인 [shoppingmall]은 컨트롤러를 포함한 로직이 위치하는 [src]와 뷰 및 뷰를 구성하는 데 필요한 파일들이 위치한 [WebContent]로 이루어져 있다.
+
+	
+												┌>	컨트롤러
+												│	bookshop.controller
+												│
+	shoppingmall	┌───>	Java Resource/src  ─┼	명령어 처리 클래스
+		프로젝트		│							│	bookshop.command
+					│							│
+					│							└	자바빈
+					│								bookshop.bean
+					└>	Webcontent ─┬> 관리자 	────┬> 인증
+									│	mngr	│	mngr/logon
+									│			│
+									├> 쇼핑 화면 구성	├> 상품 관리
+									│	shop	│	mngr/productProcess
+									│			│
+									├> 회원 관리	├> QnA 관리
+									│	member	│	mngr/qnaProcess
+									│			│
+									├> qna 관리	└> 주문 관리
+									│	qna			mngr/orderedProduct
+									│
+									├> 장바구니 관리
+									│	cart
+									│
+									└> 구매 관리
+										buy
+										
+										
+위의 구조도에서 쇼핑몰 시스템 구조를 지원하는 기본적인 폴더인 [js], [css], [error], [images], [bookImage], [property]는 생략되어 있다.
+이들은 쇼핑몰 시스템 구조를 위한 선수 작업을 수행한다. 즉, [shoppingmall] 프로젝트를 작성하고 웹 애플리케이션을 위한 설정을 한 후,
+[WebContent]에 지원 폴더를 작성하고 제공 파일들을 배치한다.
+
+
+(1) [shoppingmall] 프로젝트 작성 및 웹 애플리케이션을 위한 설정
+
+동적 웹 프로젝트를 작성한 후 웹 애플리케이션으로서의 기능을 제대로 수행하기 위해 몇 가지 설정을 해야 한다.
+
+1	동적 웹 프로젝트 작성 후 서버에 등록
+
+2	에러 페이지 설정
+
+3	필요한 라이브러리 추가
+
+4	커넥션 풀 설정
+
+1) 동적 웹 프로젝트 작성 후 서버에 등록
+
+[Dynamic Web Project]을 사용해 동적 웹 프로젝트를 작성한 후 [Servers] 뷰의 [Tomcat v8.0 Server~]에 추가한다.
+
+2) 에러 페이지 설정
+
+앞에서 작성한 [studyjsp] 프로젝트의 에러 처리 페이지를 복사한다.
+
+3) 필요한 라이브러리 추가
+
+[shopping] 프로젝트에 JDBC 커넥터, 커넥션 풀, 파일 업로드, jstl 등 사용에 필요한 라이브러리를 추가한다.
+
+실제 서비스 환경인 톰캣 컨테이너의 [conf]의 server.xml에 [shoppingmall] 프로젝트의 커넥션 풀을 설정한다.
+
+
+(2) [shoppingmall] 프로젝트에 필요한 폴더를 작성하고 제공 파일들을 배치
+
+여기서는 [shoppingmall] - [WebContent]에 필요한 파일을 배치하고 [Java Resources] - [src]에 암호화 로직을 복사한다.
+
+1) 기타 필요 폴더 복사 및 생성
+
+Ajax 사용에 필요한 [js] 폴더, 웹 페이지 디자인에 필요한 [css] 폴더, 제공되는 이미지 파일이 있는 [images] 폴더를 복사해서 사용한다.
+그리고 [bookImage]와 [property] 폴더를 생성한다.
+
+2) 암호화 로직을 [Java Resources] - [src]에 복사
+
+이렇게 기본적인 세팅은 모두 끝났다.

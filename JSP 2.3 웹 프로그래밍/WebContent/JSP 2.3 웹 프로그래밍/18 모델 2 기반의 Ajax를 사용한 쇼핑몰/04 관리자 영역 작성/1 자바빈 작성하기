@@ -1,0 +1,143 @@
+여기서는 관리자 영역에서 사용할 자바빈을 작성한다.
+관리자 영역에서는 2가지 자바빈이 있는데 관리자 인증, 상품 관리, 구매 관리 부분에서 사용하는 자바빈과 상품 Q&A 관리에 사용할 자바빈이다.
+상품 Q&A 관리 부분에서 사용하는 자바빈은 사용자의 Q&A에서도 같이 사용한다.
+
+
+(1) 관리자 인증, 상품 관리, 구매 관리 부분에서 사용하는 자바빈
+
+1) 데이터 저장빈_MngrDataBean
+
+다음은 데이터 저장빈 MngrDataBean의 프로퍼티이다.
+
+프로퍼티명			설명
+
+book_id			책의 등록 번호
+
+book_kind		책의 분류
+
+book_title		책 이름
+
+book_price		책 가격
+
+book_count		책의 재고 수량
+
+author			저자
+
+publishing_com	출반사
+
+publishing_date	출판일
+
+book_image		책 이미지명
+
+book_content	책의 내용
+
+discount_rate	책의 할인율
+
+reg_date		책의 등록 날짜
+
+
+MngrDataBean.java		768쪽
+
+
+2) DB 처리빈_MngrDBBean
+
+다음은 DB 처리빈인 MngrDBBean의 메소드이다.
+
+
+메소드명									작업 내용
+
+getInstance()							전역 BoardDBBean 객체의 레퍼런스를 리턴
+
+getConnection()							쿼리 작업에 사용할 Connection 객체를 커넥션 풀로부터 얻어내서 리턴
+
+userCheck(String id, String passwd)		관리자 인증 메소드
+
+insertBook(MngrDataBean book)			책 등록 메소드
+
+registedBookconfirm(String kind,		이미 등록된 책을 검증
+	String bookName, String author)
+	
+getBookCount()							전체 등록된 책의 수를 얻어내는 메소드
+
+getBookCount(String book_kind)			해당 분류의 책의 수를 얻어내는 메소드
+
+getBookTitle(int book_id)				책의 제목을 얻어냄
+
+getBooks(String book_kind)				분류별 또는 전체 등록된 책의 정보를 얻어내는 메소드
+
+getBooks(String book_kind, int count)	쇼핑몰 메인에 표시하기 위해서 사용하는 분류별 신간책 목록을 얻어내는 메소드
+
+getBook(int bookId)						bookId에 해당하는 책의 정보를 얻어내는 메소드로, 등록된 책을 수정하기 위해 수정 폼으로 읽어들이기 위해서 사용
+
+updateBook(MngrDataBean book,			등록된 책의 정보를 수정 시 사용하는 메소드
+	int bookId)
+	
+deleteBook(int bookId)					bookId에 해당하는 책의 정보를 삭제 시 사용하는 메소드
+
+
+MngrDBBean.java		771쪽
+
+
+
+(2) 상품 Q&A 관리 부분에서 사용하는 자바빈
+
+1) 데이터 저장빈_QnaDataBean
+
+다음은 데이터 저장빈 QnaDataBean의 프로퍼티이다.
+
+
+프로퍼티명			설명
+
+qna_id			qna 글번호
+
+book_id			책의 등록 번호
+
+book_title		책 이름
+
+qna_writer		qna 작성자
+
+qna_content		qna 내용
+
+group_id		qna 그룹 아이디
+
+qora			qna 그룹 내의 순서
+
+reply			답변 여부
+
+reg_date		qna 작성일
+
+
+QnaDataBean.java		784쪽
+
+
+2) DB 처리빈_QnaDBBean
+
+다음은 DB 처리빈 QnaDBBean의 메소드이다.
+
+메소드명						작업 내용
+
+getInstance()				전역 BoardDBBean 객체의 레퍼런스를 리턴
+
+getConnection()				쿼리 작업에 사용할 Connection 객체를 커넥션 풀로부터 얻어내서 리턴
+
+insertArticle(QnaDataBean article)		qna 테이블에 글을 추가 시 사용. 사용자가 작성하는 글
+
+inertArticle(QnaDataBean article, int qna_id)		qna 테이블에 글을 추가 시 사용. 관리자가 작성한 답변
+
+getArticleCount()			qna 테이블에 저장된 전체 글의 수를 얻어내는 메소드
+
+getArticleCount(int book_id)		특정 책에 대해 작성한 qna 글의 수를 얻어내는 메소드
+
+getArticles(int count)		지정한 수에 해당하는 qna 글이 수를 얻어내는 메소드
+
+getArtices(int count		책의 제목을 얻어내는 메소드
+	int book_id)
+	
+updateGetArticle(int qna_id)	QnA 글수정 폼에서 사용할 글의 내용을 얻어내는 메소드
+
+updateArticle(QnaDataBean article)		QnA 글수정 처리에서 사용하는 메소드
+
+deleteArticle(int qna_id)		QnA 글수정 삭제 처리 시 사용하는 메소드
+
+
+QnaDBBean.java		787쪽

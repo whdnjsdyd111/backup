@@ -1,0 +1,30 @@
+메인 페이지인 main2.jsp에서 forward 액션 태그를 사용해 템플릿 페이지인 template2.jsp 페이지를 포워딩하며, 템플릿 페이지인 template2.jsp 페이지를 포워딩하며,
+템플릿 페이지에서는 include 액션 태그를 사용해 페이지 모듈인 top.jsp, content.jsp, bottom.jsp를 로드해 표시한다.
+이제부터 살펴볼 예제는 이 Chapter의 앞에 Section 02 에서 다룬 예제와 같은 것인데, 여기서는 HTML5 태그 구조를 사용해서 배치한다.
+
+
+						┌───────────────────────────────────────────────────┐
+	/studyjsp/ch05/main2.jsp				main2.jsp						│
+			1 요청		│	<% request.setCharacterEncoding("utf-8"); %>	│
+┌───────────┐───────>	│		<jsp:forward page="template2.jsp"			│
+│  웹 브라우저	│			│	2 포워딩	│			flush="false" />			│
+└───────────┘			└───────────│───────────────────────────────────────┘
+		^				┌───────────│───────────────────────────────────────┐
+		│				│			V		template2.jsp					│ 3 인클루딩
+		│				│													│
+		│				│	<jsp:include page="top.jsp" flush="false" /> <─────────	top.jsp
+		│	4 응답		│													│
+		└──────────────	│	<jsp:include page="top.jsp" flush="false" /> <───────── left.jsp
+/studyjsp/ch05/			│													│
+template2.jsp			│	<jsp:include page="top.jsp" flush="false" /> <───────── content.jsp
+						│													│
+						│	<jsp:include page="top.jsp" flush="false" /> <───────── bottom.jsp
+						└───────────────────────────────────────────────────┘
+						
+						
+이 예제는 HTML5 구조를 사용해서 템플릿 페이지를 작성한 것이다. 메인 페이지에서 템플릿 레이지로 이동할 때 forward 액션 태그가 사용되며,
+템플릿 페이지에서 페이지 모듈을 로드할 때 include 액션 태그가 사용된다.
+
+main2.jsp		201쪽
+
+template2.jsp	202쪽

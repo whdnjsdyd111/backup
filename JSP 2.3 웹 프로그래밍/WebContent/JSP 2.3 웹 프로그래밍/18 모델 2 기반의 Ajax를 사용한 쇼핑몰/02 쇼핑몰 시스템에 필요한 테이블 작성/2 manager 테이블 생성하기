@@ -1,0 +1,17 @@
+쇼핑몰의 관리자 정보를 저장하는 테이블인 manager 테이블을 작성하고 레코드를 추가한다.
+
+CREATE TABLE manager (
+	managerId VARCHAR2(50) CONSTRAINT manager_id_pk PRIMARY KEY,
+	managerPassword VARCHAR2(60) CONSTRAINT manager_pw_nn NOT NULL
+);
+
+INSERT INTO manager
+VALUES('bookmaster@shop.com', 123456');
+
+다음은 manager 테이블의 각 필드에 대한 설명이다.
+
+필드명			설명
+
+managerId		관리자의 아이디를 저장하는 필드, 기본 키
+
+managerPasswd	관리자의 비밀번호를 저장하는 필드

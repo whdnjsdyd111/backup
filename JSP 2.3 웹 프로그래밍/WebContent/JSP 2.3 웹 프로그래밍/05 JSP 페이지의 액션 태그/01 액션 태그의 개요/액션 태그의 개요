@@ -1,0 +1,24 @@
+여기에서는 JSP 페이지에서는 제공하는 6개의 액션 태그(Action tag)인 include, forward, plug-in, useBean, setProperty, getProperty에 대해 개괄적으로 살펴본다.
+
+JSP 페이지에서 액션 태그는 스크립트, 주석, 디렉티브와 함께 JSP 페이지를 이루는 요소이다. 액션 태그는 페이지와 페이지 사이의 제어를 이동시킬 수도 있고,
+다른 페이지의 실행 결과를 현재의 페이지에 포함시킬 수 있다. 또한 자바빈을 JSP 페이지에서 사용할 수 있는 기능도 제공한다. 그리고 웹 브라우저에서 자바 애플릿을 실행시킬 수 있도록 지원하는 기능도 있다.
+다음 표는 JSP에서 제공하는 6개의 액션 태그에 관한 설명이다.
+
+
+메소드			액션 태그				설명
+
+include			<jsp:include>		다른 페이지의 실행 결과를 현재의 페이지에 포함할 때 사용
+
+forward			<jsp:forward>		웹 페이지 간의 제어를 이동시킬 때 사용
+
+plug-in			<jsp:plug-in>		웹 브라우저에서 자바 애플릿을 실행시킬 때 사용
+
+useBean			<jsp:useBean>		자바빈을 JSP 페이지에서 쓸 때 사용
+
+setProperty		<jsp:setProperty>	프로퍼티의 값을 세팅할 때 사용
+
+getProperty		<jsp:getProperty>	프로퍼티의 값을 얻어낼 때 사용
+
+
+이번 챕터에서는 <jsp:include>와 <jsp:forward> 액션 태그에 대해서만 학습하고, 자바빈과 관련된 <jsp:useBean>, <jsp:setProperty>, <jsp:getProperty> 액션 태그는
+Chapter 08 에서 살펴본다.

@@ -1,0 +1,161 @@
+JSP 페이지에 대한 속성은 page 디렉티브(<%@page%>)의 속성들을 사용해서 정의한다. 즉, 서버에 요청한 결과를 응답받을 때 생성되는 
+페이지의 타입, 스크립트 언어, import할 클래스, 세션 및 버퍼의 사용 여부 및 버퍼의 크기 등 JSP 페이지에서 필요한 설정 정보를 지정한다.
+page 디렉티브의 속성에 대한 요약은 다음과 같으며, 자주 사용하는 속성은 * 표시했다.
+
+
+속성명			속성의 기본값		사용법						속성 설명
+
+info							info="설명"					페이지를 설명하는 문자열을 지정하는 속성
+
+language		"java"			language="java"				JSP 페이지의 스크립트 요소에서 사용할 언어를 지정하는 속성
+
+*contentType	"text/html;		contentType="text			JSP 페이지가 생성할 문서의 타입을 지정하는 속성
+				charset=ISO-	/html; charset=				
+				8859-1"			utf-8"						
+
+extends							extends="system.			자신이 상속 받을 클래스를 지정할 때 사용하는 속성
+								MasterClass"					
+
+*import							import="java.util.Vector"	다른 패키지에 있는 클래스를 가져다 쓸 때 사용하는 속성
+								import="java.util.*"		
+								
+session			"true"			session="true"				HttpSession의 사용 여부를 지정하는 속성
+
+buffer			"8kb"			buffer="10kb"				JSP 페이지의 출력 버퍼의 크기를 지정하는 속성
+								buffer="none"				
+								
+autoFlush		"true"			autoFlush="false"			출력 버퍼가 다 찰 경우에 저장되어 있는 내용의 처리를 설정하는 속성
+
+isThreadSate	"true"			isThreadState="true"		현재 페이지에 멀티 쓰레드의 허용 여부를 설정하는 속성
+
+errorPage						errorPage="error/fail.jsp"	에러 발생 시 에러를 처리할 페이지를 지정하는 속성
+
+isErrorPage		"false"			isErrorPage="false"			해당 페이지를 여러 페이지로 지정하는 속성
+
+pageEncoding	"ISO-8859-1"	pageEncoding="utf-8"		해당 페이지의 문자 인코딩을 지정하는 속성
+
+isELIgnored		JSP 버전 및 설정		isELIgnored="true"			표현 언어(EL)에 대한 지원 여부를 설정하는 속성
+				에 따라 다름
+	
+				
+(1) info 속성 _JSP 페이지를 설명하는 문자열
+
+info 속성은 해당 JSP 페이지를 설명하는 문자열로, 속성값의 내용이나 길이 제한이 없다. 이 속성을 설장하지 않더라도 페이지의 처리 내용에는 아무런 영향을 미치지 않지만,
+JSP 페이지에 제목을 붙이는 것과 같은 기능을 한다.
+
+<%@ page info="copyright by KIM" %>
+
+(2) language 속성_스크립트 요소에서 사용할 언어 지정
+
+language는 JSP 페이지의 로직을 기술하는 스크립트 요소에서 사용할 프로그래밍 언어를 지정하는 속성으로, 생략 가능하며 생략 시 기본값으로 java가 지정된다.
+현재는 스크립트 언어로 자바만 지원한다.
+
+<%@ page language="java" %>
+
+(3) contentType 속성_생성할 문서의 타입을 지정
+
+contentType 속성은 JSP 페이지의 내용이 어떤 타입의 문서로 생성되는지를 지정하는 속성이다. 즉, 사용자 요청에 대한 응답 결과가 어떤 형태로 출력되는지를 MIME Type(마임 타입)으로 지정하는 속성으로
+text/html, text/plain, text/xml 등의 속성값을 지정할 수 있다. 이중에서 기본값은 text/html인데, 이는 응답 결과를 html 문서 형식으로 생성해서 출력하겠다는 의미이다.
+
+<%@ page contentType="text/html" %>
+
+contentType 속성의 charset(캐릭터셋)을 이용해 응답 결과를 보여줄 때 사용할 문자의 인코딩을 지정할 수 있다. charset의 기본값은 ISO-8859-1(서유럽 언어)이고,
+한글 문서를 생성할 때는 euc-kr을 사용하나, 최근에는 모바일을 고려해서 utf-8을 사용한다. 즉, 일반 웹 브라우저 및 모바일 웹 브라우저에서 표시되는 한글이 깨지지 않게 하려면 반드시
+"charset=utf-8"로 설정해야 한다.
+
+<%@ page contentType="text/html; charset=utf-8" %>
+
+위 page 디렉티브의 속성 중 info, language, contentType의 사용 방법을 학습하는 예제를 만들어보자.
+
+
+pageDirective1.jsp		85쪽
+
+
+(4) extends 속성_상속받을 클래스 지정
+
+extends 속성은 현재 JSP 페이지가 상속받을 클래스를 지정하는 속성으로, JSP 페이지가 서블릿으로 변환(파싱)되는 시점에서 상속받을 클래스를 지정할 때 사용된다.
+그러나 이런 작업은 JSP 컨테이너가 알아서 적절한 클래스들을 상속시켜 변환하므로, 실제로 이 속성은 사용할 일이 거의 없다. extends 속성을 사용한 소스 코드는 본 적이 없을 만큼 거의 사용되지 않는 속성이다.
+
+<%-- JSP 주석문 --%>
+<%-- work.test.ClassDef 클래스를 상속받아서 이 웹 페이지를 작성한다는 의미 --%>
+<%@ page extends="work.test.ClassDef" %>
+
+(5) import 속성_다른 위치에 있는 클래스 참조
+
+JSP 페이지 내에서 다른 위치에 있는 클래스를 풀네임(패키지명을 포함하는 클래스명)으로 사용하지 않기 위해 import 속성을 사용한다.
+다른 패키지(폴더)에 있는 클래스를 가져다 쓸 때 사용한다. 또한 import 속성은 page 디렉티브의 속성 중에서 유일하게 중복 사용이 가능하다.
+
+<%-- 여러 개의 패키지를 쉼표로 구분해서 사용 가능 --%>
+<%@ page import="java.util.*, java.sql.Timestamp" %>
+<%-- page 디렉티브의 속성 중 유일하게 중복해서 사용 가능 --%>
+<%@ page import="java.io.*" %>
+
+(6) session 속성_Http Session의 사용 여부 지정
+
+session 속성은 JSP 페이지가 HttpSession을 사용할 지 여부를 지정하는 속성으로 true 또는 false의 속성값을 갖는다.
+
+<%@ page session="true" %>
+
+속성값이 "true"이면 현재의 JSP 페이지가 세션을 사용하는 것으로 세션을 유지하고, 만일 세션이 존재하지 않을 경우는 새로운 세션을 생성하여 연결한다.
+속성값이 "false"이면 세션을 사용하지 않는다. 이 속성의 기본값은 "true"이다. session에 대한 자세한 내용은 Chapter10 에서 학습한다.
+
+(7) buffer 속성
+
+buffer 속성은 JSP 페이지의 출력 버퍼의 크기를 지정하는 속성으로 기본값은 8KB이다. buffer 속성의 값을 "none"으로 지정하면
+출력 버퍼를 사용하지 않는다는 의미로, 이때는 웹 브라우저에 출력될 JSP 페이지의 내용이 출력 버퍼를 거치지 않고 바로 출력된다.
+
+<%@ page buffer="8kb" %>
+<%@ page buffer="none" %>
+
+8KB를 기본값으로 사용하는 이유는 프로그래머들의 오랜 경험 끝에 JSP 페이지에서 가장 타당한 크기로 인식되었기 때문이다.
+거의 대부분 8KB로 충분하며, 만일 더 많은 내용을 출력한다면 그에 맞게 크기를 늘려주면 된다.
+
+(8) autoFlush 속성
+
+autoFlush 속성은 JSP 페이지의 내용들이 웹 브라우저에 출력되기 전에 출력 버퍼가 다 찰 경우, 저장되어 있는 내용들은 어떻게 처리할지를 지정하는 속성이다.
+만일 autoFlush 속성의 값을 "true"로 설정하면, 버퍼가 다 찼을 경우 자동적으로 버퍼의 내용이 웹 브라우저에 출력되고, 출력 버퍼는 비워진다.
+
+<%@ page autoFlush="true" %>
+
+autoFlush 속성의 기본값은 "true"이며, buffer의 속성값을 "none"으로 지정한 경우에는 autoFlush 속성값을 "false"로 지정할 수 없다.
+
+(9) isThreadSafe 속성
+
+isThreadSafe 속성은 JSP 페이지에서 멀티 스레드를 사용할 수 있도록 지정하는 속성으로 기본값은 "true"이다. 즉, 해당 JSP 페이지가
+다수의 웹 브라우저의 접근을 허용할지 여부를 결정한다.
+
+<%@ page isThreadSafe="false" %>
+
+속성값을 "false"로 지정하면 다수의 웹 브라우저의 요청을 동시에 처리하지 않고 요청한 순서대로 처리하므로 많은 시간이 걸린다.
+즉, '스레드의 프로세스화'가 되어, JSP의 장점인 멀티 스레드를 사용할 수 없어서 처리 속도가 떨이진다. 그러므로 가급적이면 "false" 값은 사용하지 않는 것이 좋다.
+
+page 디렉티브의 속성 중 import, session, buffer, autoFlush, isThreadSafe의 사용 방법을 학습하는 예제이다.
+
+
+pageDirective2.jsp		88쪽
+
+
+(10) errorPage 속성_에러 발생 시 처리할 페이지 지정
+
+errorPage 속성은 JSP 페이지를 처리하는 도중에 해당 페이지에서 에외가 발생할 경우 예외를 처리할 페이지를 지정하는 속성이다.
+해당 페이지에서 예외를 처리하지 않고 errorPage 속성값으로 지정한 다른 페이지에서 예외를 처리한다.
+
+<%@ page errorPage="errorPro.jsp" %>
+
+그러나 JSP 2.0 이상에서 톰캣 컨테이너의 버전이 5.5.15 이상인 경우에는 errorPage 속성이 적용되지 않으며, 에러 코드별로 에러 페이지를 제어해야 한다.
+여러 페이지를 제어하는 방법은 Chapter 6 에서 학습한다.
+
+(11) isErrorPage 속성
+
+isErrorPage 속성은 현재 JSP 페이지가 일반적인 페이지인지 아니면 에러를 처리하는 페이지인지를 지정할 때 사용된다.
+요청된 현재의 페이지가 발생된 예외를 처리하는 페이지이면 isErrorPage 속성의 값을 "true"로 지정한다. 기본적으로 일반적인 JSP 페이지는
+에러를 처리하는 페이지가 아니므로 isErrorPage 속성의 기본값은 "false"이다. 이 속성도 JSP 2.0부터는 사용되지 않는다.
+
+<%@ page isErrorPage="true" %>
+
+(12) pageEncoding 속성
+
+pageEncoding 속성은 JSP 페이지에서 사용하는 문자(character)의 인코딩을 지정할 때 사용되는 것으로, 생략 시 기본값으로는 ISO-8859-1 을 사용한다.
+한글 처리 시에는 모바일을 고려해서 UTF-8을 사용한다.
+
+<%@ page pageEncoding="UTF-8" %>
