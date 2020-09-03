@@ -159,7 +159,8 @@
       	<Context docBase="JSP 2.3 웹 프로그래밍" path="/JSP_2.3_웹_프로그래밍" reloadable="true" source="org.eclipse.jst.jee.server:JSP 2.3 웹 프로그래밍"/>
 					
 		<Context docBase="Shoppingmall" path="/Shoppingmall" reloadable="true" source="org.eclipse.jst.jee.server:Shoppingmall"/>
-		<Context docBase="YeungJinJSP" path="/YeungJinJSP" reloadable="true" source="org.eclipse.jst.jee.server:YeungJinJSP"/></Host>
+		<Context docBase="YeungJinJSP" path="/YeungJinJSP" reloadable="true" source="org.eclipse.jst.jee.server:YeungJinJSP"/>
+		<Context docBase="WebMarket" path="/WebMarket" reloadable="true" source="org.eclipse.jst.jee.server:WebMarket"/></Host>
     </Engine>
   </Service>
 </Server>
