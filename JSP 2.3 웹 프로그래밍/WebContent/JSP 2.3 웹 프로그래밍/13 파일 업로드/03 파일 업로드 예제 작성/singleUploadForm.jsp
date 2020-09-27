@@ -20,7 +20,7 @@
 						maxlength="50" placeholder="제목입력" autofocus="autofocus">
 				<li>
 					<label for="file1">파일선택</label>
-					<input type="file" id="file1" name="file1">
+					<input type="file" id="file1" name="file1" accept="image/*">
 				<li>
 					<input type="submit" id="upPro1" value="단일 파일 업로드">
 			</ul>

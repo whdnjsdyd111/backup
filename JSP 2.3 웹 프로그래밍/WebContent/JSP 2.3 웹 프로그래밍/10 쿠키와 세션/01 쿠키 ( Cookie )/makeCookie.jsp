@@ -8,7 +8,7 @@
 </head>
 <body>
 	<%
-		Cookie cookie = new Cookie("id", "kingdora");
+		Cookie cookie = new Cookie("id", "kingdor=");
 		cookie.setMaxAge(60 * 2);
 		response.addCookie(cookie);
 		

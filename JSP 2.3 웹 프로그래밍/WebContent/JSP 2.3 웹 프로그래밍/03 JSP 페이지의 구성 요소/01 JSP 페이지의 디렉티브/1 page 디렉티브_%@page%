@@ -30,7 +30,7 @@ isThreadSate	"true"			isThreadState="true"		현재 페이지에 멀티 쓰레드의 허용 여�
 
 errorPage						errorPage="error/fail.jsp"	에러 발생 시 에러를 처리할 페이지를 지정하는 속성
 
-isErrorPage		"false"			isErrorPage="false"			해당 페이지를 여러 페이지로 지정하는 속성
+isErrorPage		"false"			isErrorPage="false"			해당 페이지를 에러 페이지로 지정하는 속성
 
 pageEncoding	"ISO-8859-1"	pageEncoding="utf-8"		해당 페이지의 문자 인코딩을 지정하는 속성
 

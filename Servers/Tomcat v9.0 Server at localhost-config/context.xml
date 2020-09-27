@@ -26,6 +26,8 @@
     <!--
     <Manager pathname="" />
     -->
+
+	<!--
 	<ResourceLink
     	global="jdbc/jsptest"
     	name="jdbc/jsptest"
@@ -34,5 +36,10 @@
 	<ResourceLink
     	global="jdbc/jsptest1"
     	name="jdbc/jsptest1"
+    	type="javax.sql.DataSource"     />
+	-->
+	<ResourceLink
+    	global="jdbc/yjfb"
+    	name="jdbc/yjfb"
     	type="javax.sql.DataSource"     />
 </Context>

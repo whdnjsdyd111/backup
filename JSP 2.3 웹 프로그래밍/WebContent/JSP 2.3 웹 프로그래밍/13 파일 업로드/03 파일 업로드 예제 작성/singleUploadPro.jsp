@@ -15,8 +15,9 @@
 	int maxSize = 5 * 1024 * 1024;	// 업로드될 파일 크기 최대 5Mb
 	
 	// 현재 jsp 페이지의 웹 애플리케이션 상의 절대 경로를 구함
-	ServletContext context = getServletContext();
+	ServletContext context = request.getSession().getServletContext();
 	realFolder = context.getRealPath(saveFolder);
+	
 	
 	try {
 		MultipartRequest upload = null;
@@ -58,9 +59,11 @@
 			File file = upload.getFile(name);
 			if(file != null)
 				result += "크기 : " + file.length() + "bytes <br>";	// 파일 크기
+			out.write("<img src='" + realFolder + "\\" + filename + "'>");
 		}
 		result += "-----------------<br>";
 		out.println(result);	// 처리 결과를 반환
+		
 	} catch(Exception e) {
 		e.printStackTrace();
 	}
