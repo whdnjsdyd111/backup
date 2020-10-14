@@ -8,6 +8,7 @@
 <% request.setCharacterEncoding("utf-8"); %>
 
 <%
+	out.print(request.getHeader("Content-Type"));
 	String result = "-----------------<br>";	// 결과 문자열
 	String realFolder = "";	// 웹 애플리케이션 상의 절대 경로 저장
 	String saveFolder = "/upload";	// 파일 업로드 폴더 지정
@@ -59,7 +60,11 @@
 			File file = upload.getFile(name);
 			if(file != null)
 				result += "크기 : " + file.length() + "bytes <br>";	// 파일 크기
+			
 			out.write("<img src='" + realFolder + "\\" + filename + "'>");
+			result += "이미지 태그 : " + "(img src='" + realFolder + "\\" + filename + "')<br>";
+			result += "파일 경로 : " + realFolder + "<br>";
+			
 		}
 		result += "-----------------<br>";
 		out.println(result);	// 처리 결과를 반환

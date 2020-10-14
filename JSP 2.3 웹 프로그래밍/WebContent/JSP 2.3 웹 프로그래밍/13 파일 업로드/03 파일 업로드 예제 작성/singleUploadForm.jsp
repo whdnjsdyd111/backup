@@ -11,7 +11,7 @@
 </head>
 <body>
 	<form id="upForm1" action="singleUploadPro.jsp"
-		method="post" enctype="multipart/form-data">
+		method="post" enctype="application/x-www-form-urlencoded">
 		<div id="form">
 			<ul>
 				<li>
